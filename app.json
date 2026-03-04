@@ -4,7 +4,7 @@
     "slug": "offline-p2p",
     "version": "1.0.0",
     "experiments": {
-      "baseUrl": "/offline-p2p"
+      "baseUrl": "/offline-cards"
     },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
