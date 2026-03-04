@@ -3,6 +3,9 @@
     "name": "offline-p2p",
     "slug": "offline-p2p",
     "version": "1.0.0",
+    "experiments": {
+      "baseUrl": "/offline-p2p"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
