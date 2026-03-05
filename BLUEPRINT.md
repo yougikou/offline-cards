@@ -1,8 +1,8 @@
-# Offline P2P Deck Blueprint
+# Offline Cards Blueprint
 
 ## 1. Project Background and Objective
 
-**Offline P2P Deck** is designed as a pure offline web application to replace physical playing cards for face-to-face local area network (LAN) gaming.
+**Offline Cards** is designed as a pure offline web application to replace physical playing cards for face-to-face local area network (LAN) gaming.
 
 **Core Principle:** No centralized backend servers. No WebSockets. Absolutely no internet reliance for gameplay.
 All data is transmitted via a direct peer-to-peer (P2P) connection established directly between two device browsers over a local network.

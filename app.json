@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "offline-p2p",
-    "slug": "offline-p2p",
+    "name": "offline-cards",
+    "slug": "offline-cards",
     "version": "1.0.0",
     "experiments": {
       "baseUrl": "/offline-cards"
@@ -27,8 +27,8 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "name": "Offline P2P",
-      "shortName": "Offline P2P",
+      "name": "Offline Cards",
+      "shortName": "Offline Cards",
       "themeColor": "#ffffff",
       "backgroundColor": "#ffffff",
       "display": "standalone",

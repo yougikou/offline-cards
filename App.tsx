@@ -96,7 +96,7 @@ export default function App() {
 
   const renderHome = () => (
     <View style={styles.content}>
-      <Text style={styles.title}>Offline P2P Deck</Text>
+      <Text style={styles.title}>Offline Cards</Text>
       <Text style={styles.subtitle}>No servers. Pure WebRTC LAN.</Text>
       <View style={styles.buttonContainer}>
         <Button title="Create Room (Host)" onPress={handleHost} />

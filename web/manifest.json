@@ -2,8 +2,8 @@
   "background_color": "#ffffff",
   "display": "standalone",
   "lang": "en",
-  "name": "Offline P2P",
-  "short_name": "Offline P2P",
+  "name": "Offline Cards",
+  "short_name": "Offline Cards",
   "start_url": ".",
   "theme_color": "#ffffff",
   "orientation": "portrait"
