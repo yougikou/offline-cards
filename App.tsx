@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { WebRTCManager } from './src/webrtc';
 import Scanner from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
@@ -183,6 +184,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      <StatusBar hidden={true} />
       {appState === 'HOME' && renderHome()}
       {(appState === 'SIGNALING_HOST' || appState === 'SIGNALING_GUEST') && renderSignaling()}
       {appState === 'CONNECTED' && renderConnected()}
