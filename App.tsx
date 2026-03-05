@@ -16,6 +16,7 @@ export default function App() {
   const [qrValue, setQrValue] = useState<string>('');
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
+  const [showMode, setShowMode] = useState<'qr' | 'scanner'>('qr');
 
   useEffect(() => {
     const manager = new WebRTCManager(
@@ -44,6 +45,7 @@ export default function App() {
     setAppState('SIGNALING_HOST');
     setQrValue('');
     setIsScanning(false);
+    setShowMode('qr'); // Start by showing offer
     try {
       const offerStr = await webrtcManager.createOffer();
       setQrValue(offerStr);
@@ -58,6 +60,7 @@ export default function App() {
     setAppState('SIGNALING_GUEST');
     setQrValue('');
     setIsScanning(true); // Guest scans host's offer first
+    setShowMode('scanner'); // Start by scanning host's offer
   };
 
   const handleScanSuccess = async (scannedText: string) => {
@@ -72,6 +75,7 @@ export default function App() {
         // Guest scanned Host's offer
         const answerStr = await webrtcManager.acceptOfferAndCreateAnswer(scannedText);
         setQrValue(answerStr);
+        setShowMode('qr'); // Guest now displays QR for Host to scan
         // Guest now displays QR for Host to scan
       }
     } catch (e) {
@@ -106,27 +110,44 @@ export default function App() {
       <Text style={styles.title}>
         {appState === 'SIGNALING_HOST' ? 'Host Mode' : 'Guest Mode'}
       </Text>
-      <Text style={{ marginBottom: 20 }}>Status: {connectionStatus}</Text>
+      <Text style={{ marginBottom: 10 }}>Status: {connectionStatus}</Text>
 
-      {qrValue ? (
-        <View style={styles.section}>
-          <Text style={{ marginBottom: 10 }}>Show this QR Code to the other device:</Text>
-          <QRCodeDisplay value={qrValue} />
+      {qrValue && isScanning && (
+        <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
+          <Button
+            title="Show My QR"
+            onPress={() => setShowMode('qr')}
+            color={showMode === 'qr' ? '#007AFF' : '#999'}
+          />
+          <Button
+            title="Scan Other's QR"
+            onPress={() => setShowMode('scanner')}
+            color={showMode === 'scanner' ? '#007AFF' : '#999'}
+          />
         </View>
-      ) : null}
+      )}
 
-      {isScanning ? (
-        <View style={styles.section}>
-          <Text style={{ marginBottom: 10 }}>Scan the other device's QR Code:</Text>
-          {Platform.OS === 'web' ? (
-            <Scanner onScan={handleScanSuccess} />
-          ) : (
-            <Text>Scanning requires web environment</Text>
-          )}
-        </View>
-      ) : null}
+      <View style={{ flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+        {showMode === 'qr' && qrValue ? (
+          <View style={[styles.section, { flex: 1 }]}>
+            <Text style={{ marginBottom: 10, textAlign: 'center' }}>Show this QR Code to the other device:</Text>
+            <QRCodeDisplay value={qrValue} />
+          </View>
+        ) : null}
 
-      <View style={{ marginTop: 20 }}>
+        {showMode === 'scanner' && isScanning ? (
+          <View style={[styles.section, { flex: 1 }]}>
+            <Text style={{ marginBottom: 10, textAlign: 'center' }}>Scan the other device's QR Code:</Text>
+            {Platform.OS === 'web' ? (
+              <Scanner onScan={handleScanSuccess} />
+            ) : (
+              <Text>Scanning requires web environment</Text>
+            )}
+          </View>
+        ) : null}
+      </View>
+
+      <View style={{ marginTop: 20, width: '100%', maxWidth: 300 }}>
         <Button title="Cancel" onPress={() => setAppState('HOME')} color="red" />
       </View>
     </View>
