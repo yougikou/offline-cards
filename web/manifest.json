@@ -1,10 +1,10 @@
 {
-  "background_color": "#ffffff",
-  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "display": "fullscreen",
   "lang": "en",
   "name": "Offline Cards",
   "short_name": "Offline Cards",
   "start_url": ".",
-  "theme_color": "#ffffff",
+  "theme_color": "#f5f5f5",
   "orientation": "portrait"
 }
