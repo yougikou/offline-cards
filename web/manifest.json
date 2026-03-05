@@ -1,0 +1,10 @@
+{
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "lang": "en",
+  "name": "Offline P2P",
+  "short_name": "Offline P2P",
+  "start_url": ".",
+  "theme_color": "#ffffff",
+  "orientation": "portrait"
+}

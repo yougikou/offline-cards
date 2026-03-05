@@ -26,7 +26,14 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Offline P2P",
+      "shortName": "Offline P2P",
+      "themeColor": "#ffffff",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "startUrl": ".",
+      "bundler": "metro"
     }
   }
 }

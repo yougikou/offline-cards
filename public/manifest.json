@@ -1,0 +1,28 @@
+{
+  "name": "Offline P2P",
+  "short_name": "Offline P2P",
+  "start_url": "/offline-cards/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "description": "Offline P2P Card Game",
+  "icons": [
+    {
+      "src": "/offline-cards/assets/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    },
+    {
+      "src": "/offline-cards/assets/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/offline-cards/assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ]
+}
