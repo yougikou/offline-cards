@@ -22,7 +22,15 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
             { facingMode: "environment" },
             {
               fps: 10,
-              qrbox: { width: 250, height: 250 }
+              // Calculate a dynamic qrbox size based on viewport width to fit better
+              qrbox: (videoWidth, videoHeight) => {
+                const minEdgePercentage = 0.7; // 70% of the smallest edge
+                const minEdgeSize = Math.min(videoWidth, videoHeight);
+                return {
+                  width: Math.floor(minEdgeSize * minEdgePercentage),
+                  height: Math.floor(minEdgeSize * minEdgePercentage)
+                };
+              }
             },
             (decodedText, decodedResult) => {
               if (scannerRef.current?.isScanning) {
@@ -65,17 +73,19 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
 
   return (
     <View style={styles.container}>
-      <div id="reader" style={{ width: '100%', maxWidth: '400px' }}></div>
+      <div id="reader" style={{ flex: 1, width: '100%', maxWidth: '400px', maxHeight: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}></div>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 10,
     width: '100%',
+    overflow: 'hidden'
   }
 });
 
