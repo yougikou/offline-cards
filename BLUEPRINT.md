@@ -59,12 +59,24 @@ The UI is driven by a simple state machine:
 *   Establish `RTCDataChannel` and verify bidirectional text messaging.
 *   Configure GitHub Pages CI/CD pipeline.
 
-### Phase 2: Deck Engine and State Synchronization (Upcoming)
+### Phase 2: Session Recovery (Disaster Recovery & State Persistence)
+*   **Precise Connection Monitoring**: Strictly monitor `RTCPeerConnection.onconnectionstatechange`.
+    *   State `disconnected`: UI soft prompt "网络波动，尝试重连中..." (Network fluctuation, attempting to reconnect...), underlying layer waits for WebRTC to auto-recover.
+    *   State `failed`: UI hard prompt "连接彻底断开" (Connection completely lost), and render a "生成重连二维码" (Generate Reconnection QR Code) button for the Host.
+*   **State Snapshot Persistence**:
+    *   On the Host side, whenever the game state changes, immediately serialize the full State JSON snapshot and save it to `localStorage`, bound to a unique `RoomID`.
+    *   On the Guest side, save its own `PlayerID` and the associated `RoomID`.
+*   **Seamless Resume**: When a `failed` disconnection occurs and the Guest establishes a new WebRTC connection by re-scanning the Host's new QR code:
+    1.  The Host must first verify the Guest's `RoomID` and `PlayerID` via the `DataChannel`.
+    2.  If it matches the local storage record from the previous session, the Host is strictly forbidden from re-initializing the game; instead, it must directly dispatch the last valid snapshot from `localStorage` to the Guest.
+    3.  Upon receiving the snapshot, the Guest directly renders the table state exactly as it was just before the disconnection. This achieves a seamless recovery of game progress after a physical disconnection and re-scan.
+
+### Phase 3: Deck Engine and State Synchronization (Upcoming)
 *   Define standard JSON structures for a deck of cards.
 *   Implement deterministic shuffling algorithms.
 *   Synchronize game state (e.g., Draw, Play, Discard) between peers via `RTCDataChannel`.
 
-### Phase 3: Card Game UI/UX (Future)
+### Phase 4: Card Game UI/UX (Future)
 *   Implement React Native gesture handlers for drawing, dragging, and dropping cards.
 *   Design responsive playing field (hand, deck, discard pile).
 *   Add animations and haptic feedback.

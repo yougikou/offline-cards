@@ -6,9 +6,14 @@ import Scanner from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
 
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED';
+type Role = 'HOST' | 'GUEST' | null;
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('HOME');
+  const [role, setRole] = useState<Role>(null);
+  const [roomId, setRoomId] = useState<string>('');
+  const [playerId, setPlayerId] = useState<string>('');
+
   const [messages, setMessages] = useState<string[]>([]);
   const [inputText, setInputText] = useState('');
   const [webrtcManager, setWebrtcManager] = useState<WebRTCManager | null>(null);
@@ -19,31 +24,124 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
   const [showMode, setShowMode] = useState<'qr' | 'scanner'>('qr');
 
+  // Persistence helpers
+  const saveHostState = (id: string, msgs: string[]) => {
+    if (Platform.OS === 'web') {
+      localStorage.setItem('hostRoomId', id);
+      localStorage.setItem('hostState', JSON.stringify({ messages: msgs }));
+    }
+  };
+
+  const saveGuestState = (rId: string, pId: string) => {
+    if (Platform.OS === 'web') {
+      localStorage.setItem('guestRoomId', rId);
+      localStorage.setItem('guestPlayerId', pId);
+    }
+  };
+
+  const clearStorage = () => {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem('hostRoomId');
+      localStorage.removeItem('hostState');
+      localStorage.removeItem('guestRoomId');
+      localStorage.removeItem('guestPlayerId');
+    }
+  };
+
   useEffect(() => {
-    const manager = new WebRTCManager(
-      (msg) => {
-        setMessages((prev) => [...prev, `Remote: ${msg}`]);
-      },
-      (state) => {
-        setConnectionStatus(state);
-        if (state === 'connected') {
-          setAppState('CONNECTED');
-        } else if (state === 'disconnected' || state === 'failed') {
-          setAppState('HOME');
-          setMessages([]);
-        }
-      }
-    );
+    const manager = new WebRTCManager();
     setWebrtcManager(manager);
-    return () => {
-      // Cleanup peer connection on unmount if needed
-      manager.peerConnection?.close();
-    };
+    return () => manager.close();
   }, []);
 
-  const handleHost = async () => {
+  // Use refs for callbacks to access latest state without reconnecting DataChannel
+  const roleRef = useRef(role);
+  const roomIdRef = useRef(roomId);
+  const playerIdRef = useRef(playerId);
+  const messagesRef = useRef(messages);
+
+  useEffect(() => {
+    roleRef.current = role;
+    roomIdRef.current = roomId;
+    playerIdRef.current = playerId;
+    messagesRef.current = messages;
+  }, [role, roomId, playerId, messages]);
+
+  useEffect(() => {
+    if (!webrtcManager) return;
+
+    webrtcManager.onMessageCallback = (msg) => {
+      try {
+        const data = JSON.parse(msg);
+        if (data.type === 'HELLO') {
+          if (roleRef.current === 'HOST') {
+            // For Phase 1, Guest may not know room ID initially, let's accept and inform Guest of room ID
+            // If they are resuming, they should pass the correct roomId, or empty if new.
+            if (!data.roomId || data.roomId === roomIdRef.current) {
+              webrtcManager.sendMessage(JSON.stringify({ type: 'WELCOME', roomId: roomIdRef.current, state: { messages: messagesRef.current } }));
+            } else {
+              webrtcManager.sendMessage(JSON.stringify({ type: 'ERROR', message: 'Room ID mismatch' }));
+            }
+          }
+        } else if (data.type === 'WELCOME') {
+          if (roleRef.current === 'GUEST') {
+            setMessages(data.state.messages || []);
+            // Save guest state on welcome to sync room ID correctly
+            if (data.roomId) {
+              setRoomId(data.roomId);
+              saveGuestState(data.roomId, playerIdRef.current);
+            }
+          }
+        } else if (data.type === 'ACTION_CHAT') {
+          const newMessages = [...messagesRef.current, `Remote: ${data.text}`];
+          setMessages(newMessages);
+          if (roleRef.current === 'HOST') {
+            saveHostState(roomIdRef.current, newMessages);
+          }
+        } else if (data.type === 'STATE_UPDATE') {
+          if (roleRef.current === 'GUEST') {
+             setMessages(data.state.messages || []);
+          }
+        }
+      } catch (e) {
+        // Fallback for raw strings during development
+        setMessages((prev) => [...prev, `Remote: ${msg}`]);
+      }
+    };
+
+    webrtcManager.onConnectionStateChangeCallback = (state) => {
+      setConnectionStatus(state);
+      if (state === 'connected') {
+        setAppState('CONNECTED');
+      }
+      // If disconnected/failed, we stay in CONNECTED or move to a specific UI, don't reset immediately.
+    };
+
+    webrtcManager.onDataChannelOpenCallback = () => {
+      if (roleRef.current === 'GUEST') {
+        webrtcManager.sendMessage(JSON.stringify({
+          type: 'HELLO',
+          roomId: roomIdRef.current,
+          playerId: playerIdRef.current
+        }));
+      }
+    };
+  }, [webrtcManager]);
+
+  const handleHost = async (resume: boolean = false) => {
     if (!webrtcManager) return;
     setAppState('SIGNALING_HOST');
+    setRole('HOST');
+
+    if (!resume) {
+      const newRoomId = Math.random().toString(36).substring(2, 9);
+      setRoomId(newRoomId);
+      setMessages([]);
+      clearStorage();
+    } else {
+      // roomId and messages should already be loaded from storage before calling handleHost(true)
+    }
+
     setQrValue('');
     setIsScanning(false);
     setShowMode('qr'); // Start by showing offer
@@ -57,8 +155,21 @@ export default function App() {
     }
   };
 
-  const handleGuest = () => {
+  const handleGuest = (resume: boolean = false) => {
     setAppState('SIGNALING_GUEST');
+    setRole('GUEST');
+
+    if (!resume) {
+      const newPlayerId = Math.random().toString(36).substring(2, 9);
+      // Assuming Guest doesn't know room ID until first scan or message,
+      // but to persist we need it. For Phase 1, we just set a dummy or update it later.
+      // Actually, Guest gets roomId from HOST's HELLO response or scanning payload?
+      // In this pure manual setup, Guest scans Offer (SDP). We'll set a generic room for now
+      // or extract from offer. Let's just generate a player ID.
+      setPlayerId(newPlayerId);
+      clearStorage();
+    }
+
     setQrValue('');
     setIsScanning(true); // Guest scans host's offer first
     setShowMode('scanner'); // Start by scanning host's offer
@@ -88,23 +199,72 @@ export default function App() {
 
   const handleSendMessage = () => {
     if (inputText.trim() && webrtcManager) {
-      webrtcManager.sendMessage(inputText);
-      setMessages((prev) => [...prev, `Me: ${inputText}`]);
+      const payload = { type: 'ACTION_CHAT', text: inputText };
+      webrtcManager.sendMessage(JSON.stringify(payload));
+
+      const newMessages = [...messages, `Me: ${inputText}`];
+      setMessages(newMessages);
+
+      if (role === 'HOST') {
+        saveHostState(roomId, newMessages);
+      }
+
       setInputText('');
     }
   };
 
-  const renderHome = () => (
-    <View style={styles.content}>
-      <Text style={styles.title}>Offline Cards</Text>
-      <Text style={styles.subtitle}>No servers. Pure WebRTC LAN.</Text>
-      <View style={styles.buttonContainer}>
-        <Button title="Create Room (Host)" onPress={handleHost} />
-        <View style={{ height: 20 }} />
-        <Button title="Join Room (Guest)" onPress={handleGuest} />
+  const renderHome = () => {
+    let savedHostRoomId = '';
+    let savedGuestRoomId = '';
+    let hasHostState = false;
+    let hasGuestState = false;
+
+    if (Platform.OS === 'web') {
+      savedHostRoomId = localStorage.getItem('hostRoomId') || '';
+      savedGuestRoomId = localStorage.getItem('guestRoomId') || '';
+      hasHostState = !!savedHostRoomId;
+      hasGuestState = !!savedGuestRoomId;
+    }
+
+    return (
+      <View style={styles.content}>
+        <Text style={styles.title}>Offline Cards</Text>
+        <Text style={styles.subtitle}>No servers. Pure WebRTC LAN.</Text>
+        <View style={styles.buttonContainer}>
+          <Button title="Create Room (Host)" onPress={() => handleHost(false)} />
+          <View style={{ height: 20 }} />
+          <Button title="Join Room (Guest)" onPress={() => handleGuest(false)} />
+
+          {(hasHostState || hasGuestState) && (
+            <View style={{ marginTop: 40 }}>
+              <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>Session Recovery</Text>
+              {hasHostState && (
+                <Button title={`Resume Hosted Room`} color="orange" onPress={() => {
+                  setRoomId(savedHostRoomId);
+                  const stateStr = localStorage.getItem('hostState');
+                  if (stateStr) {
+                    try {
+                      setMessages(JSON.parse(stateStr).messages || []);
+                    } catch (e) {}
+                  }
+                  handleHost(true);
+                }} />
+              )}
+              {hasGuestState && (
+                <View style={{ marginTop: 10 }}>
+                  <Button title={`Resume Joined Room`} color="orange" onPress={() => {
+                    setRoomId(savedGuestRoomId);
+                    setPlayerId(localStorage.getItem('guestPlayerId') || '');
+                    handleGuest(true);
+                  }} />
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderSignaling = () => (
     <View style={styles.content}>
@@ -154,33 +314,56 @@ export default function App() {
     </View>
   );
 
-  const renderConnected = () => (
-    <View style={styles.content}>
-      <Text style={styles.title}>Connected!</Text>
-      <ScrollView style={styles.messageBox}>
-        {messages.map((m, i) => (
-          <Text key={i} style={styles.messageText}>{m}</Text>
-        ))}
-      </ScrollView>
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Type a message..."
-          onSubmitEditing={handleSendMessage}
-        />
-        <Button title="Send" onPress={handleSendMessage} />
+  const renderConnected = () => {
+    const isDisconnected = connectionStatus === 'disconnected';
+    const isFailed = connectionStatus === 'failed';
+
+    return (
+      <View style={styles.content}>
+        <Text style={styles.title}>
+          {isFailed ? "连接彻底断开" : isDisconnected ? "网络波动，尝试重连中..." : "Connected!"}
+        </Text>
+        {isFailed && (
+          <View style={{ marginVertical: 20 }}>
+            <Button title={role === 'HOST' ? "生成重连二维码" : "重新扫描主机二维码"} color="orange" onPress={() => {
+              // Properly close old connections
+              webrtcManager?.close();
+              if (role === 'HOST') {
+                handleHost(true);
+              } else {
+                handleGuest(true);
+              }
+            }} />
+          </View>
+        )}
+        <ScrollView style={styles.messageBox}>
+          {messages.map((m, i) => (
+            <Text key={i} style={styles.messageText}>{m}</Text>
+          ))}
+        </ScrollView>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Type a message..."
+            onSubmitEditing={handleSendMessage}
+            editable={connectionStatus === 'connected'}
+          />
+          <Button title="Send" onPress={handleSendMessage} disabled={connectionStatus !== 'connected'} />
+        </View>
+        <View style={{ marginTop: 20 }}>
+          <Button title="Disconnect" onPress={() => {
+            webrtcManager?.close();
+            clearStorage();
+            setAppState('HOME');
+            setMessages([]);
+            setRole(null);
+          }} color="red" />
+        </View>
       </View>
-      <View style={{ marginTop: 20 }}>
-        <Button title="Disconnect" onPress={() => {
-          webrtcManager?.peerConnection?.close();
-          setAppState('HOME');
-          setMessages([]);
-        }} color="red" />
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>

@@ -8,16 +8,11 @@ export class WebRTCManager {
   public peerConnection: RTCPeerConnection | null = null;
   public dataChannel: RTCDataChannel | null = null;
 
-  private onMessageCallback: ((message: string) => void) | null = null;
-  private onConnectionStateChangeCallback: ((state: string) => void) | null = null;
+  public onMessageCallback: ((message: string) => void) | null = null;
+  public onConnectionStateChangeCallback: ((state: string) => void) | null = null;
+  public onDataChannelOpenCallback: (() => void) | null = null;
 
-  constructor(
-    onMessage: (msg: string) => void,
-    onConnectionStateChange: (state: string) => void
-  ) {
-    this.onMessageCallback = onMessage;
-    this.onConnectionStateChangeCallback = onConnectionStateChange;
-  }
+  constructor() {}
 
   public initPeerConnection() {
     this.peerConnection = new RTCPeerConnection(rtcConfig);
@@ -39,10 +34,22 @@ export class WebRTCManager {
     this.dataChannel = channel;
     this.dataChannel.onopen = () => {
       console.log('Data channel open!');
+      this.onDataChannelOpenCallback?.();
     };
     this.dataChannel.onmessage = (event) => {
       this.onMessageCallback?.(event.data);
     };
+  }
+
+  public close() {
+    if (this.dataChannel) {
+      this.dataChannel.close();
+      this.dataChannel = null;
+    }
+    if (this.peerConnection) {
+      this.peerConnection.close();
+      this.peerConnection = null;
+    }
   }
 
   public async createOffer(): Promise<string> {
