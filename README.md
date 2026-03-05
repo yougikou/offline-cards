@@ -1,6 +1,6 @@
-# Offline P2P Deck
+# Offline Cards
 
-**Offline P2P Deck** is a pure offline, serverless Progressive Web Application (PWA) designed to replace physical playing cards for face-to-face local area network (LAN) gaming.
+**Offline Cards** is a pure offline, serverless Progressive Web Application (PWA) designed to replace physical playing cards for face-to-face local area network (LAN) gaming.
 
 ## Core Philosophy
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'offline-p2p-v1';
+const CACHE_NAME = 'offline-cards-v1';
 const ASSETS_TO_CACHE = [
   '/offline-cards/',
   '/offline-cards/index.html',

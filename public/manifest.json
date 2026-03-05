@@ -1,11 +1,11 @@
 {
-  "name": "Offline P2P",
-  "short_name": "Offline P2P",
+  "name": "Offline Cards",
+  "short_name": "Offline Cards",
   "start_url": "/offline-cards/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
-  "description": "Offline P2P Card Game",
+  "description": "Offline Cards Game",
   "icons": [
     {
       "src": "/offline-cards/assets/icon.png",
