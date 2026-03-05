@@ -2,9 +2,9 @@
   "name": "Offline Cards",
   "short_name": "Offline Cards",
   "start_url": "/offline-cards/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "display": "fullscreen",
+  "background_color": "#f5f5f5",
+  "theme_color": "#f5f5f5",
   "description": "Offline Cards Game",
   "icons": [
     {

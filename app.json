@@ -12,7 +12,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#f5f5f5"
     },
     "ios": {
       "supportsTablet": true
@@ -29,9 +29,9 @@
       "favicon": "./assets/favicon.png",
       "name": "Offline Cards",
       "shortName": "Offline Cards",
-      "themeColor": "#ffffff",
-      "backgroundColor": "#ffffff",
-      "display": "standalone",
+      "themeColor": "#f5f5f5",
+      "backgroundColor": "#f5f5f5",
+      "display": "fullscreen",
       "startUrl": ".",
       "bundler": "metro"
     }
