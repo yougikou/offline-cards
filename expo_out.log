@@ -1,0 +1,10 @@
+Starting project at /app
+Starting Metro Bundler
+
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 63.3% (141/181)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.3% (275/276)
+Web Bundled 7819ms index.js (276 modules)
+ LOG  [web] Logs will appear in the browser console
