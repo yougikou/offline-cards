@@ -12,3 +12,6 @@ Web ./index.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 65.7% (114/150)
 Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.3% (271/274)
 Web Bundled 8739ms index.js (276 modules)
  LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 1180ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console

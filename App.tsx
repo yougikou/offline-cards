@@ -305,46 +305,57 @@ export default function App() {
 
     return (
       <View style={styles.sandboxContainer}>
-        {/* Top: Guest Area (Rotated) */}
-        <View style={[styles.sandboxSection, { transform: [{ rotate: '180deg' }], backgroundColor: '#e0f7fa' }]}>
-          <Text style={styles.sandboxTitle}>Guest</Text>
-          <Button title="Opponent Draw" onPress={() => handleAction({ type: 'DRAW_CARD', player: 'guest' })} />
-          <View style={styles.handContainer}>
-            {guestHand.map((c: any) => renderCard(c, 'guest'))}
-          </View>
-        </View>
+        {/* Upper 2/3: Interaction Area (Round Table) */}
+        <View style={styles.interactionArea}>
 
-        {/* Middle: Table Area */}
-        <View style={[styles.sandboxSection, { backgroundColor: '#e8f5e9', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#ccc' }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 20, marginBottom: 10 }}>
-            <Button title="Exit Sandbox" color="red" onPress={() => {
-              setGameState(null);
-              setAppState('HOME');
-            }} />
+          {/* Top Edge: Guest Area */}
+          <View style={styles.guestArea}>
+             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 10 }}>
+                <Text style={styles.sandboxTitle}>Guest</Text>
+                <Button title="Opponent Draw" onPress={() => handleAction({ type: 'DRAW_CARD', player: 'guest' })} />
+             </View>
+            <View style={styles.handContainer}>
+              {guestHand.map((c: any) => renderCard(c, 'guest'))}
+            </View>
+          </View>
+
+          {/* Center: Table Area */}
+          <View style={styles.tableArea}>
             <Text style={styles.sandboxTitle}>Table</Text>
-            <Button title="Reset Game" color="orange" onPress={() => {
-              setGameState(StandardPokerModule.setup(['host', 'guest']));
-            }} />
+            <View style={styles.tableContainer}>
+              {tableCards.map((c: any) => (
+                <View key={c.id} style={styles.card}>
+                  <Text style={[styles.cardText, (c.suit === 'Hearts' || c.suit === 'Diamonds') ? {color: 'red'} : {color: 'black'}]}>
+                    {c.rank}
+                    {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
-          <View style={styles.tableContainer}>
-            {tableCards.map((c: any) => (
-              <View key={c.id} style={styles.card}>
-                <Text style={[styles.cardText, (c.suit === 'Hearts' || c.suit === 'Diamonds') ? {color: 'red'} : {color: 'black'}]}>
-                  {c.rank}
-                  {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
-                </Text>
-              </View>
-            ))}
-          </View>
+
         </View>
 
-        {/* Bottom: Host Area */}
-        <View style={[styles.sandboxSection, { backgroundColor: '#fff3e0' }]}>
-          <Text style={styles.sandboxTitle}>Host (Me)</Text>
-          <Button title="My Draw" onPress={() => handleAction({ type: 'DRAW_CARD', player: 'host' })} />
-          <View style={styles.handContainer}>
-            {hostHand.map((c: any) => renderCard(c, 'host'))}
+        {/* Lower 1/3: My Hand & Controls */}
+        <View style={styles.myHandArea}>
+
+          <View style={styles.controlRow}>
+            <Button title="Exit Sandbox" color="red" onPress={() => {
+                setGameState(null);
+                setAppState('HOME');
+            }} />
+            <Button title="Reset Game" color="orange" onPress={() => {
+                setGameState(StandardPokerModule.setup(['host', 'guest']));
+            }} />
+             <Button title="My Draw" onPress={() => handleAction({ type: 'DRAW_CARD', player: 'host' })} />
           </View>
+
+          <Text style={styles.sandboxTitle}>Host (Me)</Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={styles.scrollHandContainer}>
+            {hostHand.map((c: any) => renderCard(c, 'host'))}
+          </ScrollView>
+
         </View>
       </View>
     );
@@ -520,31 +531,68 @@ const styles = StyleSheet.create({
   sandboxContainer: {
     flex: 1,
     width: '100%',
+    flexDirection: 'column',
     overflow: 'hidden',
   },
-  sandboxSection: {
+  interactionArea: {
+    flex: 2,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    backgroundColor: '#e8f5e9', // Light green for the "table"
+  },
+  guestArea: {
+    width: '100%',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    padding: 10,
+    borderRadius: 8,
+  },
+  tableArea: {
     flex: 1,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 20,
+  },
+  myHandArea: {
+    flex: 1,
+    backgroundColor: '#fff3e0',
+    borderTopWidth: 2,
+    borderColor: '#ccc',
     padding: 10,
+    alignItems: 'center',
+  },
+  controlRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 10,
   },
   sandboxTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 5,
+    color: '#333',
   },
   handContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    marginTop: 10,
     gap: 5,
+  },
+  scrollHandContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    gap: 10,
   },
   tableContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    flex: 1,
+    width: '100%',
     gap: 5,
   },
   card: {
