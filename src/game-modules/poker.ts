@@ -9,7 +9,8 @@ interface Card {
 interface PokerState extends GameState {
   deck: Card[];
   table: Card[];
-  players: Record<string, { hand: Card[] }>;
+  players: string[];
+  hands: Record<string, Card[]>;
 }
 
 const SUITS: ('Hearts' | 'Diamonds' | 'Clubs' | 'Spades')[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
@@ -37,22 +38,23 @@ function createDeck(): Card[] {
 export const StandardPokerModule: GameModule = {
   name: 'Standard Poker',
   setup: (playerIds: string[]): PokerState => {
-    const players: Record<string, { hand: Card[] }> = {};
+    const hands: Record<string, Card[]> = {};
     for (const id of playerIds) {
-      players[id] = { hand: [] };
+      hands[id] = [];
     }
 
     return {
       deck: createDeck(),
       table: [],
-      players
+      players: playerIds,
+      hands
     };
   },
   reducer: (state: GameState, action: GameAction): GameState => {
     const pokerState = state as PokerState;
     const { player, type } = action;
 
-    if (!pokerState.players[player]) {
+    if (!pokerState.hands[player]) {
       return state; // Invalid player
     }
 
@@ -65,23 +67,20 @@ export const StandardPokerModule: GameModule = {
         const newDeck = [...pokerState.deck];
         const drawnCard = newDeck.pop()!;
 
-        const newPlayers = {
-          ...pokerState.players,
-          [player]: {
-            ...pokerState.players[player],
-            hand: [...pokerState.players[player].hand, drawnCard]
-          }
+        const newHands = {
+          ...pokerState.hands,
+          [player]: [...pokerState.hands[player], drawnCard]
         };
 
         return {
           ...pokerState,
           deck: newDeck,
-          players: newPlayers
+          hands: newHands
         };
       }
       case 'PLAY_CARD': {
         const cardIdToPlay = action.cardId;
-        const playerHand = pokerState.players[player].hand;
+        const playerHand = pokerState.hands[player];
         const cardIndex = playerHand.findIndex(c => c.id === cardIdToPlay);
 
         if (cardIndex === -1) {
@@ -92,12 +91,9 @@ export const StandardPokerModule: GameModule = {
         const newHand = [...playerHand];
         newHand.splice(cardIndex, 1);
 
-        const newPlayers = {
-          ...pokerState.players,
-          [player]: {
-            ...pokerState.players[player],
-            hand: newHand
-          }
+        const newHands = {
+          ...pokerState.hands,
+          [player]: newHand
         };
 
         const newTable = [...pokerState.table, playedCard];
@@ -105,7 +101,7 @@ export const StandardPokerModule: GameModule = {
         return {
           ...pokerState,
           table: newTable,
-          players: newPlayers
+          hands: newHands
         };
       }
       default:

@@ -11,15 +11,46 @@ import { GameState, GameAction } from './src/game-modules/types';
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
 type Role = 'HOST' | 'GUEST' | null;
 
+// The Targeted Sanitization function
+function sanitizeStateForPlayer(globalState: GameState, targetPlayerId: string): GameState {
+  const safeState: GameState = {
+    ...globalState,
+    deckCount: globalState.deck?.length || 0,
+    deck: undefined, // Hide the actual deck array
+    hands: {}
+  };
+
+  // Replace other players' hand arrays with generic objects, keep target player's exact hand
+  if (globalState.hands) {
+    for (const [pId, handArray] of Object.entries(globalState.hands)) {
+      if (pId === targetPlayerId) {
+        safeState.hands[pId] = [...handArray]; // True cards
+      } else {
+        // Map to card backs/hidden markers
+        safeState.hands[pId] = handArray.map(() => ({ id: Math.random().toString(), hidden: true }));
+      }
+    }
+  }
+
+  return safeState;
+}
+
 export default function App() {
   const [appState, setAppState] = useState<AppState>('HOME');
   const [role, setRole] = useState<Role>(null);
   const [roomId, setRoomId] = useState<string>('');
-  const [playerId, setPlayerId] = useState<string>('');
+  const [playerId, setPlayerId] = useState<string>(''); // For guests it's their ID, for host it's 'host'
 
   const [messages, setMessages] = useState<string[]>([]);
   const [inputText, setInputText] = useState('');
-  const [webrtcManager, setWebrtcManager] = useState<WebRTCManager | null>(null);
+
+  // Guest uses a single connection manager
+  const [guestWebrtcManager, setGuestWebrtcManager] = useState<WebRTCManager | null>(null);
+
+  // Host uses a pool of connection managers mapped by guest ID
+  // For signaling we need a "pending" manager that hasn't been assigned an ID yet
+  const [pendingHostManager, setPendingHostManager] = useState<WebRTCManager | null>(null);
+  const hostConnections = useRef(new Map<string, WebRTCManager>());
 
   // Signaling state
   const [qrValue, setQrValue] = useState<string>('');
@@ -27,7 +58,7 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
   const [showMode, setShowMode] = useState<'qr' | 'scanner'>('qr');
 
-  // Sandbox state
+  // Sandbox & Game state
   const [gameState, setGameState] = useState<GameState | null>(null);
 
   // Persistence helpers
@@ -54,18 +85,18 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    const manager = new WebRTCManager();
-    setWebrtcManager(manager);
-    return () => manager.close();
-  }, []);
+  // Helper to send game syncs to all connected guests
+  const broadcastSync = (state: GameState, connections: Map<string, WebRTCManager>) => {
+    connections.forEach((manager, guestId) => {
+      const safeState = sanitizeStateForPlayer(state, guestId);
+      manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState }));
+    });
+  };
 
-  // Use refs for callbacks to access latest state without reconnecting DataChannel
   const roleRef = useRef(role);
   const roomIdRef = useRef(roomId);
   const playerIdRef = useRef(playerId);
   const messagesRef = useRef(messages);
-
   const gameStateRef = useRef(gameState);
 
   useEffect(() => {
@@ -76,113 +107,136 @@ export default function App() {
     gameStateRef.current = gameState;
   }, [role, roomId, playerId, messages, gameState]);
 
+  // Handle Guest Connection
   useEffect(() => {
-    if (!webrtcManager) return;
+    if (role !== 'GUEST' || !guestWebrtcManager) return;
 
-    webrtcManager.onMessageCallback = (msg) => {
+    const manager = guestWebrtcManager;
+
+    manager.onMessageCallback = (msg) => {
       try {
         const data = JSON.parse(msg);
-        if (data.type === 'HELLO') {
-          if (roleRef.current === 'HOST') {
-            // For Phase 1, Guest may not know room ID initially, let's accept and inform Guest of room ID
-            // If they are resuming, they should pass the correct roomId, or empty if new.
-            if (!data.roomId || data.roomId === roomIdRef.current) {
-              webrtcManager.sendMessage(JSON.stringify({ type: 'WELCOME', roomId: roomIdRef.current, state: { messages: messagesRef.current } }));
-            } else {
-              webrtcManager.sendMessage(JSON.stringify({ type: 'ERROR', message: 'Room ID mismatch' }));
-            }
-          }
-        } else if (data.type === 'WELCOME') {
-          if (roleRef.current === 'GUEST') {
-            setMessages(data.state.messages || []);
-            // Save guest state on welcome to sync room ID correctly
-            if (data.roomId) {
-              setRoomId(data.roomId);
-              saveGuestState(data.roomId, playerIdRef.current);
-            }
-          }
-        } else if (data.type === 'ACTION_CHAT') {
-          const newMessages = [...messagesRef.current, `Remote: ${data.text}`];
-          setMessages(newMessages);
-          if (roleRef.current === 'HOST') {
-            saveHostState(roomIdRef.current, newMessages);
+        if (data.type === 'WELCOME') {
+          setMessages(data.state.messages || []);
+          if (data.roomId) {
+            setRoomId(data.roomId);
+            saveGuestState(data.roomId, playerIdRef.current);
           }
         } else if (data.type === 'SYNC') {
-          if (roleRef.current === 'GUEST') {
-            setGameState(data.state);
-          }
-        } else if (data.type === 'ACTION') {
-          if (roleRef.current === 'HOST') {
-            if (gameStateRef.current) {
-              const newState = StandardPokerModule.reducer(gameStateRef.current, data.action);
-              setGameState(newState);
-              webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: newState }));
-            }
-          }
+          setGameState(data.state);
         }
       } catch (e) {
-        // Fallback for raw strings during development
         setMessages((prev) => [...prev, `Remote: ${msg}`]);
       }
     };
 
-    webrtcManager.onConnectionStateChangeCallback = (state) => {
+    manager.onConnectionStateChangeCallback = (state) => {
       setConnectionStatus(state);
       if (state === 'connected') {
         setAppState('CONNECTED');
-        if (roleRef.current === 'HOST') {
-          if (!gameStateRef.current) {
-            const initialState = StandardPokerModule.setup(['host', 'guest']);
-            setGameState(initialState);
-            // The data channel might take a split second to be ready,
-            // but we broadcast initially anyway. It might need to be in onDataChannelOpenCallback
-          } else {
-            // Reconnecting host, send current state
-            webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: gameStateRef.current }));
+      }
+    };
+
+    manager.onDataChannelOpenCallback = () => {
+      manager.sendMessage(JSON.stringify({
+        type: 'HELLO',
+        roomId: roomIdRef.current,
+        playerId: playerIdRef.current
+      }));
+    };
+  }, [guestWebrtcManager, role]);
+
+  // Host setup pending manager handler
+  const setupHostManager = (manager: WebRTCManager) => {
+    manager.onMessageCallback = (msg) => {
+      try {
+        const data = JSON.parse(msg);
+        if (data.type === 'HELLO') {
+          // Identify guest and add to pool if not there
+          const gId = data.playerId;
+          if (gId) {
+            hostConnections.current.set(gId, manager);
+            manager.sendMessage(JSON.stringify({ type: 'WELCOME', roomId: roomIdRef.current, state: { messages: messagesRef.current } }));
+
+            // Immediately sync current state if it exists, otherwise initialize it.
+            // In a dynamic N-player game, if a new player joins, we add them to state if not there.
+            if (gameStateRef.current) {
+              let currentState = { ...gameStateRef.current };
+              if (!currentState.players.includes(gId)) {
+                currentState = {
+                  ...currentState,
+                  players: [...currentState.players, gId],
+                  hands: {
+                    ...currentState.hands,
+                    [gId]: []
+                  }
+                };
+                setGameState(currentState);
+              }
+              const safeState = sanitizeStateForPlayer(currentState, gId);
+              manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState }));
+
+              // Inform existing players of the new state
+              broadcastSync(currentState, hostConnections.current);
+            }
+          }
+        } else if (data.type === 'ACTION') {
+          if (gameStateRef.current) {
+            const newState = StandardPokerModule.reducer(gameStateRef.current, data.action);
+            setGameState(newState);
+            broadcastSync(newState, hostConnections.current);
           }
         }
+      } catch (e) {
+        // Ignored
       }
-      // If disconnected/failed, we stay in CONNECTED or move to a specific UI, don't reset immediately.
     };
 
-    webrtcManager.onDataChannelOpenCallback = () => {
-      if (roleRef.current === 'GUEST') {
-        webrtcManager.sendMessage(JSON.stringify({
-          type: 'HELLO',
-          roomId: roomIdRef.current,
-          playerId: playerIdRef.current
-        }));
-      } else if (roleRef.current === 'HOST' && gameStateRef.current) {
-        // Send initial state once channel opens
-        webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: gameStateRef.current }));
-      }
+    manager.onConnectionStateChangeCallback = (state) => {
+      // Aggregate connection status is tricky. Let's just monitor this one for UI,
+      // but 'CONNECTED' should trigger if AT LEAST ONE guest is connected.
+      // Wait, we can always just transition the Host to CONNECTED since the host manages the room.
+      setConnectionStatus(state);
     };
-  }, [webrtcManager]);
+
+    manager.onDataChannelOpenCallback = () => {
+      setAppState('CONNECTED');
+    };
+  };
 
   const handleHost = async (resume: boolean = false) => {
-    if (!webrtcManager) return;
     setAppState('SIGNALING_HOST');
     setRole('HOST');
+    setPlayerId('host'); // Fixed ID for the host player
 
     if (!resume) {
       const newRoomId = Math.random().toString(36).substring(2, 9);
       setRoomId(newRoomId);
       setMessages([]);
       clearStorage();
-    } else {
-      // roomId and messages should already be loaded from storage before calling handleHost(true)
+
+      // Initialize state immediately for the host
+      const initialState = StandardPokerModule.setup(['host']);
+      setGameState(initialState);
     }
+
+    startNewHostPendingConnection();
+  };
+
+  const startNewHostPendingConnection = async () => {
+    const manager = new WebRTCManager();
+    setupHostManager(manager);
+    setPendingHostManager(manager);
 
     setQrValue('');
     setIsScanning(false);
     setShowMode('qr'); // Start by showing offer
     try {
-      const offerStr = await webrtcManager.createOffer();
+      const offerStr = await manager.createOffer();
       setQrValue(offerStr);
-      setIsScanning(true); // Host now needs to scan guest's answer
+      setIsScanning(true); // Host scans guest's answer
     } catch (e) {
-      console.error("Host Error:", e);
-      setAppState('HOME');
+      console.error("Host Offer Error:", e);
     }
   };
 
@@ -191,117 +245,36 @@ export default function App() {
     setRole('GUEST');
 
     if (!resume) {
-      const newPlayerId = Math.random().toString(36).substring(2, 9);
-      // Assuming Guest doesn't know room ID until first scan or message,
-      // but to persist we need it. For Phase 1, we just set a dummy or update it later.
-      // Actually, Guest gets roomId from HOST's HELLO response or scanning payload?
-      // In this pure manual setup, Guest scans Offer (SDP). We'll set a generic room for now
-      // or extract from offer. Let's just generate a player ID.
+      const newPlayerId = 'guest_' + Math.random().toString(36).substring(2, 9);
       setPlayerId(newPlayerId);
       clearStorage();
     }
 
+    const manager = new WebRTCManager();
+    setGuestWebrtcManager(manager);
+
     setQrValue('');
-    setIsScanning(true); // Guest scans host's offer first
-    setShowMode('scanner'); // Start by scanning host's offer
+    setIsScanning(true);
+    setShowMode('scanner');
   };
 
   const handleScanSuccess = async (scannedText: string) => {
-    if (!webrtcManager) return;
     setIsScanning(false);
 
     try {
-      if (appState === 'SIGNALING_HOST') {
-        // Host scanned Guest's answer
-        await webrtcManager.acceptAnswer(scannedText);
-      } else if (appState === 'SIGNALING_GUEST') {
-        // Guest scanned Host's offer
-        const answerStr = await webrtcManager.acceptOfferAndCreateAnswer(scannedText);
+      if (appState === 'SIGNALING_HOST' && pendingHostManager) {
+        await pendingHostManager.acceptAnswer(scannedText);
+        setAppState('CONNECTED');
+      } else if (appState === 'SIGNALING_GUEST' && guestWebrtcManager) {
+        const answerStr = await guestWebrtcManager.acceptOfferAndCreateAnswer(scannedText);
         setQrValue(answerStr);
-        setShowMode('qr'); // Guest now displays QR for Host to scan
-        // Guest now displays QR for Host to scan
+        setShowMode('qr');
       }
     } catch (e) {
       console.error("Signaling Error:", e);
       alert("Error during signaling: " + String(e));
       setAppState('HOME');
     }
-  };
-
-  const handleSendMessage = () => {
-    if (inputText.trim() && webrtcManager) {
-      const payload = { type: 'ACTION_CHAT', text: inputText };
-      webrtcManager.sendMessage(JSON.stringify(payload));
-
-      const newMessages = [...messages, `Me: ${inputText}`];
-      setMessages(newMessages);
-
-      if (role === 'HOST') {
-        saveHostState(roomId, newMessages);
-      }
-
-      setInputText('');
-    }
-  };
-
-  const renderHome = () => {
-    let savedHostRoomId = '';
-    let savedGuestRoomId = '';
-    let hasHostState = false;
-    let hasGuestState = false;
-
-    if (Platform.OS === 'web') {
-      savedHostRoomId = localStorage.getItem('hostRoomId') || '';
-      savedGuestRoomId = localStorage.getItem('guestRoomId') || '';
-      hasHostState = !!savedHostRoomId;
-      hasGuestState = !!savedGuestRoomId;
-    }
-
-    return (
-      <View style={styles.content}>
-        <Text style={styles.title}>Offline Cards</Text>
-        <Text style={styles.subtitle}>No servers. Pure WebRTC LAN.</Text>
-        <View style={styles.buttonContainer}>
-          <Button title="Create Room (Host)" onPress={() => handleHost(false)} />
-          <View style={{ height: 20 }} />
-          <Button title="Join Room (Guest)" onPress={() => handleGuest(false)} />
-
-          {(hasHostState || hasGuestState) && (
-            <View style={{ marginTop: 40 }}>
-              <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>Session Recovery</Text>
-              {hasHostState && (
-                <Button title={`Resume Hosted Room`} color="orange" onPress={() => {
-                  setRoomId(savedHostRoomId);
-                  const stateStr = localStorage.getItem('hostState');
-                  if (stateStr) {
-                    try {
-                      setMessages(JSON.parse(stateStr).messages || []);
-                    } catch (e) {}
-                  }
-                  handleHost(true);
-                }} />
-              )}
-              {hasGuestState && (
-                <View style={{ marginTop: 10 }}>
-                  <Button title={`Resume Joined Room`} color="orange" onPress={() => {
-                    setRoomId(savedGuestRoomId);
-                    setPlayerId(localStorage.getItem('guestPlayerId') || '');
-                    handleGuest(true);
-                  }} />
-                </View>
-              )}
-            </View>
-          )}
-          <View style={{ marginTop: 40, alignItems: 'center' }}>
-            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>Local Testing</Text>
-            <Button title="Enter Local Sandbox" color="purple" onPress={() => {
-              setAppState('SANDBOX');
-              setGameState(StandardPokerModule.setup(['host', 'guest']));
-            }} />
-          </View>
-        </View>
-      </View>
-    );
   };
 
   const handleGameAction = (action: GameAction) => {
@@ -312,15 +285,36 @@ export default function App() {
       }
     } else if (appState === 'CONNECTED') {
       if (role === 'HOST' && gameState) {
-        // Host locally computes new state, applies it, and sends SYNC
         const newState = StandardPokerModule.reducer(gameState, action);
         setGameState(newState);
-        webrtcManager?.sendMessage(JSON.stringify({ type: 'SYNC', state: newState }));
+        broadcastSync(newState, hostConnections.current);
       } else if (role === 'GUEST') {
-        // Guest asks Host to perform the action
-        webrtcManager?.sendMessage(JSON.stringify({ type: 'ACTION', action }));
+        guestWebrtcManager?.sendMessage(JSON.stringify({ type: 'ACTION', action }));
       }
     }
+  };
+
+  const renderHome = () => {
+    return (
+      <View style={styles.content}>
+        <Text style={styles.title}>Offline Cards</Text>
+        <Text style={styles.subtitle}>Multi-player LAN</Text>
+        <View style={styles.buttonContainer}>
+          <Button title="Create Room (Host)" onPress={() => handleHost(false)} />
+          <View style={{ height: 20 }} />
+          <Button title="Join Room (Guest)" onPress={() => handleGuest(false)} />
+
+          <View style={{ marginTop: 40, alignItems: 'center' }}>
+            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>Local Testing</Text>
+            <Button title="Enter Local Sandbox" color="purple" onPress={() => {
+              setAppState('SANDBOX');
+              setPlayerId('host');
+              setGameState(StandardPokerModule.setup(['host', 'guest_1', 'guest_2']));
+            }} />
+          </View>
+        </View>
+      </View>
+    );
   };
 
   const renderSandbox = () => {
@@ -331,7 +325,7 @@ export default function App() {
         myPlayerId="host"
         onAction={handleGameAction}
         onExit={() => { setGameState(null); setAppState('HOME'); }}
-        onReset={() => setGameState(StandardPokerModule.setup(['host', 'guest']))}
+        onReset={() => setGameState(StandardPokerModule.setup(['host', 'guest_1', 'guest_2']))}
         isSandbox={true}
       />
     );
@@ -340,22 +334,13 @@ export default function App() {
   const renderSignaling = () => (
     <View style={styles.content}>
       <Text style={styles.title}>
-        {appState === 'SIGNALING_HOST' ? 'Host Mode' : 'Guest Mode'}
+        {appState === 'SIGNALING_HOST' ? 'Host Mode (Add Player)' : 'Guest Mode'}
       </Text>
-      <Text style={{ marginBottom: 10 }}>Status: {connectionStatus}</Text>
 
       {qrValue && isScanning && (
         <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
-          <Button
-            title="Show My QR"
-            onPress={() => setShowMode('qr')}
-            color={showMode === 'qr' ? '#007AFF' : '#999'}
-          />
-          <Button
-            title="Scan Other's QR"
-            onPress={() => setShowMode('scanner')}
-            color={showMode === 'scanner' ? '#007AFF' : '#999'}
-          />
+          <Button title="Show My QR" onPress={() => setShowMode('qr')} color={showMode === 'qr' ? '#007AFF' : '#999'} />
+          <Button title="Scan Other's QR" onPress={() => setShowMode('scanner')} color={showMode === 'scanner' ? '#007AFF' : '#999'} />
         </View>
       )}
 
@@ -380,62 +365,60 @@ export default function App() {
       </View>
 
       <View style={{ marginTop: 20, width: '100%', maxWidth: 300 }}>
-        <Button title="Cancel" onPress={() => setAppState('HOME')} color="red" />
+        {appState === 'SIGNALING_HOST' && (
+          <View style={{ marginBottom: 10 }}>
+            <Button title="Skip / Start Game" onPress={() => setAppState('CONNECTED')} color="green" />
+          </View>
+        )}
+        <Button title="Cancel" onPress={() => {
+          if (appState === 'SIGNALING_HOST') pendingHostManager?.close();
+          if (appState === 'SIGNALING_GUEST') guestWebrtcManager?.close();
+          setAppState('HOME');
+        }} color="red" />
       </View>
     </View>
   );
 
   const renderConnected = () => {
-    const isDisconnected = connectionStatus === 'disconnected';
-    const isFailed = connectionStatus === 'failed';
-
-    // We only render GameBoard if we have a state
-    if (gameState && !isFailed && !isDisconnected) {
+    // If we're CONNECTED but have no game state, something is wrong
+    if (!gameState) {
       return (
-        <GameBoard
-          gameState={gameState}
-          myPlayerId={role === 'HOST' ? 'host' : 'guest'}
-          onAction={handleGameAction}
-          onExit={() => {
-            webrtcManager?.close();
-            clearStorage();
+        <View style={styles.content}>
+          <Text style={styles.title}>Waiting for state...</Text>
+          <Button title="Exit" onPress={() => {
             setAppState('HOME');
-            setMessages([]);
-            setRole(null);
-            setGameState(null);
-          }}
-          isSandbox={false}
-        />
+          }} color="red" />
+        </View>
       );
     }
 
     return (
-      <View style={styles.content}>
-        <Text style={styles.title}>
-          {isFailed ? "Connection Failed" : isDisconnected ? "Reconnecting..." : "Waiting for Game State..."}
-        </Text>
-        {isFailed && (
-          <View style={{ marginVertical: 20 }}>
-            <Button title={role === 'HOST' ? "Generate Reconnect QR" : "Scan Host QR Again"} color="orange" onPress={() => {
-              webrtcManager?.close();
-              if (role === 'HOST') {
-                handleHost(true);
-              } else {
-                handleGuest(true);
-              }
+      <View style={styles.sandboxContainer}>
+        {role === 'HOST' && (
+          <View style={{ position: 'absolute', top: 40, right: 10, zIndex: 10 }}>
+            <Button title="+ Add Player" onPress={() => {
+              startNewHostPendingConnection();
+              setAppState('SIGNALING_HOST');
             }} />
           </View>
         )}
-        <View style={{ marginTop: 20 }}>
-          <Button title="Disconnect" onPress={() => {
-            webrtcManager?.close();
-            clearStorage();
+        <GameBoard
+          gameState={gameState}
+          myPlayerId={playerId}
+          onAction={handleGameAction}
+          onExit={() => {
+            if (role === 'HOST') {
+              hostConnections.current.forEach(m => m.close());
+              hostConnections.current.clear();
+            } else {
+              guestWebrtcManager?.close();
+              setGuestWebrtcManager(null);
+            }
             setAppState('HOME');
-            setMessages([]);
-            setRole(null);
             setGameState(null);
-          }} color="red" />
-        </View>
+          }}
+          isSandbox={false}
+        />
       </View>
     );
   };
@@ -481,79 +464,10 @@ const styles = StyleSheet.create({
     marginVertical: 15,
     width: '100%',
   },
-  messageBox: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 500,
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 8,
-    marginVertical: 20,
-  },
-  messageText: {
-    fontSize: 16,
-    marginVertical: 2,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    width: '100%',
-    maxWidth: 500,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 4,
-    marginRight: 10,
-  },
   sandboxContainer: {
     flex: 1,
     width: '100%',
     flexDirection: 'column',
     overflow: 'hidden',
-  },
-  interactionArea: {
-    flex: 2,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 10,
-    backgroundColor: '#e8f5e9', // Light green for the "table"
-  },
-  guestArea: {
-    width: '100%',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    padding: 10,
-    borderRadius: 8,
-  },
-  tableArea: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  myHandArea: {
-    flex: 1,
-    backgroundColor: '#fff3e0',
-    borderTopWidth: 2,
-    borderColor: '#ccc',
-    padding: 10,
-    alignItems: 'center',
-  },
-  controlRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginBottom: 10,
-  },
-  sandboxTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    color: '#333',
-  },
+  }
 });
