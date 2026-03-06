@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform } from 'react-native';
+import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { WebRTCManager } from './src/webrtc';
 import Scanner from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
+import { StandardPokerModule } from './src/game-modules/poker';
+import { GameState } from './src/game-modules/types';
 
-type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED';
+type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
 type Role = 'HOST' | 'GUEST' | null;
 
 export default function App() {
@@ -23,6 +25,9 @@ export default function App() {
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
   const [showMode, setShowMode] = useState<'qr' | 'scanner'>('qr');
+
+  // Sandbox state
+  const [gameState, setGameState] = useState<GameState | null>(null);
 
   // Persistence helpers
   const saveHostState = (id: string, msgs: string[]) => {
@@ -261,6 +266,85 @@ export default function App() {
               )}
             </View>
           )}
+          <View style={{ marginTop: 40, alignItems: 'center' }}>
+            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>Local Testing</Text>
+            <Button title="Enter Local Sandbox" color="purple" onPress={() => {
+              setAppState('SANDBOX');
+              setGameState(StandardPokerModule.setup(['host', 'guest']));
+            }} />
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderSandbox = () => {
+    if (!gameState) return null;
+
+    const guestHand = gameState.players['guest']?.hand || [];
+    const hostHand = gameState.players['host']?.hand || [];
+    const tableCards = gameState.table || [];
+
+    const handleAction = (action: any) => {
+      const newState = StandardPokerModule.reducer(gameState, action);
+      setGameState(newState);
+    };
+
+    const renderCard = (card: any, player: string) => (
+      <TouchableOpacity
+        key={card.id}
+        style={styles.card}
+        onPress={() => handleAction({ type: 'PLAY_CARD', player, cardId: card.id })}
+      >
+        <Text style={[styles.cardText, (card.suit === 'Hearts' || card.suit === 'Diamonds') ? {color: 'red'} : {color: 'black'}]}>
+          {card.rank}
+          {card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Clubs' ? '♣' : '♠'}
+        </Text>
+      </TouchableOpacity>
+    );
+
+    return (
+      <View style={styles.sandboxContainer}>
+        {/* Top: Guest Area (Rotated) */}
+        <View style={[styles.sandboxSection, { transform: [{ rotate: '180deg' }], backgroundColor: '#e0f7fa' }]}>
+          <Text style={styles.sandboxTitle}>Guest</Text>
+          <Button title="Opponent Draw" onPress={() => handleAction({ type: 'DRAW_CARD', player: 'guest' })} />
+          <View style={styles.handContainer}>
+            {guestHand.map((c: any) => renderCard(c, 'guest'))}
+          </View>
+        </View>
+
+        {/* Middle: Table Area */}
+        <View style={[styles.sandboxSection, { backgroundColor: '#e8f5e9', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#ccc' }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 20, marginBottom: 10 }}>
+            <Button title="Exit Sandbox" color="red" onPress={() => {
+              setGameState(null);
+              setAppState('HOME');
+            }} />
+            <Text style={styles.sandboxTitle}>Table</Text>
+            <Button title="Reset Game" color="orange" onPress={() => {
+              setGameState(StandardPokerModule.setup(['host', 'guest']));
+            }} />
+          </View>
+          <View style={styles.tableContainer}>
+            {tableCards.map((c: any) => (
+              <View key={c.id} style={styles.card}>
+                <Text style={[styles.cardText, (c.suit === 'Hearts' || c.suit === 'Diamonds') ? {color: 'red'} : {color: 'black'}]}>
+                  {c.rank}
+                  {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Bottom: Host Area */}
+        <View style={[styles.sandboxSection, { backgroundColor: '#fff3e0' }]}>
+          <Text style={styles.sandboxTitle}>Host (Me)</Text>
+          <Button title="My Draw" onPress={() => handleAction({ type: 'DRAW_CARD', player: 'host' })} />
+          <View style={styles.handContainer}>
+            {hostHand.map((c: any) => renderCard(c, 'host'))}
+          </View>
         </View>
       </View>
     );
@@ -371,6 +455,7 @@ export default function App() {
       {appState === 'HOME' && renderHome()}
       {(appState === 'SIGNALING_HOST' || appState === 'SIGNALING_GUEST') && renderSignaling()}
       {appState === 'CONNECTED' && renderConnected()}
+      {appState === 'SANDBOX' && renderSandbox()}
     </View>
   );
 }
@@ -431,5 +516,54 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 4,
     marginRight: 10,
+  },
+  sandboxContainer: {
+    flex: 1,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  sandboxSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+  },
+  sandboxTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  handContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 10,
+    gap: 5,
+  },
+  tableContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    flex: 1,
+    gap: 5,
+  },
+  card: {
+    width: 40,
+    height: 60,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#999',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  cardText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
