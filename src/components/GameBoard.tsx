@@ -19,14 +19,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
   onReset,
   isSandbox = false
 }) => {
-  const opponentId = myPlayerId === 'host' ? 'guest' : 'host';
+  const opponents = (gameState.players || []).filter(p => p !== myPlayerId);
 
-  const myHand = gameState.players[myPlayerId]?.hand || [];
-  const opponentHand = gameState.players[opponentId]?.hand || [];
+  const myHand = gameState.hands && gameState.hands[myPlayerId] ? gameState.hands[myPlayerId] : [];
   const tableCards = gameState.table || [];
+  const deckCount = gameState.deckCount ?? (gameState.deck ? gameState.deck.length : 0);
 
   const renderCard = (card: any, player: string, isOpponent: boolean = false) => {
-    if (isOpponent) {
+    if (isOpponent || card.hidden) {
       // Render card back
       return (
         <View key={card.id || Math.random().toString()} style={[styles.card, styles.cardBack]}>
@@ -54,27 +54,39 @@ const GameBoard: React.FC<GameBoardProps> = ({
       {/* Upper 2/3: Interaction Area (Round Table) */}
       <View style={styles.interactionArea}>
 
-        {/* Top Edge: Opponent Area */}
-        <View style={[styles.opponentArea, isSandbox && { transform: [{ rotate: '180deg' }] }]}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 10 }}>
-            <Text style={styles.sandboxTitle}>
-              {opponentId.charAt(0).toUpperCase() + opponentId.slice(1)} (Opponent)
-            </Text>
-            {isSandbox && (
-              <Button title="Opponent Draw" onPress={() => onAction({ type: 'DRAW_CARD', player: opponentId })} />
-            )}
-            {!isSandbox && (
-              <Text>Cards: {opponentHand.length}</Text>
-            )}
-          </View>
-          <View style={styles.handContainer}>
-            {opponentHand.map((c: any) => renderCard(c, opponentId, !isSandbox))}
-          </View>
+        {/* Top Edge: Opponents Area */}
+        <View style={styles.opponentsContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.opponentsScroll}>
+            {opponents.map(opponentId => {
+              const opponentHand = gameState.hands && gameState.hands[opponentId] ? gameState.hands[opponentId] : [];
+              return (
+                <View key={opponentId} style={[styles.opponentArea, isSandbox && { transform: [{ rotate: '180deg' }] }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 10 }}>
+                    <Text style={styles.sandboxTitle}>
+                      {opponentId}
+                    </Text>
+                    {isSandbox && (
+                      <Button title="Draw" onPress={() => onAction({ type: 'DRAW_CARD', player: opponentId })} />
+                    )}
+                    {!isSandbox && (
+                      <Text>Cards: {opponentHand.length}</Text>
+                    )}
+                  </View>
+                  <View style={styles.handContainer}>
+                    {opponentHand.map((c: any) => renderCard(c, opponentId, !isSandbox))}
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {/* Center: Table Area */}
         <View style={styles.tableArea}>
-          <Text style={styles.sandboxTitle}>Table</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
+            <Text style={styles.sandboxTitle}>Table</Text>
+            <Text style={styles.sandboxTitle}>Deck: {deckCount}</Text>
+          </View>
           <View style={styles.tableContainer}>
             {tableCards.map((c: any) => (
               <View key={c.id} style={styles.card}>
@@ -103,7 +115,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         </View>
 
         <Text style={styles.sandboxTitle}>
-          {myPlayerId.charAt(0).toUpperCase() + myPlayerId.slice(1)} (Me)
+          {myPlayerId} (Me)
         </Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={styles.scrollHandContainer}>
@@ -126,12 +138,21 @@ const styles = StyleSheet.create({
     flex: 2,
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 10,
+    paddingVertical: 10,
     backgroundColor: '#e8f5e9', // Light green for the "table"
   },
-  opponentArea: {
+  opponentsContainer: {
     width: '100%',
+    height: 180, // Fixed height or flexible
+  },
+  opponentsScroll: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 10,
+    gap: 10,
+  },
+  opponentArea: {
+    width: 250,
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
     padding: 10,
@@ -142,7 +163,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 10,
+    paddingHorizontal: 10,
   },
   myHandArea: {
     flex: 1,
@@ -159,7 +181,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   sandboxTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
     color: '#333',

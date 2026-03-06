@@ -5,9 +5,11 @@ export interface GameAction {
 }
 
 export interface GameState {
-  players: Record<string, any>;
+  players: string[];
+  hands: Record<string, any[]>;
   table: any[];
   deck?: any[];
+  deckCount?: number;
   [key: string]: any;
 }
 
