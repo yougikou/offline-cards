@@ -1,0 +1,8 @@
+127.0.0.1 - - [06/Mar/2026 23:30:30] "GET /offline-cards/ HTTP/1.1" 200 -
+127.0.0.1 - - [06/Mar/2026 23:30:30] "GET /offline-cards/_expo/static/js/web/index-1d5b4719ed371207bd7add68e60a02e2.js HTTP/1.1" 200 -
+127.0.0.1 - - [06/Mar/2026 23:30:30] "GET /offline-cards/sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [06/Mar/2026 23:30:30] "GET /offline-cards/index.html HTTP/1.1" 200 -
+127.0.0.1 - - [06/Mar/2026 23:30:30] "GET /offline-cards/manifest.json HTTP/1.1" 200 -
+127.0.0.1 - - [06/Mar/2026 23:30:30] "GET /offline-cards/favicon.ico HTTP/1.1" 200 -
+127.0.0.1 - - [06/Mar/2026 23:30:30] code 404, message File not found
+127.0.0.1 - - [06/Mar/2026 23:30:30] "GET /offline-cards/assets/icon.png HTTP/1.1" 404 -

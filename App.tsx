@@ -7,6 +7,7 @@ import QRCodeDisplay from './src/components/QRCodeDisplay';
 import GameBoard from './src/components/GameBoard';
 import { StandardPokerModule } from './src/game-modules/poker';
 import { GameState, GameAction } from './src/game-modules/types';
+import { sanitizeStateForPlayer } from './src/game-modules/sanitizer';
 
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
 type Role = 'HOST' | 'GUEST' | null;
@@ -116,7 +117,8 @@ export default function App() {
             if (gameStateRef.current) {
               const newState = StandardPokerModule.reducer(gameStateRef.current, data.action);
               setGameState(newState);
-              webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: newState }));
+              const guestState = sanitizeStateForPlayer(newState, 'guest');
+              webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: guestState }));
             }
           }
         }
@@ -138,7 +140,8 @@ export default function App() {
             // but we broadcast initially anyway. It might need to be in onDataChannelOpenCallback
           } else {
             // Reconnecting host, send current state
-            webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: gameStateRef.current }));
+            const guestState = sanitizeStateForPlayer(gameStateRef.current, 'guest');
+            webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: guestState }));
           }
         }
       }
@@ -154,7 +157,8 @@ export default function App() {
         }));
       } else if (roleRef.current === 'HOST' && gameStateRef.current) {
         // Send initial state once channel opens
-        webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: gameStateRef.current }));
+        const guestState = sanitizeStateForPlayer(gameStateRef.current, 'guest');
+        webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: guestState }));
       }
     };
   }, [webrtcManager]);
@@ -315,7 +319,8 @@ export default function App() {
         // Host locally computes new state, applies it, and sends SYNC
         const newState = StandardPokerModule.reducer(gameState, action);
         setGameState(newState);
-        webrtcManager?.sendMessage(JSON.stringify({ type: 'SYNC', state: newState }));
+        const guestState = sanitizeStateForPlayer(newState, 'guest');
+        webrtcManager?.sendMessage(JSON.stringify({ type: 'SYNC', state: guestState }));
       } else if (role === 'GUEST') {
         // Guest asks Host to perform the action
         webrtcManager?.sendMessage(JSON.stringify({ type: 'ACTION', action }));

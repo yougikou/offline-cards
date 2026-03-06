@@ -25,15 +25,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const opponentHand = gameState.players[opponentId]?.hand || [];
   const tableCards = gameState.table || [];
 
-  const renderCard = (card: any, player: string, isOpponent: boolean = false) => {
+  const renderCard = (card: any, player: string, isOpponent: boolean = false, index: number = 0) => {
     if (isOpponent) {
       // Render card back
+      const key = card?.id || `hidden-${index}`;
       return (
-        <View key={card.id || Math.random().toString()} style={[styles.card, styles.cardBack]}>
+        <View key={key} style={[styles.card, styles.cardBack]}>
           <Text style={styles.cardBackText}>?</Text>
         </View>
       );
     }
+
+    // Defensive check if card is null for some reason
+    if (!card) return null;
 
     return (
       <TouchableOpacity
@@ -68,13 +72,20 @@ const GameBoard: React.FC<GameBoardProps> = ({
             )}
           </View>
           <View style={styles.handContainer}>
-            {opponentHand.map((c: any) => renderCard(c, opponentId, !isSandbox))}
+            {opponentHand.map((c: any, index: number) => renderCard(c, opponentId, !isSandbox, index))}
           </View>
         </View>
 
         {/* Center: Table Area */}
         <View style={styles.tableArea}>
-          <Text style={styles.sandboxTitle}>Table</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingHorizontal: 20 }}>
+            <Text style={styles.sandboxTitle}>Table</Text>
+            {gameState.deckCount !== undefined ? (
+              <Text>Deck: {gameState.deckCount}</Text>
+            ) : gameState.deck ? (
+              <Text>Deck: {gameState.deck.length}</Text>
+            ) : null}
+          </View>
           <View style={styles.tableContainer}>
             {tableCards.map((c: any) => (
               <View key={c.id} style={styles.card}>
@@ -107,7 +118,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         </Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={styles.scrollHandContainer}>
-          {myHand.map((c: any) => renderCard(c, myPlayerId, false))}
+          {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, false, index))}
         </ScrollView>
 
       </View>
