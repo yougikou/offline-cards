@@ -4,8 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { WebRTCManager } from './src/webrtc';
 import Scanner from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
+import GameBoard from './src/components/GameBoard';
 import { StandardPokerModule } from './src/game-modules/poker';
-import { GameState } from './src/game-modules/types';
+import { GameState, GameAction } from './src/game-modules/types';
 
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
 type Role = 'HOST' | 'GUEST' | null;
@@ -65,12 +66,15 @@ export default function App() {
   const playerIdRef = useRef(playerId);
   const messagesRef = useRef(messages);
 
+  const gameStateRef = useRef(gameState);
+
   useEffect(() => {
     roleRef.current = role;
     roomIdRef.current = roomId;
     playerIdRef.current = playerId;
     messagesRef.current = messages;
-  }, [role, roomId, playerId, messages]);
+    gameStateRef.current = gameState;
+  }, [role, roomId, playerId, messages, gameState]);
 
   useEffect(() => {
     if (!webrtcManager) return;
@@ -103,9 +107,17 @@ export default function App() {
           if (roleRef.current === 'HOST') {
             saveHostState(roomIdRef.current, newMessages);
           }
-        } else if (data.type === 'STATE_UPDATE') {
+        } else if (data.type === 'SYNC') {
           if (roleRef.current === 'GUEST') {
-             setMessages(data.state.messages || []);
+            setGameState(data.state);
+          }
+        } else if (data.type === 'ACTION') {
+          if (roleRef.current === 'HOST') {
+            if (gameStateRef.current) {
+              const newState = StandardPokerModule.reducer(gameStateRef.current, data.action);
+              setGameState(newState);
+              webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: newState }));
+            }
           }
         }
       } catch (e) {
@@ -118,6 +130,17 @@ export default function App() {
       setConnectionStatus(state);
       if (state === 'connected') {
         setAppState('CONNECTED');
+        if (roleRef.current === 'HOST') {
+          if (!gameStateRef.current) {
+            const initialState = StandardPokerModule.setup(['host', 'guest']);
+            setGameState(initialState);
+            // The data channel might take a split second to be ready,
+            // but we broadcast initially anyway. It might need to be in onDataChannelOpenCallback
+          } else {
+            // Reconnecting host, send current state
+            webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: gameStateRef.current }));
+          }
+        }
       }
       // If disconnected/failed, we stay in CONNECTED or move to a specific UI, don't reset immediately.
     };
@@ -129,6 +152,9 @@ export default function App() {
           roomId: roomIdRef.current,
           playerId: playerIdRef.current
         }));
+      } else if (roleRef.current === 'HOST' && gameStateRef.current) {
+        // Send initial state once channel opens
+        webrtcManager.sendMessage(JSON.stringify({ type: 'SYNC', state: gameStateRef.current }));
       }
     };
   }, [webrtcManager]);
@@ -278,86 +304,36 @@ export default function App() {
     );
   };
 
+  const handleGameAction = (action: GameAction) => {
+    if (appState === 'SANDBOX') {
+      if (gameState) {
+        const newState = StandardPokerModule.reducer(gameState, action);
+        setGameState(newState);
+      }
+    } else if (appState === 'CONNECTED') {
+      if (role === 'HOST' && gameState) {
+        // Host locally computes new state, applies it, and sends SYNC
+        const newState = StandardPokerModule.reducer(gameState, action);
+        setGameState(newState);
+        webrtcManager?.sendMessage(JSON.stringify({ type: 'SYNC', state: newState }));
+      } else if (role === 'GUEST') {
+        // Guest asks Host to perform the action
+        webrtcManager?.sendMessage(JSON.stringify({ type: 'ACTION', action }));
+      }
+    }
+  };
+
   const renderSandbox = () => {
     if (!gameState) return null;
-
-    const guestHand = gameState.players['guest']?.hand || [];
-    const hostHand = gameState.players['host']?.hand || [];
-    const tableCards = gameState.table || [];
-
-    const handleAction = (action: any) => {
-      const newState = StandardPokerModule.reducer(gameState, action);
-      setGameState(newState);
-    };
-
-    const renderCard = (card: any, player: string) => (
-      <TouchableOpacity
-        key={card.id}
-        style={styles.card}
-        onPress={() => handleAction({ type: 'PLAY_CARD', player, cardId: card.id })}
-      >
-        <Text style={[styles.cardText, (card.suit === 'Hearts' || card.suit === 'Diamonds') ? {color: 'red'} : {color: 'black'}]}>
-          {card.rank}
-          {card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Clubs' ? '♣' : '♠'}
-        </Text>
-      </TouchableOpacity>
-    );
-
     return (
-      <View style={styles.sandboxContainer}>
-        {/* Upper 2/3: Interaction Area (Round Table) */}
-        <View style={styles.interactionArea}>
-
-          {/* Top Edge: Guest Area */}
-          <View style={styles.guestArea}>
-             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 10 }}>
-                <Text style={styles.sandboxTitle}>Guest</Text>
-                <Button title="Opponent Draw" onPress={() => handleAction({ type: 'DRAW_CARD', player: 'guest' })} />
-             </View>
-            <View style={styles.handContainer}>
-              {guestHand.map((c: any) => renderCard(c, 'guest'))}
-            </View>
-          </View>
-
-          {/* Center: Table Area */}
-          <View style={styles.tableArea}>
-            <Text style={styles.sandboxTitle}>Table</Text>
-            <View style={styles.tableContainer}>
-              {tableCards.map((c: any) => (
-                <View key={c.id} style={styles.card}>
-                  <Text style={[styles.cardText, (c.suit === 'Hearts' || c.suit === 'Diamonds') ? {color: 'red'} : {color: 'black'}]}>
-                    {c.rank}
-                    {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-        </View>
-
-        {/* Lower 1/3: My Hand & Controls */}
-        <View style={styles.myHandArea}>
-
-          <View style={styles.controlRow}>
-            <Button title="Exit Sandbox" color="red" onPress={() => {
-                setGameState(null);
-                setAppState('HOME');
-            }} />
-            <Button title="Reset Game" color="orange" onPress={() => {
-                setGameState(StandardPokerModule.setup(['host', 'guest']));
-            }} />
-             <Button title="My Draw" onPress={() => handleAction({ type: 'DRAW_CARD', player: 'host' })} />
-          </View>
-
-          <Text style={styles.sandboxTitle}>Host (Me)</Text>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={styles.scrollHandContainer}>
-            {hostHand.map((c: any) => renderCard(c, 'host'))}
-          </ScrollView>
-
-        </View>
-      </View>
+      <GameBoard
+        gameState={gameState}
+        myPlayerId="host"
+        onAction={handleGameAction}
+        onExit={() => { setGameState(null); setAppState('HOME'); }}
+        onReset={() => setGameState(StandardPokerModule.setup(['host', 'guest']))}
+        isSandbox={true}
+      />
     );
   };
 
@@ -413,15 +389,34 @@ export default function App() {
     const isDisconnected = connectionStatus === 'disconnected';
     const isFailed = connectionStatus === 'failed';
 
+    // We only render GameBoard if we have a state
+    if (gameState && !isFailed && !isDisconnected) {
+      return (
+        <GameBoard
+          gameState={gameState}
+          myPlayerId={role === 'HOST' ? 'host' : 'guest'}
+          onAction={handleGameAction}
+          onExit={() => {
+            webrtcManager?.close();
+            clearStorage();
+            setAppState('HOME');
+            setMessages([]);
+            setRole(null);
+            setGameState(null);
+          }}
+          isSandbox={false}
+        />
+      );
+    }
+
     return (
       <View style={styles.content}>
         <Text style={styles.title}>
-          {isFailed ? "连接彻底断开" : isDisconnected ? "网络波动，尝试重连中..." : "Connected!"}
+          {isFailed ? "Connection Failed" : isDisconnected ? "Reconnecting..." : "Waiting for Game State..."}
         </Text>
         {isFailed && (
           <View style={{ marginVertical: 20 }}>
-            <Button title={role === 'HOST' ? "生成重连二维码" : "重新扫描主机二维码"} color="orange" onPress={() => {
-              // Properly close old connections
+            <Button title={role === 'HOST' ? "Generate Reconnect QR" : "Scan Host QR Again"} color="orange" onPress={() => {
               webrtcManager?.close();
               if (role === 'HOST') {
                 handleHost(true);
@@ -431,22 +426,6 @@ export default function App() {
             }} />
           </View>
         )}
-        <ScrollView style={styles.messageBox}>
-          {messages.map((m, i) => (
-            <Text key={i} style={styles.messageText}>{m}</Text>
-          ))}
-        </ScrollView>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Type a message..."
-            onSubmitEditing={handleSendMessage}
-            editable={connectionStatus === 'connected'}
-          />
-          <Button title="Send" onPress={handleSendMessage} disabled={connectionStatus !== 'connected'} />
-        </View>
         <View style={{ marginTop: 20 }}>
           <Button title="Disconnect" onPress={() => {
             webrtcManager?.close();
@@ -454,6 +433,7 @@ export default function App() {
             setAppState('HOME');
             setMessages([]);
             setRole(null);
+            setGameState(null);
           }} color="red" />
         </View>
       </View>
@@ -575,43 +555,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 5,
     color: '#333',
-  },
-  handContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 5,
-  },
-  scrollHandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    gap: 10,
-  },
-  tableContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    width: '100%',
-    gap: 5,
-  },
-  card: {
-    width: 40,
-    height: 60,
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#999',
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    elevation: 2,
-  },
-  cardText: {
-    fontSize: 14,
-    fontWeight: 'bold',
   },
 });
