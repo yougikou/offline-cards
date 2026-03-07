@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, ScrollView, Animated } from 'react-native';
+import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import DraggableCard from './DraggableCard';
 
@@ -43,40 +43,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const currentPlayerIdString = G.players ? G.players[parseInt(ctx.currentPlayer, 10)] : null;
   const isMyTurn = currentPlayerIdString === myPlayerId;
   const gameOver = ctx.gameover;
-
-  // Breathing light animation for the active turn border
-  const glowAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (isMyTurn) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: false, // backgroundColor doesn't support native driver
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 1200,
-            useNativeDriver: false,
-          })
-        ])
-      ).start();
-    } else {
-      glowAnim.setValue(0);
-      glowAnim.stopAnimation();
-    }
-  }, [isMyTurn, glowAnim]);
-
-  const animatedBorderColor = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#64B5F6', '#1E88E5'] // From lighter to darker blue
-  });
-  const animatedBackgroundColor = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#E3F2FD', '#BBDEFB'] // From lighter to darker light blue
-  });
 
   const handleCardPress = (cardIndex: number) => {
     if (!isMyTurn || gameOver) return;
@@ -144,37 +110,25 @@ const GameBoard: React.FC<GameBoardProps> = ({
         </View>
       )}
 
+      {opponents.map((opponentId: string, index: number) => {
+        const opponentHand = G.hands && G.hands[opponentId] ? G.hands[opponentId] : [];
+        const isOpponentTurn = currentPlayerIdString === opponentId;
+        return (
+          <View key={opponentId} style={[styles.opponentPill, { top: 40 + (index * 45), backgroundColor: isOpponentTurn ? 'rgba(255, 215, 0, 0.9)' : 'rgba(0,0,0,0.5)' }]}>
+            <Text style={{ color: isOpponentTurn ? 'black' : 'white', fontWeight: 'bold' }}>
+              {opponentId}: {opponentHand.length} 张 {isOpponentTurn ? '(Turn)' : ''}
+            </Text>
+            {isSandbox && (
+              <View style={{ marginLeft: 10 }}>
+                <Button title="Draw" onPress={() => onAction('drawAndPass')} disabled={!isOpponentTurn || gameOver} />
+              </View>
+            )}
+          </View>
+        );
+      })}
+
       {/* Upper 2/3: Interaction Area (Round Table) */}
       <View style={styles.interactionArea}>
-
-        {/* Top Edge: Opponents Area */}
-        <View style={styles.opponentsContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.opponentsScroll}>
-            {opponents.map((opponentId: string) => {
-              const opponentHand = G.hands && G.hands[opponentId] ? G.hands[opponentId] : [];
-              const isOpponentTurn = currentPlayerIdString === opponentId;
-
-              return (
-                <View key={opponentId} style={[styles.opponentArea, isSandbox && { transform: [{ rotate: '180deg' }] }]}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 10 }}>
-                    <Text style={[styles.sandboxTitle, isOpponentTurn && styles.activePlayerText]}>
-                      {opponentId} {isOpponentTurn ? t('game.turn') : ''}
-                    </Text>
-                    {isSandbox && (
-                      <Button title={t('game.draw')} onPress={() => onAction('drawAndPass')} disabled={!isOpponentTurn || gameOver} />
-                    )}
-                    {!isSandbox && (
-                      <Text style={{color: 'white'}}>{t('game.cardsCount', { count: opponentHand.length })}</Text>
-                    )}
-                  </View>
-                  <View style={styles.handContainer}>
-                    {opponentHand.map((c: any, index: number) => renderCard(c, opponentId, index, !isSandbox))}
-                  </View>
-                </View>
-              );
-            })}
-          </ScrollView>
-        </View>
 
         {/* Center: Table Area */}
         <View style={styles.tableArea}>
@@ -229,56 +183,54 @@ const GameBoard: React.FC<GameBoardProps> = ({
       </View>
 
       {/* Lower 1/3: My Hand & Controls */}
-      <Animated.View
-        style={[
-          styles.myHandArea,
-          isMyTurn
-            ? {
-                borderColor: animatedBorderColor,
-                backgroundColor: animatedBackgroundColor,
-                borderTopWidth: 6,
-              }
-            : null
-        ]}
-      >
+      <View style={styles.myHandArea}>
 
         <View style={styles.controlRow}>
           {onExit && (
-            <Button title={t('game.exit')} color="red" onPress={onExit} />
+            <TouchableOpacity style={[styles.fab, { backgroundColor: '#F44336' }]} onPress={onExit}>
+              <Text style={styles.fabText}>{t('game.exit')}</Text>
+            </TouchableOpacity>
           )}
           {onReset && isSandbox && (
-            <Button title={t('game.resetGame')} color="orange" onPress={onReset} />
+            <TouchableOpacity style={[styles.fab, { backgroundColor: '#FF9800' }]} onPress={onReset}>
+              <Text style={styles.fabText}>{t('game.resetGame')}</Text>
+            </TouchableOpacity>
           )}
           {gameName === 'UnoLite' ? (
-            <Button
-              title={isMyTurn ? t('game.drawCard') : t('game.waitingForOpponent')}
+            <TouchableOpacity
+              style={[styles.fab, (!isMyTurn || gameOver) ? styles.fabDisabled : { backgroundColor: '#2196F3' }]}
               onPress={() => onAction('drawAndPass')}
               disabled={!isMyTurn || gameOver}
-            />
+            >
+              <Text style={styles.fabText}>{isMyTurn ? t('game.drawCard') : t('game.waitingForOpponent')}</Text>
+            </TouchableOpacity>
           ) : (
             <>
-              <Button
-                title={isMyTurn ? t('game.playSelected') : t('game.waitingForOpponent')}
+              <TouchableOpacity
+                style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50' }]}
                 onPress={() => {
                   onAction('playCard', selectedCards);
                   setSelectedCards([]);
                 }}
                 disabled={!isMyTurn || gameOver || selectedCards.length === 0}
-              />
-              <Button
-                title={t('game.pass')}
-                color="gray"
+              >
+                <Text style={styles.fabText}>{isMyTurn ? t('game.playSelected') : t('game.waitingForOpponent')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.fab, (!isMyTurn || gameOver || currentTrick.length === 0) ? styles.fabDisabled : { backgroundColor: '#9E9E9E' }]}
                 onPress={() => {
                   onAction('pass');
                   setSelectedCards([]);
                 }}
                 disabled={!isMyTurn || gameOver || currentTrick.length === 0}
-              />
+              >
+                <Text style={styles.fabText}>{t('game.pass')}</Text>
+              </TouchableOpacity>
             </>
           )}
         </View>
 
-        <Text style={[styles.sandboxTitle, { color: isMyTurn ? 'blue' : '#333' }]}>
+        <Text style={[styles.sandboxTitle, { marginBottom: 10 }]}>
           {myPlayerId} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
         </Text>
 
@@ -288,7 +240,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           <View style={{ width: 40 }} /> {/* Extra padding at end for overlapping cards */}
         </ScrollView>
 
-      </Animated.View>
+      </View>
     </View>
   );
 };
@@ -299,30 +251,23 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'column',
     overflow: 'hidden',
+    backgroundColor: '#2E7D32',
+  },
+  opponentPill: {
+    position: 'absolute',
+    alignSelf: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   interactionArea: {
-    flex: 2,
+    flex: 1,
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
-    backgroundColor: '#2E7D32', // Darker green for Uno table
-  },
-  opponentsContainer: {
-    width: '100%',
-    height: 180, // Fixed height or flexible
-  },
-  opponentsScroll: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 10,
-    gap: 10,
-  },
-  opponentArea: {
-    width: 250,
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    padding: 10,
-    borderRadius: 8,
   },
   tableArea: {
     flex: 1,
@@ -334,21 +279,36 @@ const styles = StyleSheet.create({
   },
   myHandArea: {
     flex: 1,
-    backgroundColor: '#fff3e0',
-    borderTopWidth: 4,
-    borderColor: '#ccc',
     padding: 10,
     alignItems: 'center',
-  },
-  myTurnArea: {
-    borderColor: '#2196F3',
-    backgroundColor: '#E3F2FD',
+    justifyContent: 'flex-end',
   },
   controlRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
     marginBottom: 10,
+  },
+  fab: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  fabDisabled: {
+    backgroundColor: '#A5D6A7', // Faded color for disabled
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  fabText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+    textAlign: 'center',
   },
   sandboxTitle: {
     fontSize: 16,
