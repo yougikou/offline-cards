@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Animated, PanResponder, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Animated, PanResponder, TouchableWithoutFeedback } from 'react-native';
 
 export interface DraggableCardProps {
   card: any;
@@ -40,14 +40,17 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onStartShouldSetPanResponderCapture: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Only take over if dragged more than 5 pixels
+        return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
+      },
+      onMoveShouldSetPanResponderCapture: () => false,
       onPanResponderGrant: () => {
         if (!isMyTurn || isOpponent) return;
         setZIndex(999);
-        // Provide tactile feedback on press
+        // Provide tactile feedback on drag start
         Animated.spring(scale, {
           toValue: 1.05,
           useNativeDriver: true,
@@ -84,10 +87,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
         pan.flattenOffset();
 
-        // Detect tap
-        if (Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5) {
-          onPress(index);
-        } else if (gestureState.dy < -100) {
+        if (gestureState.dy < -100) {
           // Check if dragged up sufficiently
           onDragUp(index);
         }
@@ -149,18 +149,20 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         }
       ]}
     >
-      <View
-        style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
-      >
-        <Text style={[styles.cardText, { color: textColor }]}>
-          {card.value !== undefined && gameName === 'UnoLite' ? card.value : card.rank}
-        </Text>
-        {card.suit && (
-          <Text style={{ color: textColor, fontSize: 18, marginTop: 4 }}>
-            {card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Clubs' ? '♣' : '♠'}
+      <TouchableWithoutFeedback onPress={() => onPress(index)}>
+        <View
+          style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
+        >
+          <Text style={[styles.cardText, { color: textColor }]}>
+            {card.value !== undefined && gameName === 'UnoLite' ? card.value : card.rank}
           </Text>
-        )}
-      </View>
+          {card.suit && (
+            <Text style={{ color: textColor, fontSize: 18, marginTop: 4 }}>
+              {card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Clubs' ? '♣' : '♠'}
+            </Text>
+          )}
+        </View>
+      </TouchableWithoutFeedback>
     </Animated.View>
   );
 };

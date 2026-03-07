@@ -208,16 +208,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
           ) : (
             <>
               <TouchableOpacity
-                style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50' }]}
-                onPress={() => {
-                  onAction('playCard', selectedCards);
-                  setSelectedCards([]);
-                }}
-                disabled={!isMyTurn || gameOver || selectedCards.length === 0}
-              >
-                <Text style={styles.fabText}>{t('game.playSelected')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
                 style={[styles.fab, (!isMyTurn || gameOver || currentTrick.length === 0) ? styles.fabDisabled : { backgroundColor: '#9E9E9E' }]}
                 onPress={() => {
                   onAction('pass');
