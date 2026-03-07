@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import DraggableCard from './DraggableCard';
 
@@ -23,6 +23,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
 }) => {
   const { t } = useTranslation();
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
 
   if (!gameState || !gameState.G) return null;
 
@@ -99,6 +100,20 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   return (
     <View style={styles.sandboxContainer}>
+      <TouchableOpacity style={{ position: 'absolute', top: 20, right: 20, zIndex: 100 }} onPress={() => setModalVisible(true)}>
+         <Text style={{ fontSize: 24, color: 'white' }}>⚙️</Text>
+      </TouchableOpacity>
+
+      <Modal visible={modalVisible} transparent={true} animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, gap: 10 }}>
+            {onExit && <Button title={t('game.exit')} onPress={() => { setModalVisible(false); onExit(); }} color="#F44336" />}
+            {onReset && isSandbox && <Button title={t('game.resetGame')} onPress={() => { setModalVisible(false); onReset(); }} color="#FF9800" />}
+            <Button title={t('lobby.cancel')} onPress={() => setModalVisible(false)} />
+          </View>
+        </View>
+      </Modal>
+
       {gameOver && (
         <View style={styles.gameOverOverlay}>
           <Text style={styles.gameOverText}>
@@ -186,16 +201,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
       <View style={styles.myHandArea}>
 
         <View style={styles.controlRow}>
-          {onExit && (
-            <TouchableOpacity style={[styles.fab, { backgroundColor: '#F44336' }]} onPress={onExit}>
-              <Text style={styles.fabText}>{t('game.exit')}</Text>
-            </TouchableOpacity>
-          )}
-          {onReset && isSandbox && (
-            <TouchableOpacity style={[styles.fab, { backgroundColor: '#FF9800' }]} onPress={onReset}>
-              <Text style={styles.fabText}>{t('game.resetGame')}</Text>
-            </TouchableOpacity>
-          )}
           {gameName === 'UnoLite' ? (
             <TouchableOpacity
               style={[styles.fab, (!isMyTurn || gameOver) ? styles.fabDisabled : { backgroundColor: '#2196F3' }]}
@@ -206,16 +211,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </TouchableOpacity>
           ) : (
             <>
-              <TouchableOpacity
-                style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50' }]}
-                onPress={() => {
-                  onAction('playCard', selectedCards);
-                  setSelectedCards([]);
-                }}
-                disabled={!isMyTurn || gameOver || selectedCards.length === 0}
-              >
-                <Text style={styles.fabText}>{isMyTurn ? t('game.playSelected') : t('game.waitingForOpponent')}</Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.fab, (!isMyTurn || gameOver || currentTrick.length === 0) ? styles.fabDisabled : { backgroundColor: '#9E9E9E' }]}
                 onPress={() => {
@@ -234,11 +229,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
           {myPlayerId} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
         </Text>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={styles.scrollHandContainer}>
+        <View style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 20 }}>
           <View style={{ width: 20 }} /> {/* Padding to prevent cut-off on scroll edge */}
           {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false))}
           <View style={{ width: 40 }} /> {/* Extra padding at end for overlapping cards */}
-        </ScrollView>
+        </View>
 
       </View>
     </View>
@@ -250,7 +245,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     flexDirection: 'column',
-    overflow: 'hidden',
+    overflow: 'visible',
     backgroundColor: '#2E7D32',
   },
   opponentPill: {
