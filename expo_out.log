@@ -1,13 +1,10 @@
 Starting project at /app
 Starting Metro Bundler
 
-The following packages should be updated for best compatibility with the installed expo version:
-  expo@55.0.4 - expected version: ~55.0.5
-Your project may not work correctly until you install the expected versions of the packages.
 Waiting on http://localhost:8081
 Logs for your project will appear below.
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 73.1% (155/217)
-Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 86.9% (358/384)
-Web Bundled 10178ms index.js (411 modules)
+Web ./index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 60.7% (151/217)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 98.6% (413/416)
+Web Bundled 9746ms index.js (416 modules)
  LOG  [web] Logs will appear in the browser console

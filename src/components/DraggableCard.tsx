@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { StyleSheet, Text, View, Animated, PanResponder, Dimensions } from 'react-native';
 
 export interface DraggableCardProps {
@@ -27,6 +27,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   const pan = useRef(new Animated.ValueXY()).current;
   const scale = useRef(new Animated.Value(1)).current;
   const translateY = useRef(new Animated.Value(isSelected ? -20 : 0)).current;
+  const [zIndex, setZIndex] = useState(1);
 
   useEffect(() => {
     Animated.spring(translateY, {
@@ -45,6 +46,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         return isMyTurn && !isOpponent && (Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5);
       },
       onPanResponderGrant: () => {
+        setZIndex(999);
         // Provide tactile feedback on press
         Animated.spring(scale, {
           toValue: 1.05,
@@ -67,6 +69,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         { useNativeDriver: false }
       ),
       onPanResponderRelease: (_, gestureState) => {
+        setZIndex(1);
         // Reset tactile feedback
         Animated.spring(scale, {
           toValue: 1,
@@ -78,7 +81,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         pan.flattenOffset();
 
         // Check if dragged up sufficiently
-        if (gestureState.dy < -100) {
+        if (gestureState.dy < -120) {
           onDragUp(index);
         }
 
@@ -90,6 +93,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         }).start();
       },
       onPanResponderTerminate: () => {
+        setZIndex(1);
          Animated.spring(scale, {
           toValue: 1,
           useNativeDriver: true,
@@ -127,7 +131,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       {...panResponder.panHandlers}
       style={[
         styles.cardContainer,
-        { marginLeft, opacity },
+        { marginLeft, opacity, zIndex, elevation: zIndex },
         {
           transform: [
             { translateX: pan.x },
