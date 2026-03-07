@@ -1,16 +1,17 @@
 import { Game } from 'boardgame.io';
+import { INVALID_MOVE } from 'boardgame.io/core';
 
 export interface UnoCard {
   id: string;
   color: 'Red' | 'Blue' | 'Green' | 'Yellow';
   value: string; // '0'-'9', 'Skip', 'Reverse', 'Draw2'
+  hidden?: boolean;
 }
 
 export interface UnoLiteState {
   players: string[]; // mapping of player indices to specific player IDs
   deck: UnoCard[];
   discardPile: UnoCard[];
-  table: UnoCard[];
   hands: Record<string, UnoCard[]>;
   deckCount: number;
 }
@@ -29,7 +30,6 @@ function createUnoDeck(): UnoCard[] {
       }
     }
   }
-  // Simplified: No action cards for 'Lite' version to keep state transitions simple initially
   return deck;
 }
 
@@ -63,22 +63,23 @@ export const UnoLiteGame = (playerIds: string[]): Game<UnoLiteState> => ({
       players: playerIds,
       deck,
       deckCount: deck.length,
-      discardPile: [],
-      table: [firstCard],
+      discardPile: [firstCard],
       hands
     };
   },
 
   moves: {
-    drawCard: ({ G, ctx, events }) => {
+    drawAndPass: ({ G, ctx, events }) => {
       if (G.deck.length === 0) {
-        if (G.discardPile.length === 0) {
-          // Both deck and discard pile are empty. This is a rare edge case.
+        if (G.discardPile.length <= 1) {
+          // Both deck and discard pile (excluding the top card) are empty. This is a rare edge case.
+          events.endTurn();
           return;
         }
-        // Reshuffle discard pile into deck
+        // Keep the top card of the discard pile, reshuffle the rest into the deck
+        const topCard = G.discardPile.pop()!;
         G.deck = shuffle([...G.discardPile]);
-        G.discardPile = [];
+        G.discardPile = [topCard];
       }
 
       const playerId = G.players[parseInt(ctx.currentPlayer)];
@@ -89,25 +90,24 @@ export const UnoLiteGame = (playerIds: string[]): Game<UnoLiteState> => ({
       events.endTurn();
     },
 
-    playCard: ({ G, ctx, events }, cardId: string) => {
+    playCard: ({ G, ctx, events }, cardIndex: number) => {
       const playerId = G.players[parseInt(ctx.currentPlayer)];
       const hand = G.hands[playerId];
-      const cardIndex = hand.findIndex(c => c.id === cardId);
 
-      if (cardIndex === -1) return; // Invalid move, card not in hand
+      if (cardIndex < 0 || cardIndex >= hand.length) {
+        return INVALID_MOVE;
+      }
 
       const card = hand[cardIndex];
-      const topCard = G.table[G.table.length - 1];
+      const topCard = G.discardPile[G.discardPile.length - 1];
 
       // Uno Lite logic: match color or value
       if (card.color === topCard.color || card.value === topCard.value) {
         hand.splice(cardIndex, 1);
-        G.discardPile.push(topCard);
-        G.table.push(card);
+        G.discardPile.push(card);
         events.endTurn();
       } else {
-        // Invalid move
-        return;
+        return INVALID_MOVE;
       }
     }
   },
@@ -127,13 +127,30 @@ export const UnoLiteGame = (playerIds: string[]): Game<UnoLiteState> => ({
   },
 
   playerView: ({ G, ctx, playerID }) => {
-    // Determine the actual player ID string from the boardgame.io playerID (which is a stringified index '0', '1', ...)
-    // Wait, the client will see playerID as the boardgame.io index or undefined if spectator.
-    // Let's strip secrets based on the actual target player ID string when we broadcast.
-    // The playerView hook in boardgame.io receives playerID from the client configuration.
+    // Sanitize the state for the given playerID
+    const safeG = {
+      ...G,
+      deck: undefined as any, // Hide the actual deck array
+      deckCount: G.deck?.length || 0, // Ensure guests know the deck count
+      hands: {} as Record<string, UnoCard[]>
+    };
 
-    // We'll actually handle sanitization manually in App.tsx to avoid index matching issues since we use custom string IDs.
-    // But if we use boardgame.io's built-in playerView:
-    return G;
+    if (G.hands) {
+      for (const [pId, handArray] of Object.entries(G.hands)) {
+        if (pId === playerID) {
+          safeG.hands[pId] = [...handArray]; // True cards for the player
+        } else {
+          // Map to card backs for opponents
+          safeG.hands[pId] = handArray.map(() => ({
+            id: Math.random().toString(),
+            color: 'Red',
+            value: '',
+            hidden: true
+          }));
+        }
+      }
+    }
+
+    return safeG;
   }
 });
