@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity } from 'react-native';
 
 interface GameBoardProps {
@@ -19,46 +19,75 @@ const GameBoard: React.FC<GameBoardProps> = ({
   onReset,
   isSandbox = false
 }) => {
+  const [selectedCards, setSelectedCards] = useState<number[]>([]);
+
   if (!gameState || !gameState.G) return null;
 
   const { G, ctx } = gameState;
+  const gameName = G.gameName || 'UnoLite';
   const opponents = (G.players || []).filter((p: string) => p !== myPlayerId);
 
   const myHand = G.hands && G.hands[myPlayerId] ? G.hands[myPlayerId] : [];
+
+  // UnoLite props
   const discardPile = G.discardPile || [];
   const deckCount = G.deckCount ?? (G.deck ? G.deck.length : 0);
+
+  // ZhengShangYou props
+  const currentTrick = G.currentTrick || [];
 
   // Determine if it's the current player's turn
   const currentPlayerIdString = G.players ? G.players[parseInt(ctx.currentPlayer, 10)] : null;
   const isMyTurn = currentPlayerIdString === myPlayerId;
   const gameOver = ctx.gameover;
 
+  const handleCardPress = (cardIndex: number) => {
+    if (!isMyTurn || gameOver) return;
+
+    if (gameName === 'ZhengShangYou') {
+      setSelectedCards(prev => {
+        if (prev.includes(cardIndex)) {
+          return prev.filter(idx => idx !== cardIndex);
+        } else {
+          return [...prev, cardIndex];
+        }
+      });
+    } else {
+      onAction('playCard', cardIndex);
+    }
+  };
+
   const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false) => {
     if (isOpponent || card.hidden) {
       // Render card back
       return (
         <View key={card.id || Math.random().toString()} style={[styles.card, styles.cardBack]}>
-          <Text style={styles.cardBackText}>UNO</Text>
+          <Text style={styles.cardBackText}>{gameName === 'ZhengShangYou' ? 'POKER' : 'UNO'}</Text>
         </View>
       );
     }
 
-    const cardColor = card.color ? card.color.toLowerCase() : 'gray';
+    const isSelected = selectedCards.includes(cardIndex);
+    const cardColor = card.color ? card.color.toLowerCase() : 'white';
+    const textColor = card.color ? 'white' : (card.suit === 'Hearts' || card.suit === 'Diamonds' || card.rank === 'Red Joker' ? 'red' : 'black');
+    const borderStyle = isSelected ? { borderColor: 'yellow', borderWidth: 4 } : { borderColor: '#333' };
+    const transformStyle = isSelected ? { transform: [{ translateY: -10 }] } : {};
 
     return (
       <TouchableOpacity
         key={card.id}
-        style={[styles.card, { backgroundColor: cardColor, borderColor: '#333' }]}
-        onPress={() => {
-          if (isMyTurn && !gameOver) {
-            onAction('playCard', cardIndex);
-          }
-        }}
+        style={[styles.card, { backgroundColor: cardColor }, borderStyle, transformStyle]}
+        onPress={() => handleCardPress(cardIndex)}
         disabled={!isMyTurn || gameOver}
       >
-        <Text style={[styles.cardText, { color: 'white' }]}>
-          {card.value}
+        <Text style={[styles.cardText, { color: textColor }]}>
+          {card.value !== undefined && gameName === 'UnoLite' ? card.value : card.rank}
         </Text>
+        {card.suit && (
+          <Text style={{ color: textColor, fontSize: 12 }}>
+            {card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Clubs' ? '♣' : '♠'}
+          </Text>
+        )}
       </TouchableOpacity>
     );
   };
@@ -107,25 +136,52 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
         {/* Center: Table Area */}
         <View style={styles.tableArea}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
-            <Text style={styles.sandboxTitle}>Discard Pile (Top)</Text>
-            <Text style={styles.sandboxTitle}>Deck: {deckCount}</Text>
-          </View>
-          <View style={styles.tableContainer}>
-            {discardPile.length > 0 && (
-               (() => {
-                  const topCard = discardPile[discardPile.length - 1];
-                  const cardColor = topCard.color ? topCard.color.toLowerCase() : 'gray';
+          {gameName === 'UnoLite' ? (
+            <>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
+                <Text style={styles.sandboxTitle}>Discard Pile (Top)</Text>
+                <Text style={styles.sandboxTitle}>Deck: {deckCount}</Text>
+              </View>
+              <View style={styles.tableContainer}>
+                {discardPile.length > 0 && (
+                   (() => {
+                      const topCard = discardPile[discardPile.length - 1];
+                      const cardColor = topCard.color ? topCard.color.toLowerCase() : 'gray';
+                      return (
+                        <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90 }]}>
+                          <Text style={[styles.cardText, { color: 'white', fontSize: 24 }]}>
+                            {topCard.value}
+                          </Text>
+                        </View>
+                      );
+                   })()
+                )}
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
+                <Text style={styles.sandboxTitle}>Current Trick</Text>
+              </View>
+              <View style={styles.tableContainer}>
+                {currentTrick.map((c: any, index: number) => {
+                  const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
                   return (
-                    <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90 }]}>
-                      <Text style={[styles.cardText, { color: 'white', fontSize: 24 }]}>
-                        {topCard.value}
+                    <View key={`trick-${index}`} style={[styles.card, { backgroundColor: 'white', width: 60, height: 90 }]}>
+                      <Text style={[styles.cardText, { color: textColor, fontSize: 20 }]}>
+                        {c.rank}
                       </Text>
+                      {c.suit && (
+                        <Text style={{ color: textColor, fontSize: 16 }}>
+                          {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
+                        </Text>
+                      )}
                     </View>
                   );
-               })()
-            )}
-          </View>
+                })}
+              </View>
+            </>
+          )}
         </View>
 
       </View>
@@ -140,11 +196,33 @@ const GameBoard: React.FC<GameBoardProps> = ({
           {onReset && isSandbox && (
             <Button title="Reset Game" color="orange" onPress={onReset} />
           )}
-          <Button
-            title={isMyTurn ? "Draw Card" : "Wait for turn..."}
-            onPress={() => onAction('drawAndPass')}
-            disabled={!isMyTurn || gameOver}
-          />
+          {gameName === 'UnoLite' ? (
+            <Button
+              title={isMyTurn ? "Draw Card" : "Wait for turn..."}
+              onPress={() => onAction('drawAndPass')}
+              disabled={!isMyTurn || gameOver}
+            />
+          ) : (
+            <>
+              <Button
+                title={isMyTurn ? "Play Selected" : "Wait for turn..."}
+                onPress={() => {
+                  onAction('playCard', selectedCards);
+                  setSelectedCards([]);
+                }}
+                disabled={!isMyTurn || gameOver || selectedCards.length === 0}
+              />
+              <Button
+                title="Pass"
+                color="gray"
+                onPress={() => {
+                  onAction('pass');
+                  setSelectedCards([]);
+                }}
+                disabled={!isMyTurn || gameOver || currentTrick.length === 0}
+              />
+            </>
+          )}
         </View>
 
         <Text style={[styles.sandboxTitle, { color: isMyTurn ? 'blue' : '#333' }]}>
