@@ -18,37 +18,6 @@ export interface BgioAction {
   args: any[];
 }
 
-// The Targeted Sanitization function for UnoLite via boardgame.io
-function sanitizeStateForPlayer(globalState: any, targetPlayerId: string): any {
-  if (!globalState || !globalState.G) return globalState;
-
-  const safeG = {
-    ...globalState.G,
-    deck: undefined, // Hide the actual deck array
-    deckCount: globalState.G.deck?.length || 0,
-    discardPile: [...(globalState.G.discardPile || [])], // Visible to all
-    table: [...(globalState.G.table || [])], // Visible to all
-    hands: {} as Record<string, any>
-  };
-
-  // Replace other players' hand arrays with generic objects, keep target player's exact hand
-  if (globalState.G.hands) {
-    for (const [pId, handArray] of Object.entries(globalState.G.hands) as [string, any[]][]) {
-      if (pId === targetPlayerId) {
-        safeG.hands[pId] = [...handArray]; // True cards
-      } else {
-        // Map to card backs/hidden markers
-        safeG.hands[pId] = handArray.map(() => ({ id: Math.random().toString(), hidden: true }));
-      }
-    }
-  }
-
-  return {
-    ...globalState,
-    G: safeG
-  };
-}
-
 export default function App() {
   const [appState, setAppState] = useState<AppState>('HOME');
   const [role, setRole] = useState<Role>(null);
@@ -101,11 +70,26 @@ export default function App() {
     }
   };
 
+  // Currently Hardcoded to UnoLiteGame until we add a game picker
+  const CurrentGameModule = UnoLiteGame;
+
   // Helper to send game syncs to all connected guests
   const broadcastSync = (state: any, connections: Map<string, WebRTCManager>) => {
     if (!state) return;
     connections.forEach((manager, guestId) => {
-      const safeState = sanitizeStateForPlayer(state, guestId);
+      // Delegate state sanitization to the active game module's playerView
+      const gameDef = CurrentGameModule(state.G.players || []);
+      let safeState = state;
+      if (gameDef.playerView) {
+        safeState = {
+          ...state,
+          G: gameDef.playerView({
+            G: state.G,
+            ctx: state.ctx,
+            playerID: guestId
+          })
+        };
+      }
       manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState }));
     });
   };
@@ -180,7 +164,18 @@ export default function App() {
             // If the game is already running, sync it.
             if (hostClientRef.current) {
                const currentState = hostClientRef.current.getState();
-               const safeState = sanitizeStateForPlayer(currentState, gId);
+               const gameDef = CurrentGameModule(currentState.G.players || []);
+               let safeState = currentState;
+               if (gameDef.playerView) {
+                 safeState = {
+                   ...currentState,
+                   G: gameDef.playerView({
+                     G: currentState.G,
+                     ctx: currentState.ctx,
+                     playerID: gId
+                   })
+                 };
+               }
                manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState }));
             }
           }
@@ -228,9 +223,13 @@ export default function App() {
   };
 
   const startBoardGameHost = (playerIds: string[]) => {
-    const UnoGameDef = UnoLiteGame(playerIds);
+    const gameDef = CurrentGameModule(playerIds);
+    // Remove playerView from the local host engine client so it holds the unstripped authoritative state
+    const engineGameDef = { ...gameDef };
+    delete engineGameDef.playerView;
+
     const client = Client({
-      game: UnoGameDef,
+      game: engineGameDef,
       numPlayers: playerIds.length,
       // No multiplayer wrapper - we run purely local and sync state manually!
     });

@@ -25,7 +25,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const opponents = (G.players || []).filter((p: string) => p !== myPlayerId);
 
   const myHand = G.hands && G.hands[myPlayerId] ? G.hands[myPlayerId] : [];
-  const tableCards = G.table || [];
+  const discardPile = G.discardPile || [];
   const deckCount = G.deckCount ?? (G.deck ? G.deck.length : 0);
 
   // Determine if it's the current player's turn
@@ -33,7 +33,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const isMyTurn = currentPlayerIdString === myPlayerId;
   const gameOver = ctx.gameover;
 
-  const renderCard = (card: any, player: string, isOpponent: boolean = false) => {
+  const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false) => {
     if (isOpponent || card.hidden) {
       // Render card back
       return (
@@ -51,7 +51,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         style={[styles.card, { backgroundColor: cardColor, borderColor: '#333' }]}
         onPress={() => {
           if (isMyTurn && !gameOver) {
-            onAction('playCard', card.id);
+            onAction('playCard', cardIndex);
           }
         }}
         disabled={!isMyTurn || gameOver}
@@ -90,14 +90,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
                       {opponentId} {isOpponentTurn ? '(Turn)' : ''}
                     </Text>
                     {isSandbox && (
-                      <Button title="Draw" onPress={() => onAction('drawCard')} disabled={!isOpponentTurn || gameOver} />
+                      <Button title="Draw" onPress={() => onAction('drawAndPass')} disabled={!isOpponentTurn || gameOver} />
                     )}
                     {!isSandbox && (
                       <Text style={{color: 'white'}}>Cards: {opponentHand.length}</Text>
                     )}
                   </View>
                   <View style={styles.handContainer}>
-                    {opponentHand.map((c: any) => renderCard(c, opponentId, !isSandbox))}
+                    {opponentHand.map((c: any, index: number) => renderCard(c, opponentId, index, !isSandbox))}
                   </View>
                 </View>
               );
@@ -108,13 +108,13 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {/* Center: Table Area */}
         <View style={styles.tableArea}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
-            <Text style={styles.sandboxTitle}>Table Top Card</Text>
+            <Text style={styles.sandboxTitle}>Discard Pile (Top)</Text>
             <Text style={styles.sandboxTitle}>Deck: {deckCount}</Text>
           </View>
           <View style={styles.tableContainer}>
-            {tableCards.length > 0 && (
+            {discardPile.length > 0 && (
                (() => {
-                  const topCard = tableCards[tableCards.length - 1];
+                  const topCard = discardPile[discardPile.length - 1];
                   const cardColor = topCard.color ? topCard.color.toLowerCase() : 'gray';
                   return (
                     <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90 }]}>
@@ -142,7 +142,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           )}
           <Button
             title={isMyTurn ? "Draw Card" : "Wait for turn..."}
-            onPress={() => onAction('drawCard')}
+            onPress={() => onAction('drawAndPass')}
             disabled={!isMyTurn || gameOver}
           />
         </View>
@@ -152,7 +152,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         </Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={styles.scrollHandContainer}>
-          {myHand.map((c: any) => renderCard(c, myPlayerId, false))}
+          {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false))}
         </ScrollView>
 
       </View>
