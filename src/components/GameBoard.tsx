@@ -1,5 +1,6 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { StyleSheet, Text, View, Button, ScrollView, Animated } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import DraggableCard from './DraggableCard';
 
 interface GameBoardProps {
@@ -20,6 +21,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   onReset,
   isSandbox = false
 }) => {
+  const { t } = useTranslation();
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
 
   if (!gameState || !gameState.G) return null;
@@ -100,8 +102,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
     } else {
       // For ZhengShangYou, if dragging a card that is selected, play all selected.
       // If dragging a card that isn't selected, maybe select it and play it?
-      // Based on requirements: "MVP版本可保留“出牌”按钮用于多选出牌，但必须优化选中时的动画弹出效果"
-      // Or "拖拽其中任意一张弹起的卡牌向上，将所有选中的卡牌作为一个整体触发"
       if (selectedCards.includes(cardIndex)) {
         onAction('playCard', selectedCards);
         setSelectedCards([]);
@@ -136,7 +136,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
       {gameOver && (
         <View style={styles.gameOverOverlay}>
           <Text style={styles.gameOverText}>
-            Game Over! Winner: {gameOver.winner}
+            {t('game.gameOver')}
+          </Text>
+          <Text style={styles.gameOverText}>
+            {t('game.winner', { winner: gameOver.winner })}
           </Text>
         </View>
       )}
@@ -155,13 +158,13 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 <View key={opponentId} style={[styles.opponentArea, isSandbox && { transform: [{ rotate: '180deg' }] }]}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: 10 }}>
                     <Text style={[styles.sandboxTitle, isOpponentTurn && styles.activePlayerText]}>
-                      {opponentId} {isOpponentTurn ? '(Turn)' : ''}
+                      {opponentId} {isOpponentTurn ? t('game.turn') : ''}
                     </Text>
                     {isSandbox && (
-                      <Button title="Draw" onPress={() => onAction('drawAndPass')} disabled={!isOpponentTurn || gameOver} />
+                      <Button title={t('game.draw')} onPress={() => onAction('drawAndPass')} disabled={!isOpponentTurn || gameOver} />
                     )}
                     {!isSandbox && (
-                      <Text style={{color: 'white'}}>Cards: {opponentHand.length}</Text>
+                      <Text style={{color: 'white'}}>{t('game.cardsCount', { count: opponentHand.length })}</Text>
                     )}
                   </View>
                   <View style={styles.handContainer}>
@@ -178,8 +181,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
           {gameName === 'UnoLite' ? (
             <>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
-                <Text style={styles.sandboxTitle}>Discard Pile (Top)</Text>
-                <Text style={styles.sandboxTitle}>Deck: {deckCount}</Text>
+                <Text style={styles.sandboxTitle}>{t('game.discardPileTop')}</Text>
+                <Text style={styles.sandboxTitle}>{t('game.deckCount', { count: deckCount })}</Text>
               </View>
               <View style={styles.tableContainer}>
                 {discardPile.length > 0 && (
@@ -200,7 +203,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           ) : (
             <>
               <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
-                <Text style={styles.sandboxTitle}>Current Trick</Text>
+                <Text style={styles.sandboxTitle}>{t('game.currentTrick')}</Text>
               </View>
               <View style={styles.tableContainer}>
                 {currentTrick.map((c: any, index: number) => {
@@ -241,21 +244,21 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
         <View style={styles.controlRow}>
           {onExit && (
-            <Button title="Exit" color="red" onPress={onExit} />
+            <Button title={t('game.exit')} color="red" onPress={onExit} />
           )}
           {onReset && isSandbox && (
-            <Button title="Reset Game" color="orange" onPress={onReset} />
+            <Button title={t('game.resetGame')} color="orange" onPress={onReset} />
           )}
           {gameName === 'UnoLite' ? (
             <Button
-              title={isMyTurn ? "Draw Card" : "Wait for turn..."}
+              title={isMyTurn ? t('game.drawCard') : t('game.waitingForOpponent')}
               onPress={() => onAction('drawAndPass')}
               disabled={!isMyTurn || gameOver}
             />
           ) : (
             <>
               <Button
-                title={isMyTurn ? "Play Selected" : "Wait for turn..."}
+                title={isMyTurn ? t('game.playSelected') : t('game.waitingForOpponent')}
                 onPress={() => {
                   onAction('playCard', selectedCards);
                   setSelectedCards([]);
@@ -263,7 +266,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 disabled={!isMyTurn || gameOver || selectedCards.length === 0}
               />
               <Button
-                title="Pass"
+                title={t('game.pass')}
                 color="gray"
                 onPress={() => {
                   onAction('pass');
@@ -276,7 +279,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         </View>
 
         <Text style={[styles.sandboxTitle, { color: isMyTurn ? 'blue' : '#333' }]}>
-          {myPlayerId} (Me) {isMyTurn ? '- YOUR TURN!' : ''}
+          {myPlayerId} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
         </Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={styles.scrollHandContainer}>
