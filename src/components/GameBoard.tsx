@@ -1,5 +1,6 @@
-import React, { memo, useState } from 'react';
-import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity } from 'react-native';
+import React, { memo, useState, useRef, useEffect } from 'react';
+import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import DraggableCard from './DraggableCard';
 
 interface GameBoardProps {
   // gameState now contains the boardgame.io state object structure { G, ctx, plugins }
@@ -41,6 +42,40 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const isMyTurn = currentPlayerIdString === myPlayerId;
   const gameOver = ctx.gameover;
 
+  // Breathing light animation for the active turn border
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isMyTurn) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: false, // backgroundColor doesn't support native driver
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0,
+            duration: 1200,
+            useNativeDriver: false,
+          })
+        ])
+      ).start();
+    } else {
+      glowAnim.setValue(0);
+      glowAnim.stopAnimation();
+    }
+  }, [isMyTurn, glowAnim]);
+
+  const animatedBorderColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#64B5F6', '#1E88E5'] // From lighter to darker blue
+  });
+  const animatedBackgroundColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#E3F2FD', '#BBDEFB'] // From lighter to darker light blue
+  });
+
   const handleCardPress = (cardIndex: number) => {
     if (!isMyTurn || gameOver) return;
 
@@ -57,38 +92,42 @@ const GameBoard: React.FC<GameBoardProps> = ({
     }
   };
 
-  const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false) => {
-    if (isOpponent || card.hidden) {
-      // Render card back
-      return (
-        <View key={card.id || Math.random().toString()} style={[styles.card, styles.cardBack]}>
-          <Text style={styles.cardBackText}>{gameName === 'ZhengShangYou' ? 'POKER' : 'UNO'}</Text>
-        </View>
-      );
+  const handleDragUp = (cardIndex: number) => {
+    if (!isMyTurn || gameOver) return;
+
+    if (gameName === 'UnoLite') {
+      onAction('playCard', cardIndex);
+    } else {
+      // For ZhengShangYou, if dragging a card that is selected, play all selected.
+      // If dragging a card that isn't selected, maybe select it and play it?
+      // Based on requirements: "MVP版本可保留“出牌”按钮用于多选出牌，但必须优化选中时的动画弹出效果"
+      // Or "拖拽其中任意一张弹起的卡牌向上，将所有选中的卡牌作为一个整体触发"
+      if (selectedCards.includes(cardIndex)) {
+        onAction('playCard', selectedCards);
+        setSelectedCards([]);
+      } else {
+        // If they drag up an unselected card, just play that single card
+        onAction('playCard', [cardIndex]);
+        // Also remove it from selected if anything was selected to avoid state mismatches
+        setSelectedCards([]);
+      }
     }
+  };
 
-    const isSelected = selectedCards.includes(cardIndex);
-    const cardColor = card.color ? card.color.toLowerCase() : 'white';
-    const textColor = card.color ? 'white' : (card.suit === 'Hearts' || card.suit === 'Diamonds' || card.rank === 'Red Joker' ? 'red' : 'black');
-    const borderStyle = isSelected ? { borderColor: 'yellow', borderWidth: 4 } : { borderColor: '#333' };
-    const transformStyle = isSelected ? { transform: [{ translateY: -10 }] } : {};
-
+  const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false) => {
     return (
-      <TouchableOpacity
-        key={card.id}
-        style={[styles.card, { backgroundColor: cardColor }, borderStyle, transformStyle]}
-        onPress={() => handleCardPress(cardIndex)}
-        disabled={!isMyTurn || gameOver}
-      >
-        <Text style={[styles.cardText, { color: textColor }]}>
-          {card.value !== undefined && gameName === 'UnoLite' ? card.value : card.rank}
-        </Text>
-        {card.suit && (
-          <Text style={{ color: textColor, fontSize: 12 }}>
-            {card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Clubs' ? '♣' : '♠'}
-          </Text>
-        )}
-      </TouchableOpacity>
+      <DraggableCard
+        key={card.id || `${player}-${cardIndex}-${Math.random()}`}
+        card={card}
+        index={cardIndex}
+        totalCards={G.hands && G.hands[player] ? G.hands[player].length : 0}
+        isMyTurn={isMyTurn && !gameOver}
+        gameName={gameName}
+        isSelected={selectedCards.includes(cardIndex)}
+        onPress={handleCardPress}
+        onDragUp={handleDragUp}
+        isOpponent={isOpponent}
+      />
     );
   };
 
@@ -187,7 +226,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
       </View>
 
       {/* Lower 1/3: My Hand & Controls */}
-      <View style={[styles.myHandArea, isMyTurn ? styles.myTurnArea : null]}>
+      <Animated.View
+        style={[
+          styles.myHandArea,
+          isMyTurn
+            ? {
+                borderColor: animatedBorderColor,
+                backgroundColor: animatedBackgroundColor,
+                borderTopWidth: 6,
+              }
+            : null
+        ]}
+      >
 
         <View style={styles.controlRow}>
           {onExit && (
@@ -230,10 +280,12 @@ const GameBoard: React.FC<GameBoardProps> = ({
         </Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }} contentContainerStyle={styles.scrollHandContainer}>
+          <View style={{ width: 20 }} /> {/* Padding to prevent cut-off on scroll edge */}
           {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false))}
+          <View style={{ width: 40 }} /> {/* Extra padding at end for overlapping cards */}
         </ScrollView>
 
-      </View>
+      </Animated.View>
     </View>
   );
 };
@@ -313,8 +365,7 @@ const styles = StyleSheet.create({
   scrollHandContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    gap: 10,
+    paddingVertical: 20, // Give some vertical room for the pop-up and shadow
   },
   tableContainer: {
     flexDirection: 'row',
