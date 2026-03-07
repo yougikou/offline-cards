@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useTranslation } from 'react-i18next';
+import './src/i18n/index'; // Initialize i18n
 import { WebRTCManager } from './src/webrtc';
 import Scanner from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
@@ -21,6 +23,7 @@ export interface BgioAction {
 }
 
 export default function App() {
+  const { t, i18n } = useTranslation();
   const [appState, setAppState] = useState<AppState>('HOME');
   const [role, setRole] = useState<Role>(null);
   const [roomId, setRoomId] = useState<string>('');
@@ -332,7 +335,7 @@ export default function App() {
       if (appState === 'SIGNALING_HOST' && pendingHostManager) {
         await pendingHostManager.acceptAnswer(scannedText);
         // Do not jump to CONNECTED immediately. Let Host gather players, then click Start Game.
-        alert('Guest Connected! You can add another or click Start Game.');
+        alert(t('lobby.guestConnected'));
         setQrValue('');
       } else if (appState === 'SIGNALING_GUEST' && guestWebrtcManager) {
         const answerStr = await guestWebrtcManager.acceptOfferAndCreateAnswer(scannedText);
@@ -341,7 +344,7 @@ export default function App() {
       }
     } catch (e) {
       console.error("Signaling Error:", e);
-      alert("Error during signaling: " + String(e));
+      alert(t('lobby.errorSignaling') + String(e));
       setAppState('HOME');
     }
   };
@@ -381,34 +384,48 @@ export default function App() {
     setAppState('CONNECTED');
   };
 
+  const renderLanguageSwitcher = () => (
+    <View style={styles.languageSwitcher}>
+      <Text style={styles.languageLabel}>{t('lobby.language')}</Text>
+      <View style={{ flexDirection: 'row', gap: 5 }}>
+        <Button title="中文" onPress={() => i18n.changeLanguage('zh')} color={i18n.language === 'zh' ? '#007AFF' : '#999'} />
+        <Button title="EN" onPress={() => i18n.changeLanguage('en')} color={i18n.language === 'en' ? '#007AFF' : '#999'} />
+        <Button title="日本語" onPress={() => i18n.changeLanguage('ja')} color={i18n.language === 'ja' ? '#007AFF' : '#999'} />
+      </View>
+    </View>
+  );
+
   const renderHome = () => {
     return (
       <View style={styles.content}>
-        <Text style={styles.title}>Offline Cards</Text>
-        <Text style={styles.subtitle}>Powered by boardgame.io P2P</Text>
+        <View style={styles.topRightControls}>
+          {renderLanguageSwitcher()}
+        </View>
+        <Text style={styles.title}>{t('lobby.title')}</Text>
+        <Text style={styles.subtitle}>{t('lobby.subtitle')}</Text>
         <View style={styles.buttonContainer}>
           <View style={{ marginBottom: 20 }}>
-             <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>Select Game:</Text>
+             <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
                 <Button
-                   title="Uno Lite"
+                   title={t('lobby.game_UnoLite')}
                    onPress={() => setSelectedGameMode('UnoLite')}
                    color={selectedGameMode === 'UnoLite' ? '#007AFF' : '#999'}
                 />
                 <Button
-                   title="ZhengShangYou"
+                   title={t('lobby.game_ZhengShangYou')}
                    onPress={() => setSelectedGameMode('ZhengShangYou')}
                    color={selectedGameMode === 'ZhengShangYou' ? '#007AFF' : '#999'}
                 />
              </View>
           </View>
-          <Button title="Create Room (Host)" onPress={() => handleHost(false)} />
+          <Button title={t('lobby.createRoom')} onPress={() => handleHost(false)} />
           <View style={{ height: 20 }} />
-          <Button title="Join Room (Guest)" onPress={() => handleGuest(false)} />
+          <Button title={t('lobby.joinRoom')} onPress={() => handleGuest(false)} />
 
           <View style={{ marginTop: 40, alignItems: 'center' }}>
-            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>Local Testing</Text>
-            <Button title="Enter Local Sandbox" color="purple" onPress={() => {
+            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>{t('lobby.localTesting')}</Text>
+            <Button title={t('lobby.sandboxTesting')} color="purple" onPress={() => {
               setAppState('SANDBOX');
               setPlayerId('host');
               const players = ['host', 'guest_1'];
@@ -444,31 +461,31 @@ export default function App() {
   const renderSignaling = () => (
     <View style={styles.content}>
       <Text style={styles.title}>
-        {appState === 'SIGNALING_HOST' ? 'Host Mode (Add Player)' : 'Guest Mode'}
+        {appState === 'SIGNALING_HOST' ? t('lobby.hostMode') : t('lobby.guestMode')}
       </Text>
 
       {qrValue && isScanning && (
         <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
-          <Button title="Show My QR" onPress={() => setShowMode('qr')} color={showMode === 'qr' ? '#007AFF' : '#999'} />
-          <Button title="Scan Other's QR" onPress={() => setShowMode('scanner')} color={showMode === 'scanner' ? '#007AFF' : '#999'} />
+          <Button title={t('lobby.showMyQR')} onPress={() => setShowMode('qr')} color={showMode === 'qr' ? '#007AFF' : '#999'} />
+          <Button title={t('lobby.scanOtherQR')} onPress={() => setShowMode('scanner')} color={showMode === 'scanner' ? '#007AFF' : '#999'} />
         </View>
       )}
 
       <View style={{ flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
         {showMode === 'qr' && qrValue ? (
           <View style={[styles.section, { flex: 1 }]}>
-            <Text style={{ marginBottom: 10, textAlign: 'center' }}>Show this QR Code to the other device:</Text>
+            <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.showQRToOther')}</Text>
             <QRCodeDisplay value={qrValue} />
           </View>
         ) : null}
 
         {showMode === 'scanner' && isScanning ? (
           <View style={[styles.section, { flex: 1 }]}>
-            <Text style={{ marginBottom: 10, textAlign: 'center' }}>Scan the other device's QR Code:</Text>
+            <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.scanOtherDeviceQR')}</Text>
             {Platform.OS === 'web' ? (
               <Scanner onScan={handleScanSuccess} />
             ) : (
-              <Text>Scanning requires web environment</Text>
+              <Text>{t('lobby.scanningRequiresWeb')}</Text>
             )}
           </View>
         ) : null}
@@ -477,15 +494,15 @@ export default function App() {
       <View style={{ marginTop: 20, width: '100%', maxWidth: 300 }}>
         {appState === 'SIGNALING_HOST' && (
           <View style={{ marginBottom: 10 }}>
-            <Button title="Add Another Player" onPress={startNewHostPendingConnection} color="blue" />
+            <Button title={t('lobby.addAnotherPlayer')} onPress={startNewHostPendingConnection} color="blue" />
           </View>
         )}
         {appState === 'SIGNALING_HOST' && (
           <View style={{ marginBottom: 10 }}>
-             <Button title={`Start Game (${hostConnections.current.size + 1} players)`} onPress={startGameHost} color="green" />
+             <Button title={t('lobby.startGame', { count: hostConnections.current.size + 1 })} onPress={startGameHost} color="green" />
           </View>
         )}
-        <Button title="Cancel" onPress={() => {
+        <Button title={t('lobby.cancel')} onPress={() => {
           if (appState === 'SIGNALING_HOST') pendingHostManager?.close();
           if (appState === 'SIGNALING_GUEST') guestWebrtcManager?.close();
           setAppState('HOME');
@@ -499,8 +516,8 @@ export default function App() {
     if (!gameState) {
       return (
         <View style={styles.content}>
-          <Text style={styles.title}>Waiting for state...</Text>
-          <Button title="Exit" onPress={() => {
+          <Text style={styles.title}>{t('lobby.waitingForState')}</Text>
+          <Button title={t('lobby.exit')} onPress={() => {
             setAppState('HOME');
           }} color="red" />
         </View>
@@ -552,6 +569,21 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  topRightControls: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    alignItems: 'flex-end',
+    zIndex: 10,
+  },
+  languageSwitcher: {
+    alignItems: 'flex-end',
+  },
+  languageLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 5,
   },
   title: {
     fontSize: 28,
