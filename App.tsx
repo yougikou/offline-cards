@@ -4,9 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import './src/i18n/index'; // Initialize i18n
 import { WebRTCManager } from './src/webrtc';
-import Scanner from './src/components/Scanner';
-import QRCodeDisplay from './src/components/QRCodeDisplay';
 import GameBoard from './src/components/GameBoard';
+import { Peer } from 'peerjs';
 import { UnoLiteGame } from './src/game-modules/unoLite';
 import { ZhengShangYouGame } from './src/game-modules/ZhengShangYou';
 import { Client } from 'boardgame.io/client';
@@ -35,18 +34,15 @@ export default function App() {
   const [guestWebrtcManager, setGuestWebrtcManager] = useState<WebRTCManager | null>(null);
 
   // Host uses a pool of connection managers mapped by guest ID
-  // For signaling we need a "pending" manager that hasn't been assigned an ID yet
-  const [pendingHostManager, setPendingHostManager] = useState<WebRTCManager | null>(null);
   const hostConnections = useRef(new Map<string, WebRTCManager>());
+  const hostPeerRef = useRef<Peer | null>(null);
 
   // boardgame.io Host Client
   const hostClientRef = useRef<any>(null);
 
   // Signaling state
-  const [qrValue, setQrValue] = useState<string>('');
-  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [inputRoomCode, setInputRoomCode] = useState<string>('');
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
-  const [showMode, setShowMode] = useState<'qr' | 'scanner'>('qr');
 
   // Lobby
   const [selectedGameMode, setSelectedGameMode] = useState<GameMode>('UnoLite');
@@ -283,69 +279,62 @@ export default function App() {
     setRole('HOST');
     setPlayerId('host'); // Fixed ID for the host player
 
-    if (!resume) {
-      const newRoomId = Math.random().toString(36).substring(2, 9);
-      setRoomId(newRoomId);
+    let currentRoomId = roomIdRef.current;
+    if (!resume || !currentRoomId) {
+      // Generate a 4-character random alphanumeric room code
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      currentRoomId = Array.from({ length: 4 }).map(() => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+      setRoomId(currentRoomId);
       setMessages([]);
       clearStorage();
     }
 
-    startNewHostPendingConnection();
-  };
+    // Initialize Host Peer
+    const peer = new Peer('MYGAME_' + currentRoomId);
+    hostPeerRef.current = peer;
 
-  const startNewHostPendingConnection = async () => {
-    const manager = new WebRTCManager();
-    setupHostManager(manager);
-    setPendingHostManager(manager);
+    peer.on('connection', (conn) => {
+      const manager = new WebRTCManager();
+      manager.wrapConnection(conn);
+      setupHostManager(manager);
+    });
 
-    setQrValue('');
-    setIsScanning(false);
-    setShowMode('qr'); // Start by showing offer
-    try {
-      const offerStr = await manager.createOffer();
-      setQrValue(offerStr);
-      setIsScanning(true); // Host scans guest's answer
-    } catch (e) {
-      console.error("Host Offer Error:", e);
-    }
+    peer.on('error', (err) => {
+      console.error("Host Peer Error:", err);
+      alert(t('lobby.errorSignaling') + String(err));
+      setAppState('HOME');
+    });
   };
 
   const handleGuest = (resume: boolean = false) => {
     setAppState('SIGNALING_GUEST');
     setRole('GUEST');
+    setInputRoomCode('');
 
     if (!resume) {
       const newPlayerId = 'guest_' + Math.random().toString(36).substring(2, 9);
       setPlayerId(newPlayerId);
       clearStorage();
     }
+  };
+
+  const joinRoomAsGuest = async () => {
+    if (!inputRoomCode || inputRoomCode.length !== 4) {
+      alert(t('lobby.errorSignaling') + 'Invalid Room Code');
+      return;
+    }
+    const code = inputRoomCode.toUpperCase();
 
     const manager = new WebRTCManager();
     setGuestWebrtcManager(manager);
 
-    setQrValue('');
-    setIsScanning(true);
-    setShowMode('scanner');
-  };
-
-  const handleScanSuccess = async (scannedText: string) => {
-    setIsScanning(false);
-
     try {
-      if (appState === 'SIGNALING_HOST' && pendingHostManager) {
-        await pendingHostManager.acceptAnswer(scannedText);
-        // Do not jump to CONNECTED immediately. Let Host gather players, then click Start Game.
-        alert(t('lobby.guestConnected'));
-        setQrValue('');
-      } else if (appState === 'SIGNALING_GUEST' && guestWebrtcManager) {
-        const answerStr = await guestWebrtcManager.acceptOfferAndCreateAnswer(scannedText);
-        setQrValue(answerStr);
-        setShowMode('qr');
-      }
+      await manager.connectToHost(code);
+      // Data channel is open, manager handles events
     } catch (e) {
-      console.error("Signaling Error:", e);
+      console.error("Guest Connection Error:", e);
       alert(t('lobby.errorSignaling') + String(e));
-      setAppState('HOME');
+      setGuestWebrtcManager(null);
     }
   };
 
@@ -464,46 +453,54 @@ export default function App() {
         {appState === 'SIGNALING_HOST' ? t('lobby.hostMode') : t('lobby.guestMode')}
       </Text>
 
-      {qrValue && isScanning && (
-        <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
-          <Button title={t('lobby.showMyQR')} onPress={() => setShowMode('qr')} color={showMode === 'qr' ? '#007AFF' : '#999'} />
-          <Button title={t('lobby.scanOtherQR')} onPress={() => setShowMode('scanner')} color={showMode === 'scanner' ? '#007AFF' : '#999'} />
-        </View>
-      )}
-
       <View style={{ flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-        {showMode === 'qr' && qrValue ? (
-          <View style={[styles.section, { flex: 1 }]}>
-            <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.showQRToOther')}</Text>
-            <QRCodeDisplay value={qrValue} />
+        {appState === 'SIGNALING_HOST' && (
+          <View style={[styles.section, { flex: 1, justifyContent: 'center' }]}>
+            <Text style={{ fontSize: 20, marginBottom: 10 }}>{t('lobby.roomCode')}</Text>
+            <Text style={{ fontSize: 48, fontWeight: 'bold', letterSpacing: 5, color: '#007AFF' }}>{roomIdRef.current}</Text>
+            <Text style={{ marginTop: 20, fontSize: 16 }}>{t('lobby.waitingForPlayers')} {hostConnections.current.size} {t('lobby.playersConnected')}</Text>
           </View>
-        ) : null}
+        )}
 
-        {showMode === 'scanner' && isScanning ? (
-          <View style={[styles.section, { flex: 1 }]}>
-            <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.scanOtherDeviceQR')}</Text>
-            {Platform.OS === 'web' ? (
-              <Scanner onScan={handleScanSuccess} />
-            ) : (
-              <Text>{t('lobby.scanningRequiresWeb')}</Text>
-            )}
+        {appState === 'SIGNALING_GUEST' && (
+          <View style={[styles.section, { flex: 1, justifyContent: 'center', width: '100%', maxWidth: 300 }]}>
+            <Text style={{ fontSize: 20, marginBottom: 10 }}>{t('lobby.enterRoomCode')}</Text>
+            <TextInput
+              style={{
+                height: 50,
+                borderColor: 'gray',
+                borderWidth: 1,
+                width: '100%',
+                fontSize: 24,
+                textAlign: 'center',
+                letterSpacing: 5,
+                marginBottom: 20,
+                textTransform: 'uppercase'
+              }}
+              onChangeText={setInputRoomCode}
+              value={inputRoomCode}
+              maxLength={4}
+              autoCapitalize="characters"
+              placeholder="ABCD"
+            />
+            <Button title={t('lobby.joinRoom')} onPress={joinRoomAsGuest} />
+            <Text style={{ marginTop: 20 }}>{connectionStatus === 'connecting' ? t('lobby.connecting') : ''}</Text>
           </View>
-        ) : null}
+        )}
       </View>
 
       <View style={{ marginTop: 20, width: '100%', maxWidth: 300 }}>
-        {appState === 'SIGNALING_HOST' && (
-          <View style={{ marginBottom: 10 }}>
-            <Button title={t('lobby.addAnotherPlayer')} onPress={startNewHostPendingConnection} color="blue" />
-          </View>
-        )}
         {appState === 'SIGNALING_HOST' && (
           <View style={{ marginBottom: 10 }}>
              <Button title={t('lobby.startGame', { count: hostConnections.current.size + 1 })} onPress={startGameHost} color="green" />
           </View>
         )}
         <Button title={t('lobby.cancel')} onPress={() => {
-          if (appState === 'SIGNALING_HOST') pendingHostManager?.close();
+          if (appState === 'SIGNALING_HOST') {
+             if (hostPeerRef.current) hostPeerRef.current.destroy();
+             hostConnections.current.forEach(m => m.close());
+             hostConnections.current.clear();
+          }
           if (appState === 'SIGNALING_GUEST') guestWebrtcManager?.close();
           setAppState('HOME');
         }} color="red" />

@@ -24,7 +24,11 @@
     "errorSignaling": "信令过程中发生错误：",
     "waitingForState": "正在等待状态同步...",
     "exit": "退出",
-    "connecting": "连接中..."
+    "connecting": "连接中...",
+    "roomCode": "房间号",
+    "waitingForPlayers": "等待玩家加入...",
+    "playersConnected": "名玩家已连接",
+    "enterRoomCode": "输入房间号"
   },
   "game": {
     "gameOver": "游戏结束",
