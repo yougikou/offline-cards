@@ -6,9 +6,11 @@ import Scanner from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
 import GameBoard from './src/components/GameBoard';
 import { UnoLiteGame } from './src/game-modules/unoLite';
+import { ZhengShangYouGame } from './src/game-modules/ZhengShangYou';
 import { Client } from 'boardgame.io/client';
 
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
+type GameMode = 'UnoLite' | 'ZhengShangYou';
 type Role = 'HOST' | 'GUEST' | null;
 
 // Replace GameAction with the boardgame.io specific action type
@@ -43,6 +45,9 @@ export default function App() {
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
   const [showMode, setShowMode] = useState<'qr' | 'scanner'>('qr');
 
+  // Lobby
+  const [selectedGameMode, setSelectedGameMode] = useState<GameMode>('UnoLite');
+
   // Sandbox & Game state is now boardgame.io full state { G, ctx, plugins, ... }
   const [gameState, setGameState] = useState<any>(null);
 
@@ -70,15 +75,23 @@ export default function App() {
     }
   };
 
-  // Currently Hardcoded to UnoLiteGame until we add a game picker
-  const CurrentGameModule = UnoLiteGame;
+  const getGameModule = (mode: GameMode) => {
+    switch (mode) {
+      case 'ZhengShangYou':
+        return ZhengShangYouGame;
+      case 'UnoLite':
+      default:
+        return UnoLiteGame;
+    }
+  };
 
   // Helper to send game syncs to all connected guests
   const broadcastSync = (state: any, connections: Map<string, WebRTCManager>) => {
     if (!state) return;
     connections.forEach((manager, guestId) => {
       // Delegate state sanitization to the active game module's playerView
-      const gameDef = CurrentGameModule(state.G.players || []);
+      const gameModule = getGameModule(selectedGameModeRef.current);
+      const gameDef = gameModule(state.G.players || []);
       let safeState = state;
       if (gameDef.playerView) {
         safeState = {
@@ -99,8 +112,10 @@ export default function App() {
   const playerIdRef = useRef(playerId);
   const messagesRef = useRef(messages);
   const gameStateRef = useRef(gameState);
+  const selectedGameModeRef = useRef(selectedGameMode);
 
   useEffect(() => {
+    selectedGameModeRef.current = selectedGameMode;
     roleRef.current = role;
     roomIdRef.current = roomId;
     playerIdRef.current = playerId;
@@ -124,6 +139,9 @@ export default function App() {
             saveGuestState(data.roomId, playerIdRef.current);
           }
         } else if (data.type === 'SYNC') {
+          if (data.gameMode) {
+            setSelectedGameMode(data.gameMode);
+          }
           setGameState(data.state);
         }
       } catch (e) {
@@ -164,7 +182,8 @@ export default function App() {
             // If the game is already running, sync it.
             if (hostClientRef.current) {
                const currentState = hostClientRef.current.getState();
-               const gameDef = CurrentGameModule(currentState.G.players || []);
+               const gameModule = getGameModule(selectedGameModeRef.current);
+               const gameDef = gameModule(currentState.G.players || []);
                let safeState = currentState;
                if (gameDef.playerView) {
                  safeState = {
@@ -176,7 +195,7 @@ export default function App() {
                    })
                  };
                }
-               manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState }));
+               manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState, gameMode: selectedGameModeRef.current }));
             }
           }
         } else if (data.type === 'MOVE') {
@@ -223,13 +242,14 @@ export default function App() {
   };
 
   const startBoardGameHost = (playerIds: string[]) => {
-    const gameDef = CurrentGameModule(playerIds);
+    const gameModule = getGameModule(selectedGameModeRef.current);
+    const gameDef = gameModule(playerIds);
     // Remove playerView from the local host engine client so it holds the unstripped authoritative state
     const engineGameDef = { ...gameDef };
     delete engineGameDef.playerView;
 
     const client = Client({
-      game: engineGameDef,
+      game: engineGameDef as any,
       numPlayers: playerIds.length,
       // No multiplayer wrapper - we run purely local and sync state manually!
     });
@@ -364,9 +384,24 @@ export default function App() {
   const renderHome = () => {
     return (
       <View style={styles.content}>
-        <Text style={styles.title}>Offline Cards (UnoLite)</Text>
+        <Text style={styles.title}>Offline Cards</Text>
         <Text style={styles.subtitle}>Powered by boardgame.io P2P</Text>
         <View style={styles.buttonContainer}>
+          <View style={{ marginBottom: 20 }}>
+             <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>Select Game:</Text>
+             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
+                <Button
+                   title="Uno Lite"
+                   onPress={() => setSelectedGameMode('UnoLite')}
+                   color={selectedGameMode === 'UnoLite' ? '#007AFF' : '#999'}
+                />
+                <Button
+                   title="ZhengShangYou"
+                   onPress={() => setSelectedGameMode('ZhengShangYou')}
+                   color={selectedGameMode === 'ZhengShangYou' ? '#007AFF' : '#999'}
+                />
+             </View>
+          </View>
           <Button title="Create Room (Host)" onPress={() => handleHost(false)} />
           <View style={{ height: 20 }} />
           <Button title="Join Room (Guest)" onPress={() => handleGuest(false)} />
