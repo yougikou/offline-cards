@@ -24,7 +24,11 @@
     "errorSignaling": "シグナリング中にエラーが発生しました：",
     "waitingForState": "状態の同期を待っています...",
     "exit": "終了",
-    "connecting": "接続中..."
+    "connecting": "接続中...",
+    "roomCode": "ルームコード",
+    "waitingForPlayers": "プレイヤーを待っています...",
+    "playersConnected": "人接続中",
+    "enterRoomCode": "ルームコードを入力"
   },
   "game": {
     "gameOver": "ゲームオーバー",
