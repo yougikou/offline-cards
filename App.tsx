@@ -5,34 +5,48 @@ import { WebRTCManager } from './src/webrtc';
 import Scanner from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
 import GameBoard from './src/components/GameBoard';
-import { StandardPokerModule } from './src/game-modules/poker';
-import { GameState, GameAction } from './src/game-modules/types';
+import { UnoLiteGame } from './src/game-modules/unoLite';
+import { Client } from 'boardgame.io/client';
 
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
 type Role = 'HOST' | 'GUEST' | null;
 
-// The Targeted Sanitization function
-function sanitizeStateForPlayer(globalState: GameState, targetPlayerId: string): GameState {
-  const safeState: GameState = {
-    ...globalState,
-    deckCount: globalState.deck?.length || 0,
+// Replace GameAction with the boardgame.io specific action type
+export interface BgioAction {
+  type: string;
+  moveName: string;
+  args: any[];
+}
+
+// The Targeted Sanitization function for UnoLite via boardgame.io
+function sanitizeStateForPlayer(globalState: any, targetPlayerId: string): any {
+  if (!globalState || !globalState.G) return globalState;
+
+  const safeG = {
+    ...globalState.G,
     deck: undefined, // Hide the actual deck array
-    hands: {}
+    deckCount: globalState.G.deck?.length || 0,
+    discardPile: [...(globalState.G.discardPile || [])], // Visible to all
+    table: [...(globalState.G.table || [])], // Visible to all
+    hands: {} as Record<string, any>
   };
 
   // Replace other players' hand arrays with generic objects, keep target player's exact hand
-  if (globalState.hands) {
-    for (const [pId, handArray] of Object.entries(globalState.hands)) {
+  if (globalState.G.hands) {
+    for (const [pId, handArray] of Object.entries(globalState.G.hands) as [string, any[]][]) {
       if (pId === targetPlayerId) {
-        safeState.hands[pId] = [...handArray]; // True cards
+        safeG.hands[pId] = [...handArray]; // True cards
       } else {
         // Map to card backs/hidden markers
-        safeState.hands[pId] = handArray.map(() => ({ id: Math.random().toString(), hidden: true }));
+        safeG.hands[pId] = handArray.map(() => ({ id: Math.random().toString(), hidden: true }));
       }
     }
   }
 
-  return safeState;
+  return {
+    ...globalState,
+    G: safeG
+  };
 }
 
 export default function App() {
@@ -42,7 +56,6 @@ export default function App() {
   const [playerId, setPlayerId] = useState<string>(''); // For guests it's their ID, for host it's 'host'
 
   const [messages, setMessages] = useState<string[]>([]);
-  const [inputText, setInputText] = useState('');
 
   // Guest uses a single connection manager
   const [guestWebrtcManager, setGuestWebrtcManager] = useState<WebRTCManager | null>(null);
@@ -52,14 +65,17 @@ export default function App() {
   const [pendingHostManager, setPendingHostManager] = useState<WebRTCManager | null>(null);
   const hostConnections = useRef(new Map<string, WebRTCManager>());
 
+  // boardgame.io Host Client
+  const hostClientRef = useRef<any>(null);
+
   // Signaling state
   const [qrValue, setQrValue] = useState<string>('');
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
   const [showMode, setShowMode] = useState<'qr' | 'scanner'>('qr');
 
-  // Sandbox & Game state
-  const [gameState, setGameState] = useState<GameState | null>(null);
+  // Sandbox & Game state is now boardgame.io full state { G, ctx, plugins, ... }
+  const [gameState, setGameState] = useState<any>(null);
 
   // Persistence helpers
   const saveHostState = (id: string, msgs: string[]) => {
@@ -86,7 +102,8 @@ export default function App() {
   };
 
   // Helper to send game syncs to all connected guests
-  const broadcastSync = (state: GameState, connections: Map<string, WebRTCManager>) => {
+  const broadcastSync = (state: any, connections: Map<string, WebRTCManager>) => {
+    if (!state) return;
     connections.forEach((manager, guestId) => {
       const safeState = sanitizeStateForPlayer(state, guestId);
       manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState }));
@@ -117,7 +134,7 @@ export default function App() {
       try {
         const data = JSON.parse(msg);
         if (data.type === 'WELCOME') {
-          setMessages(data.state.messages || []);
+          setMessages(data.state?.messages || []);
           if (data.roomId) {
             setRoomId(data.roomId);
             saveGuestState(data.roomId, playerIdRef.current);
@@ -158,33 +175,40 @@ export default function App() {
             hostConnections.current.set(gId, manager);
             manager.sendMessage(JSON.stringify({ type: 'WELCOME', roomId: roomIdRef.current, state: { messages: messagesRef.current } }));
 
-            // Immediately sync current state if it exists, otherwise initialize it.
-            // In a dynamic N-player game, if a new player joins, we add them to state if not there.
-            if (gameStateRef.current) {
-              let currentState = { ...gameStateRef.current };
-              if (!currentState.players.includes(gId)) {
-                currentState = {
-                  ...currentState,
-                  players: [...currentState.players, gId],
-                  hands: {
-                    ...currentState.hands,
-                    [gId]: []
-                  }
-                };
-                setGameState(currentState);
-              }
-              const safeState = sanitizeStateForPlayer(currentState, gId);
-              manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState }));
-
-              // Inform existing players of the new state
-              broadcastSync(currentState, hostConnections.current);
+            // With boardgame.io, we shouldn't dynamically add players mid-game easily in this simple setup.
+            // Ideally, all players join during the HOST signaling phase, then we start the client.
+            // If the game is already running, sync it.
+            if (hostClientRef.current) {
+               const currentState = hostClientRef.current.getState();
+               const safeState = sanitizeStateForPlayer(currentState, gId);
+               manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState }));
             }
           }
-        } else if (data.type === 'ACTION') {
-          if (gameStateRef.current) {
-            const newState = StandardPokerModule.reducer(gameStateRef.current, data.action);
-            setGameState(newState);
-            broadcastSync(newState, hostConnections.current);
+        } else if (data.type === 'MOVE') {
+          // Action from guest
+          if (hostClientRef.current) {
+            // boardgame.io moves must be called as: client.moves[moveName](...args)
+            // But we also need to ensure it's the right player's turn. boardgame.io client exposes a generic `update` or we can just call the move.
+            // Wait, hostClient is running as a single local instance. We need to tell it WHICH player is making the move if we use a multiplexed client,
+            // or we must update playerID before making the move if we use a single client.
+
+            // To properly execute a move on behalf of a guest using a local client:
+            const moveName = data.moveName;
+            const args = data.args || [];
+
+            // Temporary set playerID on the client to match the guest making the move
+            const pIndex = gameStateRef.current?.G?.players.indexOf(data.playerId);
+            if (pIndex !== undefined && pIndex !== -1) {
+              hostClientRef.current.updatePlayerID(pIndex.toString());
+              if (hostClientRef.current.moves[moveName]) {
+                 hostClientRef.current.moves[moveName](...args);
+              }
+              // Switch back to host id
+              const hIndex = gameStateRef.current?.G?.players.indexOf('host');
+              if (hIndex !== undefined && hIndex !== -1) {
+                hostClientRef.current.updatePlayerID(hIndex.toString());
+              }
+            }
           }
         }
       } catch (e) {
@@ -193,15 +217,43 @@ export default function App() {
     };
 
     manager.onConnectionStateChangeCallback = (state) => {
-      // Aggregate connection status is tricky. Let's just monitor this one for UI,
-      // but 'CONNECTED' should trigger if AT LEAST ONE guest is connected.
-      // Wait, we can always just transition the Host to CONNECTED since the host manages the room.
       setConnectionStatus(state);
     };
 
     manager.onDataChannelOpenCallback = () => {
-      setAppState('CONNECTED');
+      // Don't auto-transition to connected here if we want to wait for "Start Game".
+      // But we can let them connect and wait in the lobby.
+      // We are leaving the Host in SIGNALING_HOST until they manually click "Start Game".
     };
+  };
+
+  const startBoardGameHost = (playerIds: string[]) => {
+    const UnoGameDef = UnoLiteGame(playerIds);
+    const client = Client({
+      game: UnoGameDef,
+      numPlayers: playerIds.length,
+      // No multiplayer wrapper - we run purely local and sync state manually!
+    });
+
+    client.start();
+    hostClientRef.current = client;
+
+    // Set host's string ID as the current playerID to respect boardgame.io's playerView if we were using it
+    const hIndex = playerIds.indexOf('host');
+    if (hIndex !== -1) {
+      client.updatePlayerID(hIndex.toString());
+    }
+
+    client.subscribe((state) => {
+      if (!state) return;
+      setGameState(state);
+      broadcastSync(state, hostConnections.current);
+    });
+
+    // Initial state set
+    const initialState = client.getState();
+    setGameState(initialState);
+    broadcastSync(initialState, hostConnections.current);
   };
 
   const handleHost = async (resume: boolean = false) => {
@@ -214,10 +266,6 @@ export default function App() {
       setRoomId(newRoomId);
       setMessages([]);
       clearStorage();
-
-      // Initialize state immediately for the host
-      const initialState = StandardPokerModule.setup(['host']);
-      setGameState(initialState);
     }
 
     startNewHostPendingConnection();
@@ -264,7 +312,9 @@ export default function App() {
     try {
       if (appState === 'SIGNALING_HOST' && pendingHostManager) {
         await pendingHostManager.acceptAnswer(scannedText);
-        setAppState('CONNECTED');
+        // Do not jump to CONNECTED immediately. Let Host gather players, then click Start Game.
+        alert('Guest Connected! You can add another or click Start Game.');
+        setQrValue('');
       } else if (appState === 'SIGNALING_GUEST' && guestWebrtcManager) {
         const answerStr = await guestWebrtcManager.acceptOfferAndCreateAnswer(scannedText);
         setQrValue(answerStr);
@@ -277,28 +327,46 @@ export default function App() {
     }
   };
 
-  const handleGameAction = (action: GameAction) => {
+  const handleGameAction = (moveName: string, ...args: any[]) => {
     if (appState === 'SANDBOX') {
-      if (gameState) {
-        const newState = StandardPokerModule.reducer(gameState, action);
-        setGameState(newState);
+      if (hostClientRef.current) {
+         // In sandbox, we just execute the move on the local client without playerID impersonation
+         // Actually, if we play as different players in sandbox, we should impersonate:
+         // For now, assume we just call the move. boardgame.io will validate it against ctx.currentPlayer
+         hostClientRef.current.moves[moveName](...args);
       }
     } else if (appState === 'CONNECTED') {
-      if (role === 'HOST' && gameState) {
-        const newState = StandardPokerModule.reducer(gameState, action);
-        setGameState(newState);
-        broadcastSync(newState, hostConnections.current);
+      if (role === 'HOST') {
+         if (hostClientRef.current) {
+            // Make sure host playerID is set
+            const hIndex = gameState?.G?.players.indexOf('host');
+            if (hIndex !== undefined && hIndex !== -1) {
+              hostClientRef.current.updatePlayerID(hIndex.toString());
+            }
+            hostClientRef.current.moves[moveName](...args);
+         }
       } else if (role === 'GUEST') {
-        guestWebrtcManager?.sendMessage(JSON.stringify({ type: 'ACTION', action }));
+        guestWebrtcManager?.sendMessage(JSON.stringify({
+          type: 'MOVE',
+          playerId: playerId,
+          moveName,
+          args
+        }));
       }
     }
+  };
+
+  const startGameHost = () => {
+    const allPlayers = ['host', ...Array.from(hostConnections.current.keys())];
+    startBoardGameHost(allPlayers);
+    setAppState('CONNECTED');
   };
 
   const renderHome = () => {
     return (
       <View style={styles.content}>
-        <Text style={styles.title}>Offline Cards</Text>
-        <Text style={styles.subtitle}>Multi-player LAN</Text>
+        <Text style={styles.title}>Offline Cards (UnoLite)</Text>
+        <Text style={styles.subtitle}>Powered by boardgame.io P2P</Text>
         <View style={styles.buttonContainer}>
           <Button title="Create Room (Host)" onPress={() => handleHost(false)} />
           <View style={{ height: 20 }} />
@@ -309,7 +377,8 @@ export default function App() {
             <Button title="Enter Local Sandbox" color="purple" onPress={() => {
               setAppState('SANDBOX');
               setPlayerId('host');
-              setGameState(StandardPokerModule.setup(['host', 'guest_1', 'guest_2']));
+              const players = ['host', 'guest_1'];
+              startBoardGameHost(players);
             }} />
           </View>
         </View>
@@ -324,8 +393,15 @@ export default function App() {
         gameState={gameState}
         myPlayerId="host"
         onAction={handleGameAction}
-        onExit={() => { setGameState(null); setAppState('HOME'); }}
-        onReset={() => setGameState(StandardPokerModule.setup(['host', 'guest_1', 'guest_2']))}
+        onExit={() => {
+          if(hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
+          setGameState(null);
+          setAppState('HOME');
+        }}
+        onReset={() => {
+          if(hostClientRef.current) hostClientRef.current.stop();
+          startBoardGameHost(['host', 'guest_1']);
+        }}
         isSandbox={true}
       />
     );
@@ -367,7 +443,12 @@ export default function App() {
       <View style={{ marginTop: 20, width: '100%', maxWidth: 300 }}>
         {appState === 'SIGNALING_HOST' && (
           <View style={{ marginBottom: 10 }}>
-            <Button title="Skip / Start Game" onPress={() => setAppState('CONNECTED')} color="green" />
+            <Button title="Add Another Player" onPress={startNewHostPendingConnection} color="blue" />
+          </View>
+        )}
+        {appState === 'SIGNALING_HOST' && (
+          <View style={{ marginBottom: 10 }}>
+             <Button title={`Start Game (${hostConnections.current.size + 1} players)`} onPress={startGameHost} color="green" />
           </View>
         )}
         <Button title="Cancel" onPress={() => {
@@ -394,20 +475,13 @@ export default function App() {
 
     return (
       <View style={styles.sandboxContainer}>
-        {role === 'HOST' && (
-          <View style={{ position: 'absolute', top: 40, right: 10, zIndex: 10 }}>
-            <Button title="+ Add Player" onPress={() => {
-              startNewHostPendingConnection();
-              setAppState('SIGNALING_HOST');
-            }} />
-          </View>
-        )}
         <GameBoard
           gameState={gameState}
           myPlayerId={playerId}
           onAction={handleGameAction}
           onExit={() => {
             if (role === 'HOST') {
+              if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
               hostConnections.current.forEach(m => m.close());
               hostConnections.current.clear();
             } else {
@@ -449,11 +523,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 10,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
     marginBottom: 40,
+    textAlign: 'center',
   },
   buttonContainer: {
     width: '100%',
