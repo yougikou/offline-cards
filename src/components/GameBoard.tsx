@@ -67,15 +67,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
     if (gameName === 'UnoLite') {
       onAction('playCard', cardIndex);
     } else {
-      // For ZhengShangYou, if dragging a card that is selected, play all selected.
-      // If dragging a card that isn't selected, maybe select it and play it?
       if (selectedCards.includes(cardIndex)) {
         onAction('playCard', selectedCards);
         setSelectedCards([]);
       } else {
-        // If they drag up an unselected card, just play that single card
         onAction('playCard', [cardIndex]);
-        // Also remove it from selected if anything was selected to avoid state mismatches
         setSelectedCards([]);
       }
     }
@@ -212,6 +208,16 @@ const GameBoard: React.FC<GameBoardProps> = ({
           ) : (
             <>
               <TouchableOpacity
+                style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50' }]}
+                onPress={() => {
+                  onAction('playCard', selectedCards);
+                  setSelectedCards([]);
+                }}
+                disabled={!isMyTurn || gameOver || selectedCards.length === 0}
+              >
+                <Text style={styles.fabText}>{t('game.playSelected')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={[styles.fab, (!isMyTurn || gameOver || currentTrick.length === 0) ? styles.fabDisabled : { backgroundColor: '#9E9E9E' }]}
                 onPress={() => {
                   onAction('pass');
@@ -295,7 +301,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   fabDisabled: {
-    backgroundColor: '#A5D6A7', // Faded color for disabled
+    backgroundColor: 'gray', // Faded color for disabled
+    opacity: 0.5,
     elevation: 0,
     shadowOpacity: 0,
   },

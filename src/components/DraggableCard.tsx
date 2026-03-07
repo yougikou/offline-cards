@@ -40,12 +40,12 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => isMyTurn && !isOpponent,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only start pan responder if user moves a bit, avoiding conflict with a simple tap
-        return isMyTurn && !isOpponent && (Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5);
-      },
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderGrant: () => {
+        if (!isMyTurn || isOpponent) return;
         setZIndex(999);
         // Provide tactile feedback on press
         Animated.spring(scale, {
@@ -61,14 +61,18 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         });
         pan.setValue({ x: 0, y: 0 });
       },
-      onPanResponderMove: Animated.event(
-        [
-          null,
-          { dx: pan.x, dy: pan.y }
-        ],
-        { useNativeDriver: false }
-      ),
+      onPanResponderMove: (e, gestureState) => {
+        if (!isMyTurn || isOpponent) return;
+        Animated.event(
+          [
+            null,
+            { dx: pan.x, dy: pan.y }
+          ],
+          { useNativeDriver: false }
+        )(e, gestureState);
+      },
       onPanResponderRelease: (_, gestureState) => {
+        if (!isMyTurn || isOpponent) return;
         setZIndex(1);
         // Reset tactile feedback
         Animated.spring(scale, {
@@ -80,8 +84,11 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
         pan.flattenOffset();
 
-        // Check if dragged up sufficiently
-        if (gestureState.dy < -120) {
+        // Detect tap
+        if (Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5) {
+          onPress(index);
+        } else if (gestureState.dy < -100) {
+          // Check if dragged up sufficiently
           onDragUp(index);
         }
 
@@ -93,6 +100,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         }).start();
       },
       onPanResponderTerminate: () => {
+        if (!isMyTurn || isOpponent) return;
         setZIndex(1);
          Animated.spring(scale, {
           toValue: 1,
@@ -131,7 +139,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       {...panResponder.panHandlers}
       style={[
         styles.cardContainer,
-        { marginLeft, opacity, zIndex, elevation: zIndex },
+        { marginLeft, opacity, zIndex, elevation: zIndex, touchAction: 'none' } as any,
         {
           transform: [
             { translateX: pan.x },
@@ -143,14 +151,6 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
     >
       <View
         style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
-        onTouchEnd={(e) => {
-           // Handle tap if not a drag (or if it's the pan responder catching it)
-           // We'll rely on a simple custom check or the parent container
-           // but `onTouchEnd` works on Web for a simple tap if drag didn't start.
-           if (isMyTurn && !isOpponent) {
-             onPress(index);
-           }
-        }}
       >
         <Text style={[styles.cardText, { color: textColor }]}>
           {card.value !== undefined && gameName === 'UnoLite' ? card.value : card.rank}
