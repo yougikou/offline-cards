@@ -1,23 +1,35 @@
 {
   "expo": {
-    "name": "offline-cards",
+    "name": "Offline Cards",
     "slug": "offline-cards",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "experiments": {
       "baseUrl": "/offline-cards"
     },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#f5f5f5"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yougikou.offlinecards"
     },
     "android": {
+      "package": "com.yougikou.offlinecards",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -34,6 +46,33 @@
       "display": "fullscreen",
       "startUrl": ".",
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "20d78267-4af8-484c-b4ba-5bef0d17fcfc"
+      }
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "extraMavenRepos": [
+              "https://repo1.maven.org/maven2",
+              "https://jitpack.io"
+            ]
+          }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Offline Cards to access your camera for QR code scanning."
+        }
+      ],
+      "./plugins/withWebRTCMaven"
+    ],
+    "owner": "yougikou"
   }
 }

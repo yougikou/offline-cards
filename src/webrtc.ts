@@ -1,4 +1,28 @@
 import LZString from 'lz-string';
+import { Platform } from 'react-native';
+
+// Import native WebRTC polyfills for Android/iOS
+let NativeRTCPeerConnection: any;
+let NativeRTCSessionDescription: any;
+
+if (Platform.OS !== 'web') {
+  try {
+    const webrtc = require('react-native-webrtc');
+    NativeRTCPeerConnection = webrtc.RTCPeerConnection;
+    NativeRTCSessionDescription = webrtc.RTCSessionDescription;
+    // Register globals for react-native-webrtc
+    webrtc.registerGlobals();
+  } catch (e) {
+    console.warn('react-native-webrtc not available, WebRTC will only work on web');
+  }
+}
+
+const getRTCPeerConnection = (): typeof RTCPeerConnection => {
+  if (Platform.OS !== 'web' && NativeRTCPeerConnection) {
+    return NativeRTCPeerConnection;
+  }
+  return RTCPeerConnection;
+};
 
 const rtcConfig: RTCConfiguration = {
   iceServers: [], // Empty for pure LAN/Offline
@@ -12,10 +36,11 @@ export class WebRTCManager {
   public onConnectionStateChangeCallback: ((state: string) => void) | null = null;
   public onDataChannelOpenCallback: (() => void) | null = null;
 
-  constructor() {}
+  constructor() { }
 
   public initPeerConnection() {
-    this.peerConnection = new RTCPeerConnection(rtcConfig);
+    const PeerConnectionClass = getRTCPeerConnection();
+    this.peerConnection = new PeerConnectionClass(rtcConfig);
 
     this.peerConnection.onconnectionstatechange = () => {
       if (this.peerConnection) {

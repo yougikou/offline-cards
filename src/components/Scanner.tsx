@@ -1,20 +1,20 @@
-import React, { useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
-import { View, StyleSheet, Text } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Text, Platform } from 'react-native';
 
 interface ScannerProps {
   onScan: (decodedText: string) => void;
   onError?: (error: string) => void;
 }
 
-const Scanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+// Web-only scanner component using html5-qrcode
+const WebScanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
+  const scannerRef = useRef<any>(null);
 
   useEffect(() => {
-    // Only run in web environment
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       const initScanner = async () => {
         try {
+          const { Html5Qrcode } = await import('html5-qrcode');
           const html5Qrcode = new Html5Qrcode("reader");
           scannerRef.current = html5Qrcode;
 
@@ -22,9 +22,8 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
             { facingMode: "environment" },
             {
               fps: 10,
-              // Calculate a dynamic qrbox size based on viewport width to fit better
-              qrbox: (videoWidth, videoHeight) => {
-                const minEdgePercentage = 0.7; // 70% of the smallest edge
+              qrbox: (videoWidth: number, videoHeight: number) => {
+                const minEdgePercentage = 0.7;
                 const minEdgeSize = Math.min(videoWidth, videoHeight);
                 return {
                   width: Math.floor(minEdgeSize * minEdgePercentage),
@@ -32,19 +31,18 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
                 };
               }
             },
-            (decodedText, decodedResult) => {
+            (decodedText: string) => {
               if (scannerRef.current?.isScanning) {
                 scannerRef.current.stop().then(() => {
                   onScan(decodedText);
-                }).catch((err) => {
+                }).catch((err: any) => {
                   console.error("Failed to stop scanner after scan", err);
                   onScan(decodedText);
                 });
               }
             },
-            (errorMessage) => {
+            () => {
               // Ignore frequent scan errors when no QR is found
-              // onError?.(errorMessage);
             }
           );
         } catch (err) {
@@ -61,7 +59,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
 
       return () => {
         if (scannerRef.current?.isScanning) {
-          scannerRef.current.stop().catch(err => console.error("Error stopping scanner on unmount", err));
+          scannerRef.current.stop().catch((err: any) => console.error("Error stopping scanner on unmount", err));
         }
       };
     }
@@ -76,6 +74,72 @@ const Scanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
       <div id="reader" style={{ flex: 1, width: '100%', maxWidth: '400px', maxHeight: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}></div>
     </View>
   );
+};
+
+// Native scanner component using expo-camera
+const NativeScanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
+
+  useEffect(() => {
+    const requestPermission = async () => {
+      try {
+        const { Camera } = await import('expo-camera');
+        const { status } = await Camera.requestCameraPermissionsAsync();
+        setHasPermission(status === 'granted');
+      } catch (err) {
+        console.error("Error requesting camera permission", err);
+        onError?.("Failed to request camera permission");
+        setHasPermission(false);
+      }
+    };
+    requestPermission();
+  }, []);
+
+  const handleBarCodeScanned = ({ data }: { type: string; data: string }) => {
+    if (scanned) return;
+    setScanned(true);
+    onScan(data);
+  };
+
+  if (hasPermission === null) {
+    return (
+      <View style={styles.container}>
+        <Text>Requesting camera permission...</Text>
+      </View>
+    );
+  }
+
+  if (hasPermission === false) {
+    return (
+      <View style={styles.container}>
+        <Text>Camera permission denied. Please grant camera access in settings.</Text>
+      </View>
+    );
+  }
+
+  // Dynamic import to avoid bundling issue on web
+  const CameraViewComponent = require('expo-camera').CameraView;
+
+  return (
+    <View style={styles.container}>
+      <CameraViewComponent
+        style={StyleSheet.absoluteFillObject}
+        facing="back"
+        barcodeScannerSettings={{
+          barcodeTypes: ['qr'],
+        }}
+        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+      />
+    </View>
+  );
+};
+
+const Scanner: React.FC<ScannerProps> = (props) => {
+  if (Platform.OS === 'web') {
+    return <WebScanner {...props} />;
+  }
+  return <NativeScanner {...props} />;
 };
 
 const styles = StyleSheet.create({

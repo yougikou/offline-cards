@@ -10,6 +10,7 @@ import GameBoard from './src/components/GameBoard';
 import { UnoLiteGame } from './src/game-modules/unoLite';
 import { ZhengShangYouGame } from './src/game-modules/ZhengShangYou';
 import { Client } from 'boardgame.io/client';
+import { Storage } from './src/storage';
 
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
 type GameMode = 'UnoLite' | 'ZhengShangYou';
@@ -55,27 +56,18 @@ export default function App() {
   const [gameState, setGameState] = useState<any>(null);
 
   // Persistence helpers
-  const saveHostState = (id: string, msgs: string[]) => {
-    if (Platform.OS === 'web') {
-      localStorage.setItem('hostRoomId', id);
-      localStorage.setItem('hostState', JSON.stringify({ messages: msgs }));
-    }
+  const saveHostState = async (id: string, msgs: string[]) => {
+    await Storage.setItem('hostRoomId', id);
+    await Storage.setItem('hostState', JSON.stringify({ messages: msgs }));
   };
 
-  const saveGuestState = (rId: string, pId: string) => {
-    if (Platform.OS === 'web') {
-      localStorage.setItem('guestRoomId', rId);
-      localStorage.setItem('guestPlayerId', pId);
-    }
+  const saveGuestState = async (rId: string, pId: string) => {
+    await Storage.setItem('guestRoomId', rId);
+    await Storage.setItem('guestPlayerId', pId);
   };
 
-  const clearStorage = () => {
-    if (Platform.OS === 'web') {
-      localStorage.removeItem('hostRoomId');
-      localStorage.removeItem('hostState');
-      localStorage.removeItem('guestRoomId');
-      localStorage.removeItem('guestPlayerId');
-    }
+  const clearStorage = async () => {
+    await Storage.multiRemove(['hostRoomId', 'hostState', 'guestRoomId', 'guestPlayerId']);
   };
 
   const getGameModule = (mode: GameMode) => {
@@ -184,21 +176,21 @@ export default function App() {
             // Ideally, all players join during the HOST signaling phase, then we start the client.
             // If the game is already running, sync it.
             if (hostClientRef.current) {
-               const currentState = hostClientRef.current.getState();
-               const gameModule = getGameModule(selectedGameModeRef.current);
-               const gameDef = gameModule(currentState.G.players || []);
-               let safeState = currentState;
-               if (gameDef.playerView) {
-                 safeState = {
-                   ...currentState,
-                   G: gameDef.playerView({
-                     G: currentState.G,
-                     ctx: currentState.ctx,
-                     playerID: gId
-                   })
-                 };
-               }
-               manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState, gameMode: selectedGameModeRef.current }));
+              const currentState = hostClientRef.current.getState();
+              const gameModule = getGameModule(selectedGameModeRef.current);
+              const gameDef = gameModule(currentState.G.players || []);
+              let safeState = currentState;
+              if (gameDef.playerView) {
+                safeState = {
+                  ...currentState,
+                  G: gameDef.playerView({
+                    G: currentState.G,
+                    ctx: currentState.ctx,
+                    playerID: gId
+                  })
+                };
+              }
+              manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState, gameMode: selectedGameModeRef.current }));
             }
           }
         } else if (data.type === 'MOVE') {
@@ -218,7 +210,7 @@ export default function App() {
             if (pIndex !== undefined && pIndex !== -1) {
               hostClientRef.current.updatePlayerID(pIndex.toString());
               if (hostClientRef.current.moves[moveName]) {
-                 hostClientRef.current.moves[moveName](...args);
+                hostClientRef.current.moves[moveName](...args);
               }
               // Switch back to host id
               const hIndex = gameStateRef.current?.G?.players.indexOf('host');
@@ -352,21 +344,21 @@ export default function App() {
   const handleGameAction = (moveName: string, ...args: any[]) => {
     if (appState === 'SANDBOX') {
       if (hostClientRef.current) {
-         // In sandbox, we just execute the move on the local client without playerID impersonation
-         // Actually, if we play as different players in sandbox, we should impersonate:
-         // For now, assume we just call the move. boardgame.io will validate it against ctx.currentPlayer
-         hostClientRef.current.moves[moveName](...args);
+        // In sandbox, we just execute the move on the local client without playerID impersonation
+        // Actually, if we play as different players in sandbox, we should impersonate:
+        // For now, assume we just call the move. boardgame.io will validate it against ctx.currentPlayer
+        hostClientRef.current.moves[moveName](...args);
       }
     } else if (appState === 'CONNECTED') {
       if (role === 'HOST') {
-         if (hostClientRef.current) {
-            // Make sure host playerID is set
-            const hIndex = gameState?.G?.players.indexOf('host');
-            if (hIndex !== undefined && hIndex !== -1) {
-              hostClientRef.current.updatePlayerID(hIndex.toString());
-            }
-            hostClientRef.current.moves[moveName](...args);
-         }
+        if (hostClientRef.current) {
+          // Make sure host playerID is set
+          const hIndex = gameState?.G?.players.indexOf('host');
+          if (hIndex !== undefined && hIndex !== -1) {
+            hostClientRef.current.updatePlayerID(hIndex.toString());
+          }
+          hostClientRef.current.moves[moveName](...args);
+        }
       } else if (role === 'GUEST') {
         guestWebrtcManager?.sendMessage(JSON.stringify({
           type: 'MOVE',
@@ -405,19 +397,19 @@ export default function App() {
         <Text style={styles.subtitle}>{t('lobby.subtitle')}</Text>
         <View style={styles.buttonContainer}>
           <View style={{ marginBottom: 20 }}>
-             <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
-             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
-                <Button
-                   title={t('lobby.game_UnoLite')}
-                   onPress={() => setSelectedGameMode('UnoLite')}
-                   color={selectedGameMode === 'UnoLite' ? '#007AFF' : '#999'}
-                />
-                <Button
-                   title={t('lobby.game_ZhengShangYou')}
-                   onPress={() => setSelectedGameMode('ZhengShangYou')}
-                   color={selectedGameMode === 'ZhengShangYou' ? '#007AFF' : '#999'}
-                />
-             </View>
+            <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
+              <Button
+                title={t('lobby.game_UnoLite')}
+                onPress={() => setSelectedGameMode('UnoLite')}
+                color={selectedGameMode === 'UnoLite' ? '#007AFF' : '#999'}
+              />
+              <Button
+                title={t('lobby.game_ZhengShangYou')}
+                onPress={() => setSelectedGameMode('ZhengShangYou')}
+                color={selectedGameMode === 'ZhengShangYou' ? '#007AFF' : '#999'}
+              />
+            </View>
           </View>
           <Button title={t('lobby.createRoom')} onPress={() => handleHost(false)} />
           <View style={{ height: 20 }} />
@@ -445,12 +437,12 @@ export default function App() {
         myPlayerId="host"
         onAction={handleGameAction}
         onExit={() => {
-          if(hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
+          if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
           setGameState(null);
           setAppState('HOME');
         }}
         onReset={() => {
-          if(hostClientRef.current) hostClientRef.current.stop();
+          if (hostClientRef.current) hostClientRef.current.stop();
           startBoardGameHost(['host', 'guest_1']);
         }}
         isSandbox={true}
@@ -482,11 +474,7 @@ export default function App() {
         {showMode === 'scanner' && isScanning ? (
           <View style={[styles.section, { flex: 1 }]}>
             <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.scanOtherDeviceQR')}</Text>
-            {Platform.OS === 'web' ? (
-              <Scanner onScan={handleScanSuccess} />
-            ) : (
-              <Text>{t('lobby.scanningRequiresWeb')}</Text>
-            )}
+            <Scanner onScan={handleScanSuccess} />
           </View>
         ) : null}
       </View>
@@ -499,7 +487,7 @@ export default function App() {
         )}
         {appState === 'SIGNALING_HOST' && (
           <View style={{ marginBottom: 10 }}>
-             <Button title={t('lobby.startGame', { count: hostConnections.current.size + 1 })} onPress={startGameHost} color="green" />
+            <Button title={t('lobby.startGame', { count: hostConnections.current.size + 1 })} onPress={startGameHost} color="green" />
           </View>
         )}
         <Button title={t('lobby.cancel')} onPress={() => {
