@@ -1,17 +1,28 @@
 import React from 'react';
-import QRCode from 'react-native-qrcode-svg';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Image } from 'react-native';
 
 interface QRCodeDisplayProps {
   value: string;
 }
 
 const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ value }) => {
+  const encodedValue = encodeURIComponent(value);
+  const qrCodeUri = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodedValue}`;
+
   return (
     <View style={styles.container}>
       {value ? (
         <View style={styles.qrWrapper}>
-          <QRCode value={value} size={256} />
+          <Image
+            source={{ uri: qrCodeUri }}
+            style={styles.qrImage}
+            resizeMode="contain"
+            accessibilityLabel="Share room QR code"
+          />
+          <Text style={styles.hintText}>If QR image does not load, copy and share this link:</Text>
+          <Text selectable style={styles.valueText}>
+            {value}
+          </Text>
         </View>
       ) : (
         <Text>No data for QR Code</Text>
@@ -42,6 +53,21 @@ const styles = StyleSheet.create({
     maxHeight: 400,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
+  },
+  qrImage: {
+    width: 256,
+    height: 256,
+  },
+  hintText: {
+    color: '#666',
+    textAlign: 'center',
+    fontSize: 12,
+  },
+  valueText: {
+    color: '#111',
+    textAlign: 'center',
+    fontSize: 13,
   },
 });
 
