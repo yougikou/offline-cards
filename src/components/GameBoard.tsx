@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Modal, Animated } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import DraggableCard from './DraggableCard';
 
@@ -24,6 +24,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const { t } = useTranslation();
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isMultiDragging, setIsMultiDragging] = useState(false);
+
+  const multiPan = useRef(new Animated.ValueXY()).current;
+  const multiScale = useRef(new Animated.Value(1)).current;
 
   if (!gameState || !gameState.G) return null;
 
@@ -78,6 +82,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   };
 
   const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false) => {
+    const isSelected = selectedCards.includes(cardIndex);
     return (
       <DraggableCard
         key={card.id || `${player}-${cardIndex}-${Math.random()}`}
@@ -86,10 +91,21 @@ const GameBoard: React.FC<GameBoardProps> = ({
         totalCards={G.hands && G.hands[player] ? G.hands[player].length : 0}
         isMyTurn={isMyTurn && !gameOver}
         gameName={gameName}
-        isSelected={selectedCards.includes(cardIndex)}
+        isSelected={isSelected}
         onPress={handleCardPress}
         onDragUp={handleDragUp}
         isOpponent={isOpponent}
+        multiPan={multiPan}
+        multiScale={multiScale}
+        isMultiDragging={isMultiDragging && isSelected}
+        onDragStart={() => {
+          if (isSelected && selectedCards.length > 1) {
+            setIsMultiDragging(true);
+          }
+        }}
+        onDragEnd={() => {
+          setIsMultiDragging(false);
+        }}
       />
     );
   };
@@ -97,7 +113,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   return (
     <View style={styles.sandboxContainer}>
       <TouchableOpacity style={{ position: 'absolute', top: 20, right: 20, zIndex: 100 }} onPress={() => setModalVisible(true)}>
-         <Text style={{ fontSize: 24, color: 'white' }}>⚙️</Text>
+        <Text style={{ fontSize: 24, color: 'white' }}>⚙️</Text>
       </TouchableOpacity>
 
       <Modal visible={modalVisible} transparent={true} animationType="fade">
@@ -151,17 +167,17 @@ const GameBoard: React.FC<GameBoardProps> = ({
               </View>
               <View style={styles.tableContainer}>
                 {discardPile.length > 0 && (
-                   (() => {
-                      const topCard = discardPile[discardPile.length - 1];
-                      const cardColor = topCard.color ? topCard.color.toLowerCase() : 'gray';
-                      return (
-                        <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90 }]}>
-                          <Text style={[styles.cardText, { color: 'white', fontSize: 24 }]}>
-                            {topCard.value}
-                          </Text>
-                        </View>
-                      );
-                   })()
+                  (() => {
+                    const topCard = discardPile[discardPile.length - 1];
+                    const cardColor = topCard.color ? topCard.color.toLowerCase() : 'gray';
+                    return (
+                      <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90 }]}>
+                        <Text style={[styles.cardText, { color: 'white', fontSize: 24 }]}>
+                          {topCard.value}
+                        </Text>
+                      </View>
+                    );
+                  })()
                 )}
               </View>
             </>
