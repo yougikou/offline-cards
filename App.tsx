@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Button, TextInput, Platform, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
-import './src/i18n/index'; // Initialize i18n
+import './src/i18n/index';
 import { WebRTCManager } from './src/webrtc';
 import Scanner from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
@@ -10,12 +10,22 @@ import GameBoard from './src/components/GameBoard';
 import { UnoLiteGame } from './src/game-modules/unoLite';
 import { ZhengShangYouGame } from './src/game-modules/ZhengShangYou';
 import { Client } from 'boardgame.io/client';
+import {
+  createSignalPayload,
+  encodeSignalPayload,
+  decodeSignalPayload,
+  buildSignalShareLink,
+  parseSignalFromCurrentUrl,
+  clearSignalHashFromUrl,
+  type SignalPayloadV1,
+  type SignalType,
+} from './src/signaling';
 
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
 type GameMode = 'UnoLite' | 'ZhengShangYou';
 type Role = 'HOST' | 'GUEST' | null;
+type SignalingTab = 'qr' | 'scan' | 'text' | 'share';
 
-// Replace GameAction with the boardgame.io specific action type
 export interface BgioAction {
   type: string;
   moveName: string;
@@ -27,34 +37,26 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>('HOME');
   const [role, setRole] = useState<Role>(null);
   const [roomId, setRoomId] = useState<string>('');
-  const [playerId, setPlayerId] = useState<string>(''); // For guests it's their ID, for host it's 'host'
-
+  const [playerId, setPlayerId] = useState<string>('');
   const [messages, setMessages] = useState<string[]>([]);
-
-  // Guest uses a single connection manager
   const [guestWebrtcManager, setGuestWebrtcManager] = useState<WebRTCManager | null>(null);
-
-  // Host uses a pool of connection managers mapped by guest ID
-  // For signaling we need a "pending" manager that hasn't been assigned an ID yet
   const [pendingHostManager, setPendingHostManager] = useState<WebRTCManager | null>(null);
   const hostConnections = useRef(new Map<string, WebRTCManager>());
-
-  // boardgame.io Host Client
   const hostClientRef = useRef<any>(null);
 
-  // Signaling state
-  const [qrValue, setQrValue] = useState<string>('');
-  const [isScanning, setIsScanning] = useState<boolean>(false);
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
-  const [showMode, setShowMode] = useState<'qr' | 'scanner'>('qr');
+  const [signalingTab, setSignalingTab] = useState<SignalingTab>('qr');
+  const [signalOutputText, setSignalOutputText] = useState<string>('');
+  const [signalInputText, setSignalInputText] = useState<string>('');
+  const [signalMessage, setSignalMessage] = useState<string>('');
+  const [signalError, setSignalError] = useState<string>('');
+  const [latestSignalType, setLatestSignalType] = useState<SignalType | null>(null);
+  const [importFingerprint, setImportFingerprint] = useState<string>('');
+  const [pendingUrlSignal, setPendingUrlSignal] = useState<SignalPayloadV1 | null>(null);
 
-  // Lobby
   const [selectedGameMode, setSelectedGameMode] = useState<GameMode>('UnoLite');
-
-  // Sandbox & Game state is now boardgame.io full state { G, ctx, plugins, ... }
   const [gameState, setGameState] = useState<any>(null);
 
-  // Persistence helpers
   const saveHostState = (id: string, msgs: string[]) => {
     if (Platform.OS === 'web') {
       localStorage.setItem('hostRoomId', id);
@@ -88,11 +90,9 @@ export default function App() {
     }
   };
 
-  // Helper to send game syncs to all connected guests
   const broadcastSync = (state: any, connections: Map<string, WebRTCManager>) => {
     if (!state) return;
     connections.forEach((manager, guestId) => {
-      // Delegate state sanitization to the active game module's playerView
       const gameModule = getGameModule(selectedGameModeRef.current);
       const gameDef = gameModule(state.G.players || []);
       let safeState = state;
@@ -102,8 +102,8 @@ export default function App() {
           G: gameDef.playerView({
             G: state.G,
             ctx: state.ctx,
-            playerID: guestId
-          })
+            playerID: guestId,
+          }),
         };
       }
       manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState }));
@@ -124,14 +124,28 @@ export default function App() {
     playerIdRef.current = playerId;
     messagesRef.current = messages;
     gameStateRef.current = gameState;
-  }, [role, roomId, playerId, messages, gameState]);
+  }, [role, roomId, playerId, messages, gameState, selectedGameMode]);
 
-  // Handle Guest Connection
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const parsed = parseSignalFromCurrentUrl();
+    if (!parsed) return;
+    if (parsed.ok === false) {
+      setSignalError(parsed.message);
+      clearSignalHashFromUrl();
+      return;
+    }
+    setPendingUrlSignal(parsed.payload);
+    setSignalInputText(parsed.rawText);
+    setSignalingTab('text');
+    setSignalMessage(t('lobby.linkImportedReady'));
+    clearSignalHashFromUrl();
+  }, [t]);
+
   useEffect(() => {
     if (role !== 'GUEST' || !guestWebrtcManager) return;
 
     const manager = guestWebrtcManager;
-
     manager.onMessageCallback = (msg) => {
       try {
         const data = JSON.parse(msg);
@@ -147,7 +161,7 @@ export default function App() {
           }
           setGameState(data.state);
         }
-      } catch (e) {
+      } catch {
         setMessages((prev) => [...prev, `Remote: ${msg}`]);
       }
     };
@@ -163,64 +177,49 @@ export default function App() {
       manager.sendMessage(JSON.stringify({
         type: 'HELLO',
         roomId: roomIdRef.current,
-        playerId: playerIdRef.current
+        playerId: playerIdRef.current,
       }));
     };
   }, [guestWebrtcManager, role]);
 
-  // Host setup pending manager handler
   const setupHostManager = (manager: WebRTCManager) => {
     manager.onMessageCallback = (msg) => {
       try {
         const data = JSON.parse(msg);
         if (data.type === 'HELLO') {
-          // Identify guest and add to pool if not there
           const gId = data.playerId;
           if (gId) {
             hostConnections.current.set(gId, manager);
             manager.sendMessage(JSON.stringify({ type: 'WELCOME', roomId: roomIdRef.current, state: { messages: messagesRef.current } }));
 
-            // With boardgame.io, we shouldn't dynamically add players mid-game easily in this simple setup.
-            // Ideally, all players join during the HOST signaling phase, then we start the client.
-            // If the game is already running, sync it.
             if (hostClientRef.current) {
-               const currentState = hostClientRef.current.getState();
-               const gameModule = getGameModule(selectedGameModeRef.current);
-               const gameDef = gameModule(currentState.G.players || []);
-               let safeState = currentState;
-               if (gameDef.playerView) {
-                 safeState = {
-                   ...currentState,
-                   G: gameDef.playerView({
-                     G: currentState.G,
-                     ctx: currentState.ctx,
-                     playerID: gId
-                   })
-                 };
-               }
-               manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState, gameMode: selectedGameModeRef.current }));
+              const currentState = hostClientRef.current.getState();
+              const gameModule = getGameModule(selectedGameModeRef.current);
+              const gameDef = gameModule(currentState.G.players || []);
+              let safeState = currentState;
+              if (gameDef.playerView) {
+                safeState = {
+                  ...currentState,
+                  G: gameDef.playerView({
+                    G: currentState.G,
+                    ctx: currentState.ctx,
+                    playerID: gId,
+                  }),
+                };
+              }
+              manager.sendMessage(JSON.stringify({ type: 'SYNC', state: safeState, gameMode: selectedGameModeRef.current }));
             }
           }
         } else if (data.type === 'MOVE') {
-          // Action from guest
           if (hostClientRef.current) {
-            // boardgame.io moves must be called as: client.moves[moveName](...args)
-            // But we also need to ensure it's the right player's turn. boardgame.io client exposes a generic `update` or we can just call the move.
-            // Wait, hostClient is running as a single local instance. We need to tell it WHICH player is making the move if we use a multiplexed client,
-            // or we must update playerID before making the move if we use a single client.
-
-            // To properly execute a move on behalf of a guest using a local client:
             const moveName = data.moveName;
             const args = data.args || [];
-
-            // Temporary set playerID on the client to match the guest making the move
             const pIndex = gameStateRef.current?.G?.players.indexOf(data.playerId);
             if (pIndex !== undefined && pIndex !== -1) {
               hostClientRef.current.updatePlayerID(pIndex.toString());
               if (hostClientRef.current.moves[moveName]) {
-                 hostClientRef.current.moves[moveName](...args);
+                hostClientRef.current.moves[moveName](...args);
               }
-              // Switch back to host id
               const hIndex = gameStateRef.current?.G?.players.indexOf('host');
               if (hIndex !== undefined && hIndex !== -1) {
                 hostClientRef.current.updatePlayerID(hIndex.toString());
@@ -228,8 +227,8 @@ export default function App() {
             }
           }
         }
-      } catch (e) {
-        // Ignored
+      } catch {
+        // ignore malformed game message
       }
     };
 
@@ -238,29 +237,35 @@ export default function App() {
     };
 
     manager.onDataChannelOpenCallback = () => {
-      // Don't auto-transition to connected here if we want to wait for "Start Game".
-      // But we can let them connect and wait in the lobby.
-      // We are leaving the Host in SIGNALING_HOST until they manually click "Start Game".
+      setSignalMessage(t('lobby.guestConnected'));
+      setSignalError('');
     };
+  };
+
+  const toOutputPayloadText = (signalType: SignalType, compressed: string, includePlayerId: boolean) => {
+    const payload = createSignalPayload({
+      signalType,
+      payload: compressed,
+      roomId: roomIdRef.current,
+      playerId: includePlayerId ? playerIdRef.current : undefined,
+    });
+    return encodeSignalPayload(payload);
   };
 
   const startBoardGameHost = (playerIds: string[]) => {
     const gameModule = getGameModule(selectedGameModeRef.current);
     const gameDef = gameModule(playerIds);
-    // Remove playerView from the local host engine client so it holds the unstripped authoritative state
     const engineGameDef = { ...gameDef };
     delete engineGameDef.playerView;
 
     const client = Client({
       game: engineGameDef as any,
       numPlayers: playerIds.length,
-      // No multiplayer wrapper - we run purely local and sync state manually!
     });
 
     client.start();
     hostClientRef.current = client;
 
-    // Set host's string ID as the current playerID to respect boardgame.io's playerView if we were using it
     const hIndex = playerIds.indexOf('host');
     if (hIndex !== -1) {
       client.updatePlayerID(hIndex.toString());
@@ -272,107 +277,239 @@ export default function App() {
       broadcastSync(state, hostConnections.current);
     });
 
-    // Initial state set
     const initialState = client.getState();
     setGameState(initialState);
     broadcastSync(initialState, hostConnections.current);
   };
 
-  const handleHost = async (resume: boolean = false) => {
+  const handleHost = async () => {
     setAppState('SIGNALING_HOST');
     setRole('HOST');
-    setPlayerId('host'); // Fixed ID for the host player
-
-    if (!resume) {
-      const newRoomId = Math.random().toString(36).substring(2, 9);
-      setRoomId(newRoomId);
-      setMessages([]);
-      clearStorage();
-    }
-
-    startNewHostPendingConnection();
+    setPlayerId('host');
+    const newRoomId = Math.random().toString(36).substring(2, 9);
+    setRoomId(newRoomId);
+    setMessages([]);
+    clearStorage();
+    await startNewHostPendingConnection(newRoomId);
   };
 
-  const startNewHostPendingConnection = async () => {
+  const resetSignalingUi = () => {
+    setSignalOutputText('');
+    setSignalInputText('');
+    setSignalError('');
+    setSignalMessage('');
+    setLatestSignalType(null);
+    setSignalingTab('qr');
+    setImportFingerprint('');
+  };
+
+  const startNewHostPendingConnection = async (forcedRoomId?: string) => {
     const manager = new WebRTCManager();
     setupHostManager(manager);
     setPendingHostManager(manager);
+    setSignalError('');
+    setSignalMessage('');
+    setSignalingTab('qr');
 
-    setQrValue('');
-    setIsScanning(false);
-    setShowMode('qr'); // Start by showing offer
     try {
       const offerStr = await manager.createOffer();
-      setQrValue(offerStr);
-      setIsScanning(true); // Host scans guest's answer
+      if (forcedRoomId) {
+        roomIdRef.current = forcedRoomId;
+      }
+      const payloadText = toOutputPayloadText('offer', offerStr, true);
+      setSignalOutputText(payloadText);
+      setLatestSignalType('offer');
     } catch (e) {
-      console.error("Host Offer Error:", e);
+      setSignalError(`${t('lobby.errorSignaling')}${String(e)}`);
     }
   };
 
-  const handleGuest = (resume: boolean = false) => {
+  const handleGuest = () => {
     setAppState('SIGNALING_GUEST');
     setRole('GUEST');
-
-    if (!resume) {
-      const newPlayerId = 'guest_' + Math.random().toString(36).substring(2, 9);
-      setPlayerId(newPlayerId);
-      clearStorage();
-    }
-
+    const newPlayerId = `guest_${Math.random().toString(36).substring(2, 9)}`;
+    setPlayerId(newPlayerId);
+    clearStorage();
     const manager = new WebRTCManager();
     setGuestWebrtcManager(manager);
+    resetSignalingUi();
+    setSignalingTab('scan');
+  };
 
-    setQrValue('');
-    setIsScanning(true);
-    setShowMode('scanner');
+  const applySignalPayload = async (payload: SignalPayloadV1, source: 'scan' | 'text' | 'url') => {
+    setSignalError('');
+
+    if (appState === 'CONNECTED') {
+      setSignalError(t('lobby.signalConnectedAlready'));
+      return;
+    }
+
+    const fingerprint = `${payload.signalType}:${payload.payload.slice(0, 48)}`;
+    if (fingerprint === importFingerprint) {
+      setSignalError(t('lobby.signalDuplicate'));
+      return;
+    }
+
+    if (appState === 'SIGNALING_HOST') {
+      if (!pendingHostManager) {
+        setSignalError(t('lobby.signalHostNotReady'));
+        return;
+      }
+      if (payload.signalType !== 'answer') {
+        setSignalError(t('lobby.signalNeedAnswer'));
+        return;
+      }
+
+      await pendingHostManager.acceptAnswer(payload.payload);
+      setImportFingerprint(fingerprint);
+      setSignalMessage(t('lobby.signalImportedSource', { source }));
+      setSignalOutputText('');
+      setLatestSignalType(null);
+      return;
+    }
+
+    if (appState === 'SIGNALING_GUEST') {
+      if (!guestWebrtcManager) {
+        setSignalError(t('lobby.signalGuestNotReady'));
+        return;
+      }
+      if (payload.signalType !== 'offer') {
+        setSignalError(t('lobby.signalNeedOffer'));
+        return;
+      }
+
+      const answerStr = await guestWebrtcManager.acceptOfferAndCreateAnswer(payload.payload);
+      const answerPayload = createSignalPayload({
+        signalType: 'answer',
+        payload: answerStr,
+        roomId: payload.roomId || roomIdRef.current,
+        playerId: playerIdRef.current,
+      });
+
+      if (payload.roomId) {
+        setRoomId(payload.roomId);
+      }
+
+      setSignalOutputText(encodeSignalPayload(answerPayload));
+      setLatestSignalType('answer');
+      setSignalingTab('qr');
+      setImportFingerprint(fingerprint);
+      setSignalMessage(t('lobby.signalImportedSource', { source }));
+      return;
+    }
+
+    setSignalError(t('lobby.signalPickModeFirst'));
+  };
+
+  const expectedSignalForCurrentState = (): SignalType | undefined => {
+    if (appState === 'SIGNALING_HOST') return 'answer';
+    if (appState === 'SIGNALING_GUEST') return 'offer';
+    return undefined;
+  };
+
+  const importSignalText = async (rawText: string, source: 'text' | 'url' | 'scan') => {
+    const decoded = decodeSignalPayload(rawText, expectedSignalForCurrentState());
+    if (decoded.ok === false) {
+      setSignalError(decoded.message);
+      return;
+    }
+
+    setSignalInputText(decoded.rawText);
+    await applySignalPayload(decoded.payload, source);
   };
 
   const handleScanSuccess = async (scannedText: string) => {
-    setIsScanning(false);
-
     try {
-      if (appState === 'SIGNALING_HOST' && pendingHostManager) {
-        await pendingHostManager.acceptAnswer(scannedText);
-        // Do not jump to CONNECTED immediately. Let Host gather players, then click Start Game.
-        alert(t('lobby.guestConnected'));
-        setQrValue('');
-      } else if (appState === 'SIGNALING_GUEST' && guestWebrtcManager) {
-        const answerStr = await guestWebrtcManager.acceptOfferAndCreateAnswer(scannedText);
-        setQrValue(answerStr);
-        setShowMode('qr');
-      }
+      await importSignalText(scannedText, 'scan');
     } catch (e) {
-      console.error("Signaling Error:", e);
-      alert(t('lobby.errorSignaling') + String(e));
-      setAppState('HOME');
+      setSignalError(`${t('lobby.errorSignaling')}${String(e)}`);
     }
+  };
+
+  useEffect(() => {
+    if (!pendingUrlSignal) return;
+    if (appState !== 'SIGNALING_HOST' && appState !== 'SIGNALING_GUEST') return;
+
+    const shouldApply =
+      (appState === 'SIGNALING_HOST' && pendingUrlSignal.signalType === 'answer') ||
+      (appState === 'SIGNALING_GUEST' && pendingUrlSignal.signalType === 'offer');
+
+    if (shouldApply) {
+      importSignalText(encodeSignalPayload(pendingUrlSignal), 'url');
+      setPendingUrlSignal(null);
+      return;
+    }
+
+    setSignalInputText(encodeSignalPayload(pendingUrlSignal));
+    setSignalMessage(t('lobby.linkImportedReady'));
+  }, [pendingUrlSignal, appState]);
+
+  const copySignal = async (text: string) => {
+    if (!text) {
+      setSignalError(t('lobby.signalNothingToCopy'));
+      return;
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      setSignalMessage(t('lobby.signalCopied'));
+      return;
+    }
+
+    setSignalError(t('lobby.signalClipboardUnavailable'));
+  };
+
+  const shareSignal = async () => {
+    if (!signalOutputText) {
+      setSignalError(t('lobby.signalNoShareData'));
+      return;
+    }
+
+    const decoded = decodeSignalPayload(signalOutputText, latestSignalType || undefined);
+    if (decoded.ok === false) {
+      setSignalError(decoded.message);
+      return;
+    }
+
+    const link = buildSignalShareLink(decoded.payload);
+    if (!link) {
+      setSignalError(t('lobby.signalNoShareData'));
+      return;
+    }
+
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ url: link, title: 'Offline Cards Signal' });
+        setSignalMessage(t('lobby.signalShared'));
+        return;
+      } catch {
+        // Continue with clipboard fallback.
+      }
+    }
+
+    await copySignal(link);
   };
 
   const handleGameAction = (moveName: string, ...args: any[]) => {
     if (appState === 'SANDBOX') {
       if (hostClientRef.current) {
-         // In sandbox, we just execute the move on the local client without playerID impersonation
-         // Actually, if we play as different players in sandbox, we should impersonate:
-         // For now, assume we just call the move. boardgame.io will validate it against ctx.currentPlayer
-         hostClientRef.current.moves[moveName](...args);
+        hostClientRef.current.moves[moveName](...args);
       }
     } else if (appState === 'CONNECTED') {
       if (role === 'HOST') {
-         if (hostClientRef.current) {
-            // Make sure host playerID is set
-            const hIndex = gameState?.G?.players.indexOf('host');
-            if (hIndex !== undefined && hIndex !== -1) {
-              hostClientRef.current.updatePlayerID(hIndex.toString());
-            }
-            hostClientRef.current.moves[moveName](...args);
-         }
+        if (hostClientRef.current) {
+          const hIndex = gameState?.G?.players.indexOf('host');
+          if (hIndex !== undefined && hIndex !== -1) {
+            hostClientRef.current.updatePlayerID(hIndex.toString());
+          }
+          hostClientRef.current.moves[moveName](...args);
+        }
       } else if (role === 'GUEST') {
         guestWebrtcManager?.sendMessage(JSON.stringify({
           type: 'MOVE',
-          playerId: playerId,
+          playerId,
           moveName,
-          args
+          args,
         }));
       }
     }
@@ -395,47 +532,40 @@ export default function App() {
     </View>
   );
 
-  const renderHome = () => {
-    return (
-      <View style={styles.content}>
-        <View style={styles.topRightControls}>
-          {renderLanguageSwitcher()}
-        </View>
-        <Text style={styles.title}>{t('lobby.title')}</Text>
-        <Text style={styles.subtitle}>{t('lobby.subtitle')}</Text>
-        <View style={styles.buttonContainer}>
-          <View style={{ marginBottom: 20 }}>
-             <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
-             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
-                <Button
-                   title={t('lobby.game_UnoLite')}
-                   onPress={() => setSelectedGameMode('UnoLite')}
-                   color={selectedGameMode === 'UnoLite' ? '#007AFF' : '#999'}
-                />
-                <Button
-                   title={t('lobby.game_ZhengShangYou')}
-                   onPress={() => setSelectedGameMode('ZhengShangYou')}
-                   color={selectedGameMode === 'ZhengShangYou' ? '#007AFF' : '#999'}
-                />
-             </View>
+  const renderHome = () => (
+    <View style={styles.content}>
+      <View style={styles.topRightControls}>{renderLanguageSwitcher()}</View>
+      <Text style={styles.title}>{t('lobby.title')}</Text>
+      <Text style={styles.subtitle}>{t('lobby.subtitle')}</Text>
+      <View style={styles.buttonContainer}>
+        <View style={{ marginBottom: 20 }}>
+          <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
+            <Button title={t('lobby.game_UnoLite')} onPress={() => setSelectedGameMode('UnoLite')} color={selectedGameMode === 'UnoLite' ? '#007AFF' : '#999'} />
+            <Button title={t('lobby.game_ZhengShangYou')} onPress={() => setSelectedGameMode('ZhengShangYou')} color={selectedGameMode === 'ZhengShangYou' ? '#007AFF' : '#999'} />
           </View>
-          <Button title={t('lobby.createRoom')} onPress={() => handleHost(false)} />
-          <View style={{ height: 20 }} />
-          <Button title={t('lobby.joinRoom')} onPress={() => handleGuest(false)} />
+        </View>
 
-          <View style={{ marginTop: 40, alignItems: 'center' }}>
-            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>{t('lobby.localTesting')}</Text>
-            <Button title={t('lobby.sandboxTesting')} color="purple" onPress={() => {
+        <Button title={t('lobby.createRoom')} onPress={handleHost} />
+        <View style={{ height: 20 }} />
+        <Button title={t('lobby.joinRoom')} onPress={handleGuest} />
+
+        <View style={{ marginTop: 40, alignItems: 'center' }}>
+          <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>{t('lobby.localTesting')}</Text>
+          <Button
+            title={t('lobby.sandboxTesting')}
+            color="purple"
+            onPress={() => {
               setAppState('SANDBOX');
               setPlayerId('host');
               const players = ['host', 'guest_1'];
               startBoardGameHost(players);
-            }} />
-          </View>
+            }}
+          />
         </View>
       </View>
-    );
-  };
+    </View>
+  );
 
   const renderSandbox = () => {
     if (!gameState) return null;
@@ -445,12 +575,15 @@ export default function App() {
         myPlayerId="host"
         onAction={handleGameAction}
         onExit={() => {
-          if(hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
+          if (hostClientRef.current) {
+            hostClientRef.current.stop();
+            hostClientRef.current = null;
+          }
           setGameState(null);
           setAppState('HOME');
         }}
         onReset={() => {
-          if(hostClientRef.current) hostClientRef.current.stop();
+          if (hostClientRef.current) hostClientRef.current.stop();
           startBoardGameHost(['host', 'guest_1']);
         }}
         isSandbox={true}
@@ -458,68 +591,126 @@ export default function App() {
     );
   };
 
-  const renderSignaling = () => (
-    <View style={styles.content}>
-      <Text style={styles.title}>
-        {appState === 'SIGNALING_HOST' ? t('lobby.hostMode') : t('lobby.guestMode')}
-      </Text>
+  const getShareLinkText = () => {
+    const decoded = decodeSignalPayload(signalOutputText, latestSignalType || undefined);
+    if (!decoded.ok) return '';
+    return buildSignalShareLink(decoded.payload);
+  };
 
-      {qrValue && isScanning && (
-        <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
-          <Button title={t('lobby.showMyQR')} onPress={() => setShowMode('qr')} color={showMode === 'qr' ? '#007AFF' : '#999'} />
-          <Button title={t('lobby.scanOtherQR')} onPress={() => setShowMode('scanner')} color={showMode === 'scanner' ? '#007AFF' : '#999'} />
+  const renderSignaling = () => {
+    const shareLink = getShareLinkText();
+
+    return (
+      <View style={styles.content}>
+        <Text style={styles.title}>{appState === 'SIGNALING_HOST' ? t('lobby.hostMode') : t('lobby.guestMode')}</Text>
+        <Text style={styles.subtitleSmall}>{t('lobby.connectionState')}: {connectionStatus}</Text>
+
+        <View style={styles.tabRow}>
+          <TouchableOpacity style={[styles.tabButton, signalingTab === 'qr' && styles.tabButtonActive]} onPress={() => setSignalingTab('qr')}><Text>{t('lobby.tabQR')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.tabButton, signalingTab === 'scan' && styles.tabButtonActive]} onPress={() => setSignalingTab('scan')}><Text>{t('lobby.tabScan')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.tabButton, signalingTab === 'text' && styles.tabButtonActive]} onPress={() => setSignalingTab('text')}><Text>{t('lobby.tabCopyPaste')}</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.tabButton, signalingTab === 'share' && styles.tabButtonActive]} onPress={() => setSignalingTab('share')}><Text>{t('lobby.tabShare')}</Text></TouchableOpacity>
         </View>
-      )}
 
-      <View style={{ flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
-        {showMode === 'qr' && qrValue ? (
-          <View style={[styles.section, { flex: 1 }]}>
-            <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.showQRToOther')}</Text>
-            <QRCodeDisplay value={qrValue} />
-          </View>
-        ) : null}
+        {signalError ? <Text style={styles.errorText}>{signalError}</Text> : null}
+        {signalMessage ? <Text style={styles.infoText}>{signalMessage}</Text> : null}
 
-        {showMode === 'scanner' && isScanning ? (
-          <View style={[styles.section, { flex: 1 }]}>
-            <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.scanOtherDeviceQR')}</Text>
-            {Platform.OS === 'web' ? (
-              <Scanner onScan={handleScanSuccess} />
-            ) : (
-              <Text>{t('lobby.scanningRequiresWeb')}</Text>
-            )}
-          </View>
-        ) : null}
+        <View style={{ flex: 1, width: '100%', alignItems: 'center' }}>
+          {signalingTab === 'qr' && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('lobby.showQRToOther')}</Text>
+              {signalOutputText ? <QRCodeDisplay value={signalOutputText} /> : <Text>{t('lobby.waitingForSignalData')}</Text>}
+            </View>
+          )}
+
+          {signalingTab === 'scan' && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('lobby.scanOtherDeviceQR')}</Text>
+              {Platform.OS === 'web' ? (
+                <Scanner
+                  onScan={handleScanSuccess}
+                  onError={(error) => setSignalMessage(error)}
+                  labels={{
+                    startCamera: t('lobby.startCamera'),
+                    idleHint: t('lobby.cameraIdle'),
+                    requesting: t('lobby.cameraRequesting'),
+                    activeHint: t('lobby.cameraActive'),
+                    permissionDenied: t('lobby.cameraDenied'),
+                    unsupported: t('lobby.cameraUnsupported'),
+                    fallback: t('lobby.cameraFallback'),
+                  }}
+                />
+              ) : (
+                <Text>{t('lobby.scanningRequiresWeb')}</Text>
+              )}
+            </View>
+          )}
+
+          {signalingTab === 'text' && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('lobby.copyPasteInstructions')}</Text>
+              <TextInput
+                style={styles.textArea}
+                multiline
+                value={signalInputText}
+                onChangeText={setSignalInputText}
+                placeholder={t('lobby.pastePlaceholder')}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <View style={styles.inlineButtons}>
+                <Button title={t('lobby.importSignal')} onPress={() => importSignalText(signalInputText, 'text')} />
+                <Button title={t('lobby.copySignal')} onPress={() => copySignal(signalOutputText)} />
+              </View>
+              {signalOutputText ? (
+                <Text selectable style={styles.selectable}>{signalOutputText}</Text>
+              ) : null}
+            </View>
+          )}
+
+          {signalingTab === 'share' && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('lobby.shareInstructions')}</Text>
+              {shareLink ? <Text selectable style={styles.selectable}>{shareLink}</Text> : <Text>{t('lobby.waitingForSignalData')}</Text>}
+              <View style={styles.inlineButtons}>
+                <Button title={t('lobby.shareLink')} onPress={shareSignal} />
+                <Button title={t('lobby.copyLink')} onPress={() => copySignal(shareLink)} />
+              </View>
+            </View>
+          )}
+        </View>
+
+        <View style={{ marginTop: 16, width: '100%', maxWidth: 320 }}>
+          {appState === 'SIGNALING_HOST' && (
+            <View style={{ marginBottom: 10 }}>
+              <Button title={t('lobby.addAnotherPlayer')} onPress={() => { void startNewHostPendingConnection(); }} color="blue" />
+            </View>
+          )}
+          {appState === 'SIGNALING_HOST' && (
+            <View style={{ marginBottom: 10 }}>
+              <Button title={t('lobby.startGame', { count: hostConnections.current.size + 1 })} onPress={startGameHost} color="green" />
+            </View>
+          )}
+          <Button
+            title={t('lobby.cancel')}
+            onPress={() => {
+              if (appState === 'SIGNALING_HOST') pendingHostManager?.close();
+              if (appState === 'SIGNALING_GUEST') guestWebrtcManager?.close();
+              setAppState('HOME');
+            }}
+            color="red"
+          />
+        </View>
       </View>
-
-      <View style={{ marginTop: 20, width: '100%', maxWidth: 300 }}>
-        {appState === 'SIGNALING_HOST' && (
-          <View style={{ marginBottom: 10 }}>
-            <Button title={t('lobby.addAnotherPlayer')} onPress={startNewHostPendingConnection} color="blue" />
-          </View>
-        )}
-        {appState === 'SIGNALING_HOST' && (
-          <View style={{ marginBottom: 10 }}>
-             <Button title={t('lobby.startGame', { count: hostConnections.current.size + 1 })} onPress={startGameHost} color="green" />
-          </View>
-        )}
-        <Button title={t('lobby.cancel')} onPress={() => {
-          if (appState === 'SIGNALING_HOST') pendingHostManager?.close();
-          if (appState === 'SIGNALING_GUEST') guestWebrtcManager?.close();
-          setAppState('HOME');
-        }} color="red" />
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderConnected = () => {
-    // If we're CONNECTED but have no game state, something is wrong
     if (!gameState) {
       return (
         <View style={styles.content}>
           <Text style={styles.title}>{t('lobby.waitingForState')}</Text>
-          <Button title={t('lobby.exit')} onPress={() => {
-            setAppState('HOME');
-          }} color="red" />
+          <Button title={t('lobby.exit')} onPress={() => setAppState('HOME')} color="red" />
         </View>
       );
     }
@@ -532,8 +723,11 @@ export default function App() {
           onAction={handleGameAction}
           onExit={() => {
             if (role === 'HOST') {
-              if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
-              hostConnections.current.forEach(m => m.close());
+              if (hostClientRef.current) {
+                hostClientRef.current.stop();
+                hostClientRef.current = null;
+              }
+              hostConnections.current.forEach((m) => m.close());
               hostConnections.current.clear();
             } else {
               guestWebrtcManager?.close();
@@ -597,19 +791,87 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     textAlign: 'center',
   },
+  subtitleSmall: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
   buttonContainer: {
     width: '100%',
     maxWidth: 300,
   },
   section: {
     alignItems: 'center',
-    marginVertical: 15,
+    marginVertical: 12,
     width: '100%',
+    flex: 1,
+  },
+  sectionTitle: {
+    marginBottom: 8,
+    textAlign: 'center',
+    fontWeight: '600',
   },
   sandboxContainer: {
     flex: 1,
     width: '100%',
     flexDirection: 'column',
     overflow: 'hidden',
-  }
+  },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  tabButton: {
+    borderWidth: 1,
+    borderColor: '#bbb',
+    borderRadius: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+  },
+  tabButtonActive: {
+    backgroundColor: '#d9ebff',
+    borderColor: '#007AFF',
+  },
+  textArea: {
+    width: '100%',
+    maxWidth: 520,
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: '#bbb',
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: '#fff',
+    marginBottom: 10,
+  },
+  inlineButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+  },
+  selectable: {
+    width: '100%',
+    maxWidth: 520,
+    color: '#1f1f1f',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 12,
+  },
+  errorText: {
+    color: '#b91c1c',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  infoText: {
+    color: '#1d4ed8',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
 });

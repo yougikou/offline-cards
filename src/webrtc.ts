@@ -14,6 +14,26 @@ export class WebRTCManager {
 
   constructor() {}
 
+  public static parseCompressedDescription(compressed: string): RTCSessionDescriptionInit | null {
+    if (!compressed) return null;
+    const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
+    if (!decompressed) return null;
+    try {
+      const parsed = JSON.parse(decompressed);
+      if (!parsed || typeof parsed !== 'object' || typeof parsed.type !== 'string' || typeof parsed.sdp !== 'string') {
+        return null;
+      }
+      return parsed;
+    } catch (e) {
+      console.error('Failed to parse decompressed SDP', e);
+      return null;
+    }
+  }
+
+  public static isCompressedDescription(compressed: string): boolean {
+    return WebRTCManager.parseCompressedDescription(compressed) !== null;
+  }
+
   public initPeerConnection() {
     this.peerConnection = new RTCPeerConnection(rtcConfig);
 
@@ -54,7 +74,7 @@ export class WebRTCManager {
 
   public async createOffer(): Promise<string> {
     this.initPeerConnection();
-    if (!this.peerConnection) throw new Error("PeerConnection not initialized");
+    if (!this.peerConnection) throw new Error('PeerConnection not initialized');
 
     const channel = this.peerConnection.createDataChannel('p2p-deck');
     this.setupDataChannel(channel);
@@ -81,14 +101,14 @@ export class WebRTCManager {
 
   public async acceptOfferAndCreateAnswer(compressedOffer: string): Promise<string> {
     this.initPeerConnection();
-    if (!this.peerConnection) throw new Error("PeerConnection not initialized");
+    if (!this.peerConnection) throw new Error('PeerConnection not initialized');
 
     this.peerConnection.ondatachannel = (event) => {
       this.setupDataChannel(event.channel);
     };
 
     const offerSDP = this.decompressSDP(compressedOffer);
-    if (!offerSDP) throw new Error("Invalid Offer");
+    if (!offerSDP) throw new Error('Invalid Offer');
 
     await this.peerConnection.setRemoteDescription(offerSDP);
 
@@ -113,10 +133,10 @@ export class WebRTCManager {
   }
 
   public async acceptAnswer(compressedAnswer: string) {
-    if (!this.peerConnection) throw new Error("PeerConnection not initialized");
+    if (!this.peerConnection) throw new Error('PeerConnection not initialized');
 
     const answerSDP = this.decompressSDP(compressedAnswer);
-    if (!answerSDP) throw new Error("Invalid Answer");
+    if (!answerSDP) throw new Error('Invalid Answer');
 
     await this.peerConnection.setRemoteDescription(answerSDP);
   }
@@ -125,7 +145,7 @@ export class WebRTCManager {
     if (this.dataChannel && this.dataChannel.readyState === 'open') {
       this.dataChannel.send(message);
     } else {
-      console.warn("Data channel is not open");
+      console.warn('Data channel is not open');
     }
   }
 
@@ -136,14 +156,6 @@ export class WebRTCManager {
   }
 
   private decompressSDP(compressed: string): RTCSessionDescriptionInit | null {
-    if (!compressed) return null;
-    const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
-    if (!decompressed) return null;
-    try {
-      return JSON.parse(decompressed);
-    } catch (e) {
-      console.error("Failed to parse decompressed SDP", e);
-      return null;
-    }
+    return WebRTCManager.parseCompressedDescription(compressed);
   }
 }
