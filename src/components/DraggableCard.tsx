@@ -29,6 +29,11 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   const translateY = useRef(new Animated.Value(isSelected ? -20 : 0)).current;
   const [zIndex, setZIndex] = useState(1);
 
+  const propsRef = useRef({ isMyTurn, isOpponent, onDragUp, index });
+  useEffect(() => {
+    propsRef.current = { isMyTurn, isOpponent, onDragUp, index };
+  }, [isMyTurn, isOpponent, onDragUp, index]);
+
   useEffect(() => {
     Animated.spring(translateY, {
       toValue: isSelected ? -20 : 0,
@@ -48,7 +53,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       },
       onMoveShouldSetPanResponderCapture: () => false,
       onPanResponderGrant: () => {
-        if (!isMyTurn || isOpponent) return;
+        if (!propsRef.current.isMyTurn || propsRef.current.isOpponent) return;
         setZIndex(999);
         // Provide tactile feedback on drag start
         Animated.spring(scale, {
@@ -65,7 +70,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         pan.setValue({ x: 0, y: 0 });
       },
       onPanResponderMove: (e, gestureState) => {
-        if (!isMyTurn || isOpponent) return;
+        if (!propsRef.current.isMyTurn || propsRef.current.isOpponent) return;
         Animated.event(
           [
             null,
@@ -75,7 +80,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         )(e, gestureState);
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (!isMyTurn || isOpponent) return;
+        if (!propsRef.current.isMyTurn || propsRef.current.isOpponent) return;
         setZIndex(1);
         // Reset tactile feedback
         Animated.spring(scale, {
@@ -89,7 +94,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
         if (gestureState.dy < -100) {
           // Check if dragged up sufficiently
-          onDragUp(index);
+          propsRef.current.onDragUp(propsRef.current.index);
         }
 
         // Always snap back, if it was a valid play the card will be removed from hand
@@ -100,9 +105,9 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         }).start();
       },
       onPanResponderTerminate: () => {
-        if (!isMyTurn || isOpponent) return;
+        if (!propsRef.current.isMyTurn || propsRef.current.isOpponent) return;
         setZIndex(1);
-         Animated.spring(scale, {
+        Animated.spring(scale, {
           toValue: 1,
           useNativeDriver: true,
           friction: 4,
