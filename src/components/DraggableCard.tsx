@@ -167,7 +167,65 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   const marginLeft = customMarginLeft !== undefined ? customMarginLeft : (index > 0 ? -35 : 0);
   // Make cards darker when not turn
   const opacity = isMyTurn ? 1 : 0.6;
-  const calculatedZIndex = isMultiDragging ? 999 : zIndex;
+  let calculatedZIndex = zIndex;
+  if (isMultiDragging) {
+    calculatedZIndex = 999;
+  } else if (isSelected) {
+    calculatedZIndex = 100;
+  }
+
+  const renderCardContent = () => {
+    if (gameName === 'UnoLite') {
+      return (
+        <View style={{ flex: 1, width: '100%' }}>
+          {/* Top Left Corner */}
+          <View style={{ position: 'absolute', top: 4, left: 4, alignItems: 'center' }}>
+            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold' }}>{card.value}</Text>
+          </View>
+
+          {/* Bottom Right Corner (Upside Down) */}
+          <View style={{ position: 'absolute', bottom: 4, right: 4, alignItems: 'center', transform: [{ rotate: '180deg' }] }}>
+            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold' }}>{card.value}</Text>
+          </View>
+
+          {/* Center */}
+          <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+            <Text style={[styles.cardText, { color: textColor }]}>
+              {card.value !== undefined ? card.value : ''}
+            </Text>
+          </View>
+        </View>
+      );
+    } else {
+      const suitIcon = card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Clubs' ? '♣' : card.suit === 'Spades' ? '♠' : '';
+      return (
+        <View style={{ flex: 1, width: '100%' }}>
+          {/* Top Left Corner */}
+          <View style={{ position: 'absolute', top: 4, left: 4, alignItems: 'center' }}>
+            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold' }}>{card.rank}</Text>
+            {suitIcon ? <Text style={{ color: textColor, fontSize: 14 }}>{suitIcon}</Text> : null}
+          </View>
+
+          {/* Bottom Right Corner (Upside Down) */}
+          <View style={{ position: 'absolute', bottom: 4, right: 4, alignItems: 'center', transform: [{ rotate: '180deg' }] }}>
+            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold' }}>{card.rank}</Text>
+            {suitIcon ? <Text style={{ color: textColor, fontSize: 14 }}>{suitIcon}</Text> : null}
+          </View>
+
+          {/* Center (Optional, could just leave empty for standard cards, or put a big suit) */}
+          {suitIcon ? (
+             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+               <Text style={{ color: textColor, fontSize: 32, opacity: 0.2 }}>{suitIcon}</Text>
+             </View>
+          ) : (
+             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+               <Text style={{ color: textColor, fontSize: 24, fontWeight: 'bold' }}>{card.rank}</Text>
+             </View>
+          )}
+        </View>
+      );
+    }
+  };
 
   return (
     <Animated.View
@@ -188,14 +246,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         <View
           style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
         >
-          <Text style={[styles.cardText, { color: textColor }]}>
-            {card.value !== undefined && gameName === 'UnoLite' ? card.value : card.rank}
-          </Text>
-          {card.suit && (
-            <Text style={{ color: textColor, fontSize: 18, marginTop: 4 }}>
-              {card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Clubs' ? '♣' : '♠'}
-            </Text>
-          )}
+          {renderCardContent()}
         </View>
       </TouchableWithoutFeedback>
     </Animated.View>

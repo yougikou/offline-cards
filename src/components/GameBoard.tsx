@@ -286,26 +286,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
         </Text>
 
         {(() => {
-          const windowWidth = Dimensions.get('window').width;
           const paddingHorizontal = 20;
-          const cardWidth = 70;
-          const minSpacing = 30; // 最小可见、可操作间距
-          const maxSpacing = 35; // 最大间距 (也就是-35 margin)
 
-          let customMarginLeft = 0;
-          if (myHand.length > 1) {
-            const availableWidth = windowWidth - paddingHorizontal * 2;
-            const calculatedSpacing = (availableWidth - cardWidth) / (myHand.length - 1);
-            const spacing = Math.max(minSpacing, Math.min(maxSpacing, calculatedSpacing));
-            customMarginLeft = spacing - cardWidth;
-          }
+          // Always use a fixed overlap to ensure hand looks consistent,
+          // allowing the ScrollView to handle horizontal overflow naturally.
+          const customMarginLeft = myHand.length > 1 ? -35 : 0;
 
           return (
             <View style={{ width: '100%' }}>
               <ScrollView
                 horizontal={true}
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal }}
+                // Removing justifyContent: 'center' so it scrolls properly from left to right when content is wide
+                contentContainerStyle={{ flexGrow: 1, paddingHorizontal, paddingRight: 40 }}
                 style={{ width: '100%' }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 20 }}>
