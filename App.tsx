@@ -108,6 +108,7 @@ export default function App() {
   const messagesRef = useRef(messages);
   const gameStateRef = useRef(gameState);
   const selectedGameModeRef = useRef(selectedGameMode);
+  const appStateRef = useRef(appState);
 
   useEffect(() => {
     selectedGameModeRef.current = selectedGameMode;
@@ -116,7 +117,8 @@ export default function App() {
     playerIdRef.current = playerId;
     messagesRef.current = messages;
     gameStateRef.current = gameState;
-  }, [role, roomId, playerId, messages, gameState]);
+    appStateRef.current = appState;
+  }, [role, roomId, playerId, messages, gameState, appState]);
 
   // Handle Guest Connection
   useEffect(() => {
@@ -138,6 +140,14 @@ export default function App() {
             setSelectedGameMode(data.gameMode);
           }
           setGameState(data.state);
+        } else if (data.type === 'HOST_CLOSE') {
+          alert('Host closed the game. Returning to lobby.');
+          if (guestWebrtcManager) {
+            guestWebrtcManager.close();
+          }
+          setGuestWebrtcManager(null);
+          setAppState('HOME');
+          setGameState(null);
         }
       } catch (e) {
         setMessages((prev) => [...prev, `Remote: ${msg}`]);
@@ -148,6 +158,13 @@ export default function App() {
       setConnectionStatus(state);
       if (state === 'connected') {
         setAppState('CONNECTED');
+      } else if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+        if (appStateRef.current === 'CONNECTED' || appStateRef.current === 'SIGNALING_GUEST') {
+          alert('Disconnected from host.');
+          setAppState('HOME');
+          setGameState(null);
+          setGuestWebrtcManager(null);
+        }
       }
     };
 
@@ -219,6 +236,11 @@ export default function App() {
               }
             }
           }
+        } else if (data.type === 'PLAYER_LEAVE') {
+          const gId = data.playerId;
+          alert(`Player ${gId} has explicitly left the game (Forfeit).`);
+          // Note: Here we would trigger the boardgame.io forfeit move if it was implemented.
+          // For now we just alert and rely on the game rules or remaining players.
         }
       } catch (e) {
         // Ignored
@@ -227,6 +249,19 @@ export default function App() {
 
     manager.onConnectionStateChangeCallback = (state) => {
       setConnectionStatus(state);
+      if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+        let leftGuestId = null;
+        for (const [id, m] of hostConnections.current.entries()) {
+          if (m === manager) {
+            leftGuestId = id;
+            break;
+          }
+        }
+        if (leftGuestId) {
+          alert(`Player ${leftGuestId} disconnected.`);
+          // Host continues running, handle game state updates / forfeit appropriately here.
+        }
+      }
     };
 
     manager.onDataChannelOpenCallback = () => {
@@ -521,14 +556,26 @@ export default function App() {
           onExit={() => {
             if (role === 'HOST') {
               if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
-              hostConnections.current.forEach(m => m.close());
+              hostConnections.current.forEach(m => {
+                try { m.sendMessage(JSON.stringify({ type: 'HOST_CLOSE' })); } catch (e) { }
+                setTimeout(() => m.close(), 100);
+              });
               hostConnections.current.clear();
+              setAppState('HOME');
+              setGameState(null);
             } else {
-              guestWebrtcManager?.close();
-              setGuestWebrtcManager(null);
+              if (guestWebrtcManager) {
+                try {
+                  guestWebrtcManager.sendMessage(JSON.stringify({ type: 'PLAYER_LEAVE', playerId }));
+                } catch (e) { }
+                setTimeout(() => {
+                  guestWebrtcManager.close();
+                  setGuestWebrtcManager(null);
+                  setAppState('HOME');
+                  setGameState(null);
+                }, 100);
+              }
             }
-            setAppState('HOME');
-            setGameState(null);
           }}
           isSandbox={false}
         />
