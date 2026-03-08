@@ -47,6 +47,11 @@
     "deckCount": "Deck: {{count}}",
     "currentTrick": "Current Trick",
     "me": "(Me)",
-    "draw": "Draw"
+    "draw": "Draw",
+    "exitConfirmTitle": "Confirm Exit",
+    "exitConfirmHost": "You are the host. Exiting will end the game for everyone. Are you sure?",
+    "exitConfirmGuest": "Are you sure you want to forfeit and exit the game?",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
   }
 }

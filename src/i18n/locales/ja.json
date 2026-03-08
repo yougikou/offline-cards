@@ -47,6 +47,11 @@
     "deckCount": "山札：{{count}}",
     "currentTrick": "現在のトリック",
     "me": "(自分)",
-    "draw": "引く"
+    "draw": "引く",
+    "exitConfirmTitle": "終了の確認",
+    "exitConfirmHost": "あなたはホストです。終了すると全員のゲームが終了します。本当に終了しますか？",
+    "exitConfirmGuest": "本当にゲームを放棄して終了しますか？",
+    "cancel": "キャンセル",
+    "confirm": "確認"
   }
 }

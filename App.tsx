@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform, TouchableOpacity, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import './src/i18n/index'; // Initialize i18n
@@ -472,9 +472,20 @@ export default function App() {
         myPlayerId="host"
         onAction={handleGameAction}
         onExit={() => {
-          if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
-          setGameState(null);
-          setAppState('HOME');
+          Alert.alert(
+            t('game.exitConfirmTitle'),
+            t('game.exitConfirmHost'),
+            [
+              { text: t('game.cancel'), style: 'cancel' },
+              {
+                text: t('game.confirm'), style: 'destructive', onPress: () => {
+                  if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
+                  setGameState(null);
+                  setAppState('HOME');
+                }
+              }
+            ]
+          );
         }}
         onReset={() => {
           if (hostClientRef.current) hostClientRef.current.stop();
@@ -555,26 +566,48 @@ export default function App() {
           onAction={handleGameAction}
           onExit={() => {
             if (role === 'HOST') {
-              if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
-              hostConnections.current.forEach(m => {
-                try { m.sendMessage(JSON.stringify({ type: 'HOST_CLOSE' })); } catch (e) { }
-                setTimeout(() => m.close(), 100);
-              });
-              hostConnections.current.clear();
-              setAppState('HOME');
-              setGameState(null);
+              Alert.alert(
+                t('game.exitConfirmTitle'),
+                t('game.exitConfirmHost'),
+                [
+                  { text: t('game.cancel'), style: 'cancel' },
+                  {
+                    text: t('game.confirm'), style: 'destructive', onPress: () => {
+                      if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
+                      hostConnections.current.forEach(m => {
+                        try { m.sendMessage(JSON.stringify({ type: 'HOST_CLOSE' })); } catch (e) { }
+                        setTimeout(() => m.close(), 100);
+                      });
+                      hostConnections.current.clear();
+                      setAppState('HOME');
+                      setGameState(null);
+                    }
+                  }
+                ]
+              );
             } else {
-              if (guestWebrtcManager) {
-                try {
-                  guestWebrtcManager.sendMessage(JSON.stringify({ type: 'PLAYER_LEAVE', playerId }));
-                } catch (e) { }
-                setTimeout(() => {
-                  guestWebrtcManager.close();
-                  setGuestWebrtcManager(null);
-                  setAppState('HOME');
-                  setGameState(null);
-                }, 100);
-              }
+              Alert.alert(
+                t('game.exitConfirmTitle'),
+                t('game.exitConfirmGuest'),
+                [
+                  { text: t('game.cancel'), style: 'cancel' },
+                  {
+                    text: t('game.confirm'), style: 'destructive', onPress: () => {
+                      if (guestWebrtcManager) {
+                        try {
+                          guestWebrtcManager.sendMessage(JSON.stringify({ type: 'PLAYER_LEAVE', playerId }));
+                        } catch (e) { }
+                        setTimeout(() => {
+                          guestWebrtcManager.close();
+                          setGuestWebrtcManager(null);
+                          setAppState('HOME');
+                          setGameState(null);
+                        }, 100);
+                      }
+                    }
+                  }
+                ]
+              );
             }
           }}
           isSandbox={false}
