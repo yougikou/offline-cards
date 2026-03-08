@@ -472,20 +472,26 @@ export default function App() {
         myPlayerId="host"
         onAction={handleGameAction}
         onExit={() => {
-          Alert.alert(
-            t('game.exitConfirmTitle'),
-            t('game.exitConfirmHost'),
-            [
-              { text: t('game.cancel'), style: 'cancel' },
-              {
-                text: t('game.confirm'), style: 'destructive', onPress: () => {
-                  if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
-                  setGameState(null);
-                  setAppState('HOME');
-                }
-              }
-            ]
-          );
+          const doExit = () => {
+            if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
+            setGameState(null);
+            setAppState('HOME');
+          };
+          const msg = t('game.exitConfirmHost');
+          if (Platform.OS === 'web') {
+            if (window.confirm(msg)) doExit();
+          } else {
+            setTimeout(() => {
+              Alert.alert(
+                t('game.exitConfirmTitle'),
+                msg,
+                [
+                  { text: t('game.cancel'), style: 'cancel' },
+                  { text: t('game.confirm'), style: 'destructive', onPress: doExit }
+                ]
+              );
+            }, 300);
+          }
         }}
         onReset={() => {
           if (hostClientRef.current) hostClientRef.current.stop();
@@ -565,49 +571,47 @@ export default function App() {
           myPlayerId={playerId}
           onAction={handleGameAction}
           onExit={() => {
-            if (role === 'HOST') {
-              Alert.alert(
-                t('game.exitConfirmTitle'),
-                t('game.exitConfirmHost'),
-                [
-                  { text: t('game.cancel'), style: 'cancel' },
-                  {
-                    text: t('game.confirm'), style: 'destructive', onPress: () => {
-                      if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
-                      hostConnections.current.forEach(m => {
-                        try { m.sendMessage(JSON.stringify({ type: 'HOST_CLOSE' })); } catch (e) { }
-                        setTimeout(() => m.close(), 100);
-                      });
-                      hostConnections.current.clear();
-                      setAppState('HOME');
-                      setGameState(null);
-                    }
-                  }
-                ]
-              );
+            const isHost = role === 'HOST';
+            const msg = isHost ? t('game.exitConfirmHost') : t('game.exitConfirmGuest');
+
+            const doExit = () => {
+              if (isHost) {
+                if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
+                hostConnections.current.forEach(m => {
+                  try { m.sendMessage(JSON.stringify({ type: 'HOST_CLOSE' })); } catch (e) { }
+                  setTimeout(() => m.close(), 100);
+                });
+                hostConnections.current.clear();
+                setAppState('HOME');
+                setGameState(null);
+              } else {
+                if (guestWebrtcManager) {
+                  try {
+                    guestWebrtcManager.sendMessage(JSON.stringify({ type: 'PLAYER_LEAVE', playerId }));
+                  } catch (e) { }
+                  setTimeout(() => {
+                    guestWebrtcManager.close();
+                    setGuestWebrtcManager(null);
+                    setAppState('HOME');
+                    setGameState(null);
+                  }, 100);
+                }
+              }
+            };
+
+            if (Platform.OS === 'web') {
+              if (window.confirm(msg)) doExit();
             } else {
-              Alert.alert(
-                t('game.exitConfirmTitle'),
-                t('game.exitConfirmGuest'),
-                [
-                  { text: t('game.cancel'), style: 'cancel' },
-                  {
-                    text: t('game.confirm'), style: 'destructive', onPress: () => {
-                      if (guestWebrtcManager) {
-                        try {
-                          guestWebrtcManager.sendMessage(JSON.stringify({ type: 'PLAYER_LEAVE', playerId }));
-                        } catch (e) { }
-                        setTimeout(() => {
-                          guestWebrtcManager.close();
-                          setGuestWebrtcManager(null);
-                          setAppState('HOME');
-                          setGameState(null);
-                        }, 100);
-                      }
-                    }
-                  }
-                ]
-              );
+              setTimeout(() => {
+                Alert.alert(
+                  t('game.exitConfirmTitle'),
+                  msg,
+                  [
+                    { text: t('game.cancel'), style: 'cancel' },
+                    { text: t('game.confirm'), style: 'destructive', onPress: doExit }
+                  ]
+                );
+              }, 300);
             }
           }}
           isSandbox={false}
