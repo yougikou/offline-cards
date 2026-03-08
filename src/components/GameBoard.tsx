@@ -142,6 +142,22 @@ const GameBoard: React.FC<GameBoardProps> = ({
           <Text style={styles.gameOverText}>
             {t('game.winner', { winner: gameOver.winner })}
           </Text>
+          <View style={styles.gameOverButtons}>
+            {onReset && (
+              <Button
+                title={t('game.resetGame', '再开一局')}
+                onPress={() => onReset()}
+                color="#4CAF50"
+              />
+            )}
+            {onExit && (
+              <Button
+                title={t('game.exit', '返回主界面')}
+                onPress={() => onExit()}
+                color="#F44336"
+              />
+            )}
+          </View>
         </View>
       )}
 
@@ -423,6 +439,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 32,
     fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  gameOverButtons: {
+    flexDirection: 'row',
+    gap: 20,
+    marginTop: 20,
   }
 });
 
