@@ -24,11 +24,7 @@
     "errorSignaling": "Error during signaling: ",
     "waitingForState": "Waiting for state...",
     "exit": "Exit",
-    "connecting": "Connecting...",
-    "roomCode": "Room Code",
-    "waitingForPlayers": "Waiting for players...",
-    "playersConnected": "players connected",
-    "enterRoomCode": "Enter Room Code"
+    "connecting": "Connecting..."
   },
   "game": {
     "gameOver": "Game Over!",
