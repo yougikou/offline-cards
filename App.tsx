@@ -39,6 +39,7 @@ export default function App() {
   // For signaling we need a "pending" manager that hasn't been assigned an ID yet
   const [pendingHostManager, setPendingHostManager] = useState<WebRTCManager | null>(null);
   const hostConnections = useRef(new Map<string, WebRTCManager>());
+  const [connectedGuests, setConnectedGuests] = useState<string[]>([]);
 
   // boardgame.io Host Client
   const hostClientRef = useRef<any>(null);
@@ -187,6 +188,7 @@ export default function App() {
           const gId = data.playerId;
           if (gId) {
             hostConnections.current.set(gId, manager);
+            setConnectedGuests(Array.from(hostConnections.current.keys()));
             manager.sendMessage(JSON.stringify({ type: 'WELCOME', roomId: roomIdRef.current, state: { messages: messagesRef.current } }));
 
             // With boardgame.io, we shouldn't dynamically add players mid-game easily in this simple setup.
@@ -265,6 +267,8 @@ export default function App() {
           }
         }
         if (leftGuestId) {
+          hostConnections.current.delete(leftGuestId);
+          setConnectedGuests(Array.from(hostConnections.current.keys()));
           alert(`Player ${leftGuestId} disconnected.`);
           if (hostClientRef.current && hostClientRef.current.moves.leaveGame) {
             const state = hostClientRef.current.getState();
@@ -329,6 +333,7 @@ export default function App() {
       const newRoomId = Math.random().toString(36).substring(2, 9);
       setRoomId(newRoomId);
       setMessages([]);
+      setConnectedGuests([]);
       clearStorage();
     }
 
@@ -377,7 +382,6 @@ export default function App() {
       if (appState === 'SIGNALING_HOST' && pendingHostManager) {
         await pendingHostManager.acceptAnswer(scannedText);
         // Do not jump to CONNECTED immediately. Let Host gather players, then click Start Game.
-        alert(t('lobby.guestConnected'));
         setQrValue('');
       } else if (appState === 'SIGNALING_GUEST' && guestWebrtcManager) {
         const answerStr = await guestWebrtcManager.acceptOfferAndCreateAnswer(scannedText);
@@ -531,6 +535,19 @@ export default function App() {
       )}
 
       <View style={{ flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+        {appState === 'SIGNALING_HOST' && connectedGuests.length > 0 && (
+          <View style={{ marginBottom: 20, width: '100%', alignItems: 'center', backgroundColor: '#e0f7fa', padding: 10, borderRadius: 8 }}>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5, color: '#006064' }}>
+              {t('lobby.connectedPlayers', '已连接玩家 / Connected Players')} ({connectedGuests.length}):
+            </Text>
+            {connectedGuests.map((guestId) => (
+              <Text key={guestId} style={{ fontSize: 14, color: '#004d40', marginVertical: 2 }}>
+                👤 {guestId}
+              </Text>
+            ))}
+          </View>
+        )}
+
         {showMode === 'qr' && qrValue ? (
           <View style={[styles.section, { flex: 1 }]}>
             <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.showQRToOther')}</Text>
@@ -597,6 +614,7 @@ export default function App() {
                   setTimeout(() => m.close(), 100);
                 });
                 hostConnections.current.clear();
+                setConnectedGuests([]);
                 setAppState('HOME');
                 setGameState(null);
               } else {
