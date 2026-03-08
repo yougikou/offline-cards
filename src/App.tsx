@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Button, TextInput, Platform, TouchableOpacity, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
-import './src/i18n/index'; // Initialize i18n
-import { WebRTCManager } from './src/webrtc';
-import GameBoard from './src/components/GameBoard';
-import { Peer } from 'peerjs';
-import { UnoLiteGame } from './src/game-modules/unoLite';
-import { ZhengShangYouGame } from './src/game-modules/ZhengShangYou';
+import './i18n/index'; // Initialize i18n
+import { WebRTCManager, initQuiet } from './webrtc';
+import GameBoard from './components/GameBoard';
+import QRScanner from './components/QRScanner';
+import QRCode from 'react-native-qrcode-svg';
+import { UnoLiteGame } from './game-modules/unoLite';
+import { ZhengShangYouGame } from './game-modules/ZhengShangYou';
 import { Client } from 'boardgame.io/client';
 
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
 type GameMode = 'UnoLite' | 'ZhengShangYou';
 type Role = 'HOST' | 'GUEST' | null;
 
-// Replace GameAction with the boardgame.io specific action type
 export interface BgioAction {
   type: string;
   moveName: string;
@@ -25,54 +25,105 @@ export default function App() {
   const { t, i18n } = useTranslation();
   const [appState, setAppState] = useState<AppState>('HOME');
   const [role, setRole] = useState<Role>(null);
-  const [roomId, setRoomId] = useState<string>('');
   const [playerId, setPlayerId] = useState<string>(''); // For guests it's their ID, for host it's 'host'
 
   const [messages, setMessages] = useState<string[]>([]);
 
-  // Guest uses a single connection manager
+  // Webrtc Managers
   const [guestWebrtcManager, setGuestWebrtcManager] = useState<WebRTCManager | null>(null);
-
-  // Host uses a pool of connection managers mapped by guest ID
   const hostConnections = useRef(new Map<string, WebRTCManager>());
-  const hostPeerRef = useRef<Peer | null>(null);
 
-  // boardgame.io Host Client
+  // To handle current joining process for host
+  const pendingHostManager = useRef<WebRTCManager | null>(null);
+
   const hostClientRef = useRef<any>(null);
 
   // Signaling state
-  const [inputRoomCode, setInputRoomCode] = useState<string>('');
   const [connectionStatus, setConnectionStatus] = useState<string>('disconnected');
+  const [generatedPayload, setGeneratedPayload] = useState<string>('');
+  const [scanningMode, setScanningMode] = useState<boolean>(false);
+  const [audioListening, setAudioListening] = useState<boolean>(false);
 
   // Lobby
   const [selectedGameMode, setSelectedGameMode] = useState<GameMode>('UnoLite');
-
-  // Sandbox & Game state is now boardgame.io full state { G, ctx, plugins, ... }
   const [gameState, setGameState] = useState<any>(null);
 
-  // Persistence helpers
-  const saveHostState = (id: string, msgs: string[]) => {
-    if (Platform.OS === 'web') {
-      localStorage.setItem('hostRoomId', id);
-      localStorage.setItem('hostState', JSON.stringify({ messages: msgs }));
+  const selectedGameModeRef = useRef(selectedGameMode);
+  const roleRef = useRef(role);
+  const playerIdRef = useRef(playerId);
+  const messagesRef = useRef(messages);
+  const gameStateRef = useRef(gameState);
+
+  useEffect(() => {
+    selectedGameModeRef.current = selectedGameMode;
+    roleRef.current = role;
+    playerIdRef.current = playerId;
+    messagesRef.current = messages;
+    gameStateRef.current = gameState;
+  }, [role, playerId, messages, gameState]);
+
+  // Quiet Audio References
+  const transmitNodeRef = useRef<any>(null);
+
+  const stopAudioTransmission = () => {
+    if (transmitNodeRef.current) {
+      transmitNodeRef.current.destroy();
+      transmitNodeRef.current = null;
     }
   };
 
-  const saveGuestState = (rId: string, pId: string) => {
-    if (Platform.OS === 'web') {
-      localStorage.setItem('guestRoomId', rId);
-      localStorage.setItem('guestPlayerId', pId);
+  const startAudioTransmission = (payload: string) => {
+    stopAudioTransmission();
+    if (typeof window !== 'undefined' && (window as any).Quiet) {
+      try {
+        transmitNodeRef.current = (window as any).Quiet.transmitter({
+          profile: 'ultrasonic-experimental',
+          onFinish: function () {
+            // Keep playing loop for the offer
+            if (roleRef.current === 'HOST' && appState === 'SIGNALING_HOST') {
+              startAudioTransmission(payload);
+            } else if (roleRef.current === 'GUEST' && appState === 'SIGNALING_GUEST') {
+              // Answer just broadcast a few times then stop
+              startAudioTransmission(payload);
+            }
+          }
+        });
+        transmitNodeRef.current.transmit((window as any).Quiet.str2ab(payload));
+      } catch (e) {
+        console.warn("Quiet JS Transmission Error:", e);
+      }
     }
   };
 
-  const clearStorage = () => {
-    if (Platform.OS === 'web') {
-      localStorage.removeItem('hostRoomId');
-      localStorage.removeItem('hostState');
-      localStorage.removeItem('guestRoomId');
-      localStorage.removeItem('guestPlayerId');
+  const startAudioListening = (onReceive: (payload: string) => void) => {
+    setAudioListening(true);
+    if (typeof window !== 'undefined' && (window as any).Quiet) {
+      try {
+        (window as any).Quiet.receiver({
+          profile: 'ultrasonic-experimental',
+          onReceive: (recvPayload: ArrayBuffer) => {
+            const str = (window as any).Quiet.ab2str(recvPayload);
+            stopAudioListening();
+            onReceive(str);
+          },
+          onCreateFail: (e: any) => console.log("Quiet JS Receiver Create Fail", e),
+          onReceiveFail: (numFails: number) => { }
+        });
+      } catch (e) {
+        console.warn("Quiet JS Listening Error:", e);
+      }
     }
   };
+
+  const stopAudioListening = () => {
+    setAudioListening(false);
+    if (typeof window !== 'undefined' && (window as any).Quiet) {
+      try {
+         (window as any).Quiet.disconnect();
+      } catch (e) {}
+    }
+  };
+
 
   const getGameModule = (mode: GameMode) => {
     switch (mode) {
@@ -84,11 +135,9 @@ export default function App() {
     }
   };
 
-  // Helper to send game syncs to all connected guests
   const broadcastSync = (state: any, connections: Map<string, WebRTCManager>) => {
     if (!state) return;
     connections.forEach((manager, guestId) => {
-      // Delegate state sanitization to the active game module's playerView
       const gameModule = getGameModule(selectedGameModeRef.current);
       const gameDef = gameModule(state.G.players || []);
       let safeState = state;
@@ -106,37 +155,13 @@ export default function App() {
     });
   };
 
-  const roleRef = useRef(role);
-  const roomIdRef = useRef(roomId);
-  const playerIdRef = useRef(playerId);
-  const messagesRef = useRef(messages);
-  const gameStateRef = useRef(gameState);
-  const selectedGameModeRef = useRef(selectedGameMode);
-
-  useEffect(() => {
-    selectedGameModeRef.current = selectedGameMode;
-    roleRef.current = role;
-    roomIdRef.current = roomId;
-    playerIdRef.current = playerId;
-    messagesRef.current = messages;
-    gameStateRef.current = gameState;
-  }, [role, roomId, playerId, messages, gameState]);
-
-  // Handle Guest Connection
-  useEffect(() => {
-    if (role !== 'GUEST' || !guestWebrtcManager) return;
-
-    const manager = guestWebrtcManager;
-
+  // Setup guest handlers
+  const setupGuestManager = (manager: WebRTCManager) => {
     manager.onMessageCallback = (msg) => {
       try {
         const data = JSON.parse(msg);
         if (data.type === 'WELCOME') {
           setMessages(data.state?.messages || []);
-          if (data.roomId) {
-            setRoomId(data.roomId);
-            saveGuestState(data.roomId, playerIdRef.current);
-          }
         } else if (data.type === 'SYNC') {
           if (data.gameMode) {
             setSelectedGameMode(data.gameMode);
@@ -151,6 +176,8 @@ export default function App() {
     manager.onConnectionStateChangeCallback = (state) => {
       setConnectionStatus(state);
       if (state === 'connected') {
+        stopAudioTransmission();
+        stopAudioListening();
         setAppState('CONNECTED');
       }
     };
@@ -158,11 +185,10 @@ export default function App() {
     manager.onDataChannelOpenCallback = () => {
       manager.sendMessage(JSON.stringify({
         type: 'HELLO',
-        roomId: roomIdRef.current,
         playerId: playerIdRef.current
       }));
     };
-  }, [guestWebrtcManager, role]);
+  };
 
   // Host setup pending manager handler
   const setupHostManager = (manager: WebRTCManager) => {
@@ -170,15 +196,11 @@ export default function App() {
       try {
         const data = JSON.parse(msg);
         if (data.type === 'HELLO') {
-          // Identify guest and add to pool if not there
           const gId = data.playerId;
           if (gId) {
             hostConnections.current.set(gId, manager);
-            manager.sendMessage(JSON.stringify({ type: 'WELCOME', roomId: roomIdRef.current, state: { messages: messagesRef.current } }));
+            manager.sendMessage(JSON.stringify({ type: 'WELCOME', state: { messages: messagesRef.current } }));
 
-            // With boardgame.io, we shouldn't dynamically add players mid-game easily in this simple setup.
-            // Ideally, all players join during the HOST signaling phase, then we start the client.
-            // If the game is already running, sync it.
             if (hostClientRef.current) {
                const currentState = hostClientRef.current.getState();
                const gameModule = getGameModule(selectedGameModeRef.current);
@@ -198,25 +220,15 @@ export default function App() {
             }
           }
         } else if (data.type === 'MOVE') {
-          // Action from guest
           if (hostClientRef.current) {
-            // boardgame.io moves must be called as: client.moves[moveName](...args)
-            // But we also need to ensure it's the right player's turn. boardgame.io client exposes a generic `update` or we can just call the move.
-            // Wait, hostClient is running as a single local instance. We need to tell it WHICH player is making the move if we use a multiplexed client,
-            // or we must update playerID before making the move if we use a single client.
-
-            // To properly execute a move on behalf of a guest using a local client:
             const moveName = data.moveName;
             const args = data.args || [];
-
-            // Temporary set playerID on the client to match the guest making the move
             const pIndex = gameStateRef.current?.G?.players.indexOf(data.playerId);
             if (pIndex !== undefined && pIndex !== -1) {
               hostClientRef.current.updatePlayerID(pIndex.toString());
               if (hostClientRef.current.moves[moveName]) {
                  hostClientRef.current.moves[moveName](...args);
               }
-              // Switch back to host id
               const hIndex = gameStateRef.current?.G?.players.indexOf('host');
               if (hIndex !== undefined && hIndex !== -1) {
                 hostClientRef.current.updatePlayerID(hIndex.toString());
@@ -224,39 +236,36 @@ export default function App() {
             }
           }
         }
-      } catch (e) {
-        // Ignored
-      }
+      } catch (e) { }
     };
 
     manager.onConnectionStateChangeCallback = (state) => {
       setConnectionStatus(state);
-    };
+      if (state === 'connected') {
+        stopAudioTransmission();
+        stopAudioListening();
+        setGeneratedPayload('');
 
-    manager.onDataChannelOpenCallback = () => {
-      // Don't auto-transition to connected here if we want to wait for "Start Game".
-      // But we can let them connect and wait in the lobby.
-      // We are leaving the Host in SIGNALING_HOST until they manually click "Start Game".
+        // Prepare next manager automatically if someone joined
+        prepareNextHostManager();
+      }
     };
   };
 
   const startBoardGameHost = (playerIds: string[]) => {
     const gameModule = getGameModule(selectedGameModeRef.current);
     const gameDef = gameModule(playerIds);
-    // Remove playerView from the local host engine client so it holds the unstripped authoritative state
     const engineGameDef = { ...gameDef };
     delete engineGameDef.playerView;
 
     const client = Client({
       game: engineGameDef as any,
       numPlayers: playerIds.length,
-      // No multiplayer wrapper - we run purely local and sync state manually!
     });
 
     client.start();
     hostClientRef.current = client;
 
-    // Set host's string ID as the current playerID to respect boardgame.io's playerView if we were using it
     const hIndex = playerIds.indexOf('host');
     if (hIndex !== -1) {
       client.updatePlayerID(hIndex.toString());
@@ -268,88 +277,95 @@ export default function App() {
       broadcastSync(state, hostConnections.current);
     });
 
-    // Initial state set
     const initialState = client.getState();
     setGameState(initialState);
     broadcastSync(initialState, hostConnections.current);
   };
 
-  const handleHost = async (resume: boolean = false) => {
+  const handleHost = () => {
+    initQuiet(
+      () => console.log("Quiet initialized"),
+      (err) => console.log("Quiet init failed", err)
+    );
     setAppState('SIGNALING_HOST');
     setRole('HOST');
-    setPlayerId('host'); // Fixed ID for the host player
+    setPlayerId('host');
+    setMessages([]);
+    setGeneratedPayload('');
 
-    let currentRoomId = roomIdRef.current;
-    if (!resume || !currentRoomId) {
-      // Generate a 4-character random alphanumeric room code
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      currentRoomId = Array.from({ length: 4 }).map(() => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
-      setRoomId(currentRoomId);
-      setMessages([]);
-      clearStorage();
-    }
-
-    // Initialize Host Peer
-    const peer = new Peer('MYGAME_' + currentRoomId);
-    hostPeerRef.current = peer;
-
-    peer.on('connection', (conn) => {
-      const manager = new WebRTCManager();
-      manager.wrapConnection(conn);
-      setupHostManager(manager);
-    });
-
-    peer.on('error', (err) => {
-      console.error("Host Peer Error:", err);
-      alert(t('lobby.errorSignaling') + String(err));
-      setAppState('HOME');
-    });
+    // Prepare first manager
+    prepareNextHostManager();
   };
 
-  const handleGuest = (resume: boolean = false) => {
+  const prepareNextHostManager = async () => {
+    const manager = new WebRTCManager();
+    setupHostManager(manager);
+    pendingHostManager.current = manager;
+
+    manager.onGeneratedPayloadCallback = (payload) => {
+      setGeneratedPayload(payload);
+      startAudioTransmission(payload);
+    };
+
+    await manager.generateOffer();
+  };
+
+  const handleGuest = () => {
+    initQuiet(
+      () => console.log("Quiet initialized"),
+      (err) => console.log("Quiet init failed", err)
+    );
     setAppState('SIGNALING_GUEST');
     setRole('GUEST');
-    setInputRoomCode('');
+    const newPlayerId = 'guest_' + Math.random().toString(36).substring(2, 9);
+    setPlayerId(newPlayerId);
+    setGeneratedPayload('');
 
-    if (!resume) {
-      const newPlayerId = 'guest_' + Math.random().toString(36).substring(2, 9);
-      setPlayerId(newPlayerId);
-      clearStorage();
-    }
+    // Auto start listening for acoustic offer
+    startAudioListening(onGuestReceivedOffer);
   };
 
-  const joinRoomAsGuest = async () => {
-    if (!inputRoomCode || inputRoomCode.length !== 4) {
-      alert(t('lobby.errorSignaling') + 'Invalid Room Code');
-      return;
-    }
-    const code = inputRoomCode.toUpperCase();
-
+  const onGuestReceivedOffer = async (payload: string) => {
     const manager = new WebRTCManager();
+    setupGuestManager(manager);
     setGuestWebrtcManager(manager);
 
-    try {
-      await manager.connectToHost(code);
-      // Data channel is open, manager handles events
-    } catch (e) {
-      console.error("Guest Connection Error:", e);
-      alert(t('lobby.errorSignaling') + String(e));
+    manager.onGeneratedPayloadCallback = (answerPayload) => {
+      setGeneratedPayload(answerPayload);
+      startAudioTransmission(answerPayload);
+    };
+
+    const success = await manager.handleOfferAndGenerateAnswer(payload);
+    if (!success) {
+      alert("Failed to decode connection data");
       setGuestWebrtcManager(null);
     }
   };
 
+  const onHostReceivedAnswer = async (payload: string) => {
+    if (pendingHostManager.current) {
+      const success = await pendingHostManager.current.handleAnswer(payload);
+      if (success) {
+        setScanningMode(false);
+        stopAudioListening();
+        // The data channel should open now.
+        // We leave pendingHostManager to trigger its onConnectionStateChangeCallback
+        // to handle state switches.
+      } else {
+        alert("Failed to set answer.");
+      }
+    }
+  };
+
+
   const handleGameAction = (moveName: string, ...args: any[]) => {
     if (appState === 'SANDBOX') {
       if (hostClientRef.current) {
-         // In sandbox, we just execute the move on the local client without playerID impersonation
-         // Actually, if we play as different players in sandbox, we should impersonate:
-         // For now, assume we just call the move. boardgame.io will validate it against ctx.currentPlayer
          hostClientRef.current.moves[moveName](...args);
       }
     } else if (appState === 'CONNECTED') {
       if (role === 'HOST') {
          if (hostClientRef.current) {
-            // Make sure host playerID is set
             const hIndex = gameState?.G?.players.indexOf('host');
             if (hIndex !== undefined && hIndex !== -1) {
               hostClientRef.current.updatePlayerID(hIndex.toString());
@@ -368,14 +384,28 @@ export default function App() {
   };
 
   const startGameHost = () => {
+    stopAudioTransmission();
+    stopAudioListening();
     const allPlayers = ['host', ...Array.from(hostConnections.current.keys())];
     startBoardGameHost(allPlayers);
     setAppState('CONNECTED');
   };
 
+  const cancelSignaling = () => {
+    stopAudioTransmission();
+    stopAudioListening();
+    if (appState === 'SIGNALING_HOST') {
+        if (pendingHostManager.current) pendingHostManager.current.close();
+        hostConnections.current.forEach(m => m.close());
+        hostConnections.current.clear();
+    }
+    if (appState === 'SIGNALING_GUEST') guestWebrtcManager?.close();
+    setAppState('HOME');
+  };
+
   const renderLanguageSwitcher = () => (
     <View style={styles.languageSwitcher}>
-      <Text style={styles.languageLabel}>{t('lobby.language')}</Text>
+      <Text style={styles.languageLabel}>{t('lobby.language') || 'Lang'}</Text>
       <View style={{ flexDirection: 'row', gap: 5 }}>
         <Button title="中文" onPress={() => i18n.changeLanguage('zh')} color={i18n.language === 'zh' ? '#007AFF' : '#999'} />
         <Button title="EN" onPress={() => i18n.changeLanguage('en')} color={i18n.language === 'en' ? '#007AFF' : '#999'} />
@@ -390,31 +420,31 @@ export default function App() {
         <View style={styles.topRightControls}>
           {renderLanguageSwitcher()}
         </View>
-        <Text style={styles.title}>{t('lobby.title')}</Text>
-        <Text style={styles.subtitle}>{t('lobby.subtitle')}</Text>
+        <Text style={styles.title}>{t('lobby.title') || 'Offline Cards'}</Text>
+        <Text style={styles.subtitle}>Geek Mode: Ultrasonic + QR Offline Sync</Text>
         <View style={styles.buttonContainer}>
           <View style={{ marginBottom: 20 }}>
-             <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
+             <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame') || 'Select Game'}</Text>
              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
                 <Button
-                   title={t('lobby.game_UnoLite')}
+                   title={t('lobby.game_UnoLite') || 'Uno'}
                    onPress={() => setSelectedGameMode('UnoLite')}
                    color={selectedGameMode === 'UnoLite' ? '#007AFF' : '#999'}
                 />
                 <Button
-                   title={t('lobby.game_ZhengShangYou')}
+                   title={t('lobby.game_ZhengShangYou') || 'ZhengShangYou'}
                    onPress={() => setSelectedGameMode('ZhengShangYou')}
                    color={selectedGameMode === 'ZhengShangYou' ? '#007AFF' : '#999'}
                 />
              </View>
           </View>
-          <Button title={t('lobby.createRoom')} onPress={() => handleHost(false)} />
+          <Button title={t('lobby.createRoom') || 'Create Room (Host)'} onPress={handleHost} />
           <View style={{ height: 20 }} />
-          <Button title={t('lobby.joinRoom')} onPress={() => handleGuest(false)} />
+          <Button title={t('lobby.joinRoom') || 'Join Room (Guest)'} onPress={handleGuest} />
 
           <View style={{ marginTop: 40, alignItems: 'center' }}>
-            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>{t('lobby.localTesting')}</Text>
-            <Button title={t('lobby.sandboxTesting')} color="purple" onPress={() => {
+            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>Local Debug Sandbox</Text>
+            <Button title="Enter Local Sandbox" color="purple" onPress={() => {
               setAppState('SANDBOX');
               setPlayerId('host');
               const players = ['host', 'guest_1'];
@@ -448,75 +478,107 @@ export default function App() {
   };
 
   const renderSignaling = () => (
-    <View style={styles.content}>
+    <ScrollView contentContainerStyle={styles.scrollContent}>
       <Text style={styles.title}>
-        {appState === 'SIGNALING_HOST' ? t('lobby.hostMode') : t('lobby.guestMode')}
+        {appState === 'SIGNALING_HOST' ? 'Host Mode (Add Player)' : 'Guest Mode (Join Table)'}
       </Text>
 
       <View style={{ flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+
+        {/* HOST STATE */}
         {appState === 'SIGNALING_HOST' && (
-          <View style={[styles.section, { flex: 1, justifyContent: 'center' }]}>
-            <Text style={{ fontSize: 20, marginBottom: 10 }}>{t('lobby.roomCode')}</Text>
-            <Text style={{ fontSize: 48, fontWeight: 'bold', letterSpacing: 5, color: '#007AFF' }}>{roomIdRef.current}</Text>
-            <Text style={{ marginTop: 20, fontSize: 16 }}>{t('lobby.waitingForPlayers')} {hostConnections.current.size} {t('lobby.playersConnected')}</Text>
+          <View style={styles.section}>
+            <Text style={{ fontSize: 16, marginBottom: 10, textAlign: 'center' }}>
+              Host: Broadcasting Connection Offer
+            </Text>
+            {generatedPayload ? (
+              <View style={{alignItems: 'center', marginBottom: 20}}>
+                <QRCode value={generatedPayload} size={250} />
+                <Text style={{color: 'green', marginTop: 10}}>🔊 Playing Ultrasonic Offer...</Text>
+              </View>
+            ) : (
+              <Text>Generating SDP Offer...</Text>
+            )}
+
+            <View style={{marginVertical: 20, width: '100%', alignItems: 'center'}}>
+               <Text>Waiting for Guest Answers...</Text>
+               <Text>Connected Guests: {hostConnections.current.size}</Text>
+               <View style={{marginTop: 10, gap: 10}}>
+                  {!scanningMode && (
+                      <View style={{gap: 10}}>
+                        <Button title="Listen for Ultrasonic Answer" onPress={() => {setScanningMode(false); startAudioListening(onHostReceivedAnswer); }} />
+                        <Button title="Scan Guest Answer QR" onPress={() => {setScanningMode(true); stopAudioListening(); }} />
+                      </View>
+                  )}
+                  {scanningMode && (
+                    <QRScanner
+                      onScan={(data) => { onHostReceivedAnswer(data); }}
+                      onCancel={() => { setScanningMode(false); }}
+                    />
+                  )}
+                  {audioListening && (
+                    <Text style={{color: 'green', marginTop: 10}}>🔊 Listening for Ultrasonic Answer...</Text>
+                  )}
+               </View>
+            </View>
           </View>
         )}
 
+        {/* GUEST STATE */}
         {appState === 'SIGNALING_GUEST' && (
-          <View style={[styles.section, { flex: 1, justifyContent: 'center', width: '100%', maxWidth: 300 }]}>
-            <Text style={{ fontSize: 20, marginBottom: 10 }}>{t('lobby.enterRoomCode')}</Text>
-            <TextInput
-              style={{
-                height: 50,
-                borderColor: 'gray',
-                borderWidth: 1,
-                width: '100%',
-                fontSize: 24,
-                textAlign: 'center',
-                letterSpacing: 5,
-                marginBottom: 20,
-                textTransform: 'uppercase'
-              }}
-              onChangeText={setInputRoomCode}
-              value={inputRoomCode}
-              maxLength={4}
-              autoCapitalize="characters"
-              placeholder="ABCD"
-            />
-            <Button title={t('lobby.joinRoom')} onPress={joinRoomAsGuest} />
-            <Text style={{ marginTop: 20 }}>{connectionStatus === 'connecting' ? t('lobby.connecting') : ''}</Text>
+          <View style={styles.section}>
+             {/* Not received offer yet */}
+             {!generatedPayload && (
+                <View style={{alignItems: 'center', width: '100%'}}>
+                   <Text style={{ fontSize: 16, marginBottom: 10 }}>Step 1: Receive Host Offer</Text>
+                   <Text style={{color: audioListening ? 'green' : 'gray', marginBottom: 20}}>
+                      {audioListening ? "🔊 Listening for Ultrasonic Offer..." : "Mic inactive"}
+                   </Text>
+
+                   {!scanningMode ? (
+                      <View style={{gap: 10}}>
+                        <Button title="Scan Host QR Offer" onPress={() => {setScanningMode(true); stopAudioListening(); }} />
+                        {!audioListening && <Button title="Listen for Ultrasonic Offer" onPress={() => startAudioListening(onGuestReceivedOffer)} />}
+                      </View>
+                   ) : (
+                      <QRScanner
+                        onScan={(data) => { setScanningMode(false); onGuestReceivedOffer(data); }}
+                        onCancel={() => {setScanningMode(false); startAudioListening(onGuestReceivedOffer);}}
+                      />
+                   )}
+                </View>
+             )}
+
+             {/* Received offer, generated answer */}
+             {generatedPayload && (
+                 <View style={{alignItems: 'center', width: '100%'}}>
+                   <Text style={{ fontSize: 16, marginBottom: 10 }}>Step 2: Present Answer to Host</Text>
+                   <QRCode value={generatedPayload} size={250} />
+                   <Text style={{color: 'green', marginTop: 10}}>🔊 Playing Ultrasonic Answer...</Text>
+                   <Text style={{marginTop: 10, color: 'gray'}}>Status: {connectionStatus}</Text>
+                 </View>
+             )}
           </View>
         )}
       </View>
 
       <View style={{ marginTop: 20, width: '100%', maxWidth: 300 }}>
-        {appState === 'SIGNALING_HOST' && (
+        {appState === 'SIGNALING_HOST' && hostConnections.current.size > 0 && (
           <View style={{ marginBottom: 10 }}>
-             <Button title={t('lobby.startGame', { count: hostConnections.current.size + 1 })} onPress={startGameHost} color="green" />
+             <Button title={`Start Game (${hostConnections.current.size + 1} players)`} onPress={startGameHost} color="green" />
           </View>
         )}
-        <Button title={t('lobby.cancel')} onPress={() => {
-          if (appState === 'SIGNALING_HOST') {
-             if (hostPeerRef.current) hostPeerRef.current.destroy();
-             hostConnections.current.forEach(m => m.close());
-             hostConnections.current.clear();
-          }
-          if (appState === 'SIGNALING_GUEST') guestWebrtcManager?.close();
-          setAppState('HOME');
-        }} color="red" />
+        <Button title="Cancel" onPress={cancelSignaling} color="red" />
       </View>
-    </View>
+    </ScrollView>
   );
 
   const renderConnected = () => {
-    // If we're CONNECTED but have no game state, something is wrong
     if (!gameState) {
       return (
         <View style={styles.content}>
-          <Text style={styles.title}>{t('lobby.waitingForState')}</Text>
-          <Button title={t('lobby.exit')} onPress={() => {
-            setAppState('HOME');
-          }} color="red" />
+          <Text style={styles.title}>Waiting for Table State...</Text>
+          <Button title="Exit" onPress={cancelSignaling} color="red" />
         </View>
       );
     }
@@ -563,6 +625,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',

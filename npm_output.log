@@ -1,23 +1,54 @@
 
-> offline-cards@1.0.0 start
-> expo start
+> offline-cards@1.0.0 web
+> expo start --web
 
 Starting project at /app
 Starting Metro Bundler
 
-The following packages should be updated for best compatibility with the installed expo version:
-  expo@55.0.4 - expected version: ~55.0.5
-Your project may not work correctly until you install the expected versions of the packages.
 Waiting on http://localhost:8081
 Logs for your project will appear below.
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 73.5% (149/197)
-Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 98.6% (292/294)
-Web Bundled 9057ms index.js (298 modules)
+Web ./index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 59.6% (126/205)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 84.0% (279/311)
+Web Bundled 8036ms index.js (400 modules)
  LOG  [web] Logs will appear in the browser console
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 446ms index.js (1 module)
+Web Bundled 32ms index.js (1 module)
  LOG  [web] Logs will appear in the browser console
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 404ms index.js (1 module)
+Web Bundled 31ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 25ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 30ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundling failed 26ms index.js (1 module)
+Unable to resolve "./App" from "index.js"
+[0m [90m 1 |[39m [36mimport[39m { registerRootComponent } [36mfrom[39m [32m'expo'[39m[33m;[39m
+ [90m 2 |[39m
+[31m[1m>[22m[39m[90m 3 |[39m [36mimport[39m [33mApp[39m [36mfrom[39m [32m'./App'[39m[33m;[39m
+ [90m   |[39m                  [31m[1m^[22m[39m
+ [90m 4 |[39m
+ [90m 5 |[39m [90m// registerRootComponent calls AppRegistry.registerComponent('main', () => App);[39m
+ [90m 6 |[39m [90m// It also ensures that whether you load the app in Expo Go or in a native build,[39m[0m
+
+Import stack:
+
+ index.js
+ | import "./App"
+
+
+ | import "./index"
+
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 2813ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 39ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 52ms index.js (1 module)
  LOG  [web] Logs will appear in the browser console
