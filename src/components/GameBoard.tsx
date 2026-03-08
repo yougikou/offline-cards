@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Modal, Animated } from 'react-native';
+import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Modal, Animated, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import DraggableCard from './DraggableCard';
 
@@ -61,7 +61,13 @@ const GameBoard: React.FC<GameBoardProps> = ({
         }
       });
     } else {
-      onAction('playCard', cardIndex);
+      setSelectedCards(prev => {
+        if (prev.includes(cardIndex)) {
+          return [];
+        } else {
+          return [cardIndex];
+        }
+      });
     }
   };
 
@@ -70,6 +76,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
     if (gameName === 'UnoLite') {
       onAction('playCard', cardIndex);
+      setSelectedCards([]);
     } else {
       if (selectedCards.includes(cardIndex)) {
         onAction('playCard', selectedCards);
@@ -81,7 +88,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
     }
   };
 
-  const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false) => {
+  const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false, customMarginLeft?: number) => {
     const isSelected = selectedCards.includes(cardIndex);
     return (
       <DraggableCard
@@ -106,6 +113,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         onDragEnd={() => {
           setIsMultiDragging(false);
         }}
+        customMarginLeft={customMarginLeft}
       />
     );
   };
@@ -241,11 +249,38 @@ const GameBoard: React.FC<GameBoardProps> = ({
           {myPlayerId} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
         </Text>
 
-        <View style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 20 }}>
-          <View style={{ width: 20 }} /> {/* Padding to prevent cut-off on scroll edge */}
-          {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false))}
-          <View style={{ width: 40 }} /> {/* Extra padding at end for overlapping cards */}
-        </View>
+        {(() => {
+          const windowWidth = Dimensions.get('window').width;
+          const paddingHorizontal = 20;
+          const cardWidth = 70;
+          const minSpacing = 30; // 最小可见、可操作间距
+          const maxSpacing = 35; // 最大间距 (也就是-35 margin)
+
+          let customMarginLeft = 0;
+          if (myHand.length > 1) {
+            const availableWidth = windowWidth - paddingHorizontal * 2;
+            const calculatedSpacing = (availableWidth - cardWidth) / (myHand.length - 1);
+            const spacing = Math.max(minSpacing, Math.min(maxSpacing, calculatedSpacing));
+            customMarginLeft = spacing - cardWidth;
+          }
+
+          return (
+            <View style={{ width: '100%' }}>
+              <ScrollView
+                horizontal={true}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal }}
+                style={{ width: '100%' }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 20 }}>
+                  {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false, index > 0 ? customMarginLeft : 0))}
+                  {/* 给最后一张牌选择时往上腾出空间，以及往右的拖动缓冲 */}
+                  <View style={{ width: 20 }} />
+                </View>
+              </ScrollView>
+            </View>
+          );
+        })()}
 
       </View>
     </View>

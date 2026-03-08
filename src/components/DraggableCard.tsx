@@ -16,6 +16,7 @@ export interface DraggableCardProps {
   onDragStart?: () => void;
   onDragEnd?: () => void;
   isMultiDragging?: boolean;
+  customMarginLeft?: number;
 }
 
 const DraggableCard: React.FC<DraggableCardProps> = ({
@@ -33,6 +34,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   onDragStart,
   onDragEnd,
   isMultiDragging = false,
+  customMarginLeft,
 }) => {
   const pan = useRef(new Animated.ValueXY()).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -61,6 +63,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       onStartShouldSetPanResponder: () => false,
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
+        if (!propsRef.current.isSelected) return false;
         // Only take over if dragged more than 5 pixels
         return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
       },
@@ -161,7 +164,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   const borderStyle = isSelected ? { borderColor: '#FFD700', borderWidth: 3 } : { borderColor: '#E0E0E0' };
 
   // Calculate overlapping margin
-  const marginLeft = index > 0 ? -35 : 0;
+  const marginLeft = customMarginLeft !== undefined ? customMarginLeft : (index > 0 ? -35 : 0);
   // Make cards darker when not turn
   const opacity = isMyTurn ? 1 : 0.6;
   const calculatedZIndex = isMultiDragging ? 999 : zIndex;
