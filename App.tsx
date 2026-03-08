@@ -239,8 +239,15 @@ export default function App() {
         } else if (data.type === 'PLAYER_LEAVE') {
           const gId = data.playerId;
           alert(`Player ${gId} has explicitly left the game (Forfeit).`);
-          // Note: Here we would trigger the boardgame.io forfeit move if it was implemented.
-          // For now we just alert and rely on the game rules or remaining players.
+          if (hostClientRef.current && hostClientRef.current.moves.leaveGame) {
+            const state = hostClientRef.current.getState();
+            if (state && state.ctx) {
+              hostClientRef.current.updatePlayerID(state.ctx.currentPlayer);
+              hostClientRef.current.moves.leaveGame(gId);
+              const hIndex = state.G.players.indexOf('host');
+              if (hIndex !== -1) hostClientRef.current.updatePlayerID(hIndex.toString());
+            }
+          }
         }
       } catch (e) {
         // Ignored
@@ -259,7 +266,15 @@ export default function App() {
         }
         if (leftGuestId) {
           alert(`Player ${leftGuestId} disconnected.`);
-          // Host continues running, handle game state updates / forfeit appropriately here.
+          if (hostClientRef.current && hostClientRef.current.moves.leaveGame) {
+            const state = hostClientRef.current.getState();
+            if (state && state.ctx) {
+              hostClientRef.current.updatePlayerID(state.ctx.currentPlayer);
+              hostClientRef.current.moves.leaveGame(leftGuestId);
+              const hIndex = state.G.players.indexOf('host');
+              if (hIndex !== -1) hostClientRef.current.updatePlayerID(hIndex.toString());
+            }
+          }
         }
       }
     };

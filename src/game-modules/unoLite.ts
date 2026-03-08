@@ -14,6 +14,7 @@ export interface UnoLiteState {
   discardPile: UnoCard[];
   hands: Record<string, UnoCard[]>;
   deckCount: number;
+  exitedPlayers: string[];
 }
 
 const COLORS: ('Red' | 'Blue' | 'Green' | 'Yellow')[] = ['Red', 'Blue', 'Green', 'Yellow'];
@@ -64,7 +65,8 @@ export const UnoLiteGame = (playerIds: string[]): Game<UnoLiteState> => ({
       deck,
       deckCount: deck.length,
       discardPile: [firstCard],
-      hands
+      hands,
+      exitedPlayers: [],
     };
   },
 
@@ -109,18 +111,26 @@ export const UnoLiteGame = (playerIds: string[]): Game<UnoLiteState> => ({
       } else {
         return INVALID_MOVE;
       }
+    },
+
+    leaveGame: ({ G, ctx, events }, playerId: string) => {
+      if (!G.exitedPlayers.includes(playerId)) {
+        G.exitedPlayers.push(playerId);
+      }
     }
   },
 
-  turn: {
-    minMoves: 1,
-    maxMoves: 1,
-  },
+  turn: {},
 
   endIf: ({ G, ctx }) => {
-    // Check if any player's hand is empty
+    const activePlayers = G.players.filter(p => !G.exitedPlayers.includes(p));
+    if (activePlayers.length === 1) {
+      return { winner: activePlayers[0] };
+    }
+
+    // Check if any active player's hand is empty
     for (const [playerId, hand] of Object.entries(G.hands)) {
-      if (hand.length === 0) {
+      if (!G.exitedPlayers.includes(playerId) && hand.length === 0) {
         return { winner: playerId };
       }
     }

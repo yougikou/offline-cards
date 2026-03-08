@@ -16,6 +16,7 @@ export interface ZhengShangYouState {
   currentTrick: Card[];
   lastPlayPlayer: string | null;
   gameName: string;
+  exitedPlayers: string[];
 }
 
 const SUITS: ('Hearts' | 'Diamonds' | 'Clubs' | 'Spades')[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
@@ -84,7 +85,8 @@ export const ZhengShangYouGame = (playerIds: string[]): Game<ZhengShangYouState>
       hands,
       currentTrick: [],
       lastPlayPlayer: null,
-      gameName: 'ZhengShangYou'
+      gameName: 'ZhengShangYou',
+      exitedPlayers: []
     };
   },
 
@@ -145,6 +147,12 @@ export const ZhengShangYouGame = (playerIds: string[]): Game<ZhengShangYouState>
         return INVALID_MOVE;
       }
       events.endTurn();
+    },
+
+    leaveGame: ({ G, ctx, events }, playerId: string) => {
+      if (!G.exitedPlayers.includes(playerId)) {
+        G.exitedPlayers.push(playerId);
+      }
     }
   },
 
@@ -155,15 +163,18 @@ export const ZhengShangYouGame = (playerIds: string[]): Game<ZhengShangYouState>
       if (G.lastPlayPlayer === currentPlayerId) {
         G.currentTrick = [];
       }
-    },
-    minMoves: 1,
-    maxMoves: 1,
+    }
   },
 
   endIf: ({ G, ctx }) => {
+    const activePlayers = G.players.filter(p => !G.exitedPlayers.includes(p));
+    if (activePlayers.length === 1) {
+      return { winner: activePlayers[0] };
+    }
+
     // A player wins if they run out of cards
     for (const [playerId, hand] of Object.entries(G.hands)) {
-      if (hand.length === 0) {
+      if (!G.exitedPlayers.includes(playerId) && hand.length === 0) {
         return { winner: playerId };
       }
     }
