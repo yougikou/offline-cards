@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Modal, Animated } from 'react-native';
+import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Modal, Animated, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import DraggableCard from './DraggableCard';
 
@@ -61,7 +61,13 @@ const GameBoard: React.FC<GameBoardProps> = ({
         }
       });
     } else {
-      onAction('playCard', cardIndex);
+      setSelectedCards(prev => {
+        if (prev.includes(cardIndex)) {
+          return [];
+        } else {
+          return [cardIndex];
+        }
+      });
     }
   };
 
@@ -70,6 +76,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
     if (gameName === 'UnoLite') {
       onAction('playCard', cardIndex);
+      setSelectedCards([]);
     } else {
       if (selectedCards.includes(cardIndex)) {
         onAction('playCard', selectedCards);
@@ -81,7 +88,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
     }
   };
 
-  const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false) => {
+  const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false, customMarginLeft?: number) => {
     const isSelected = selectedCards.includes(cardIndex);
     return (
       <DraggableCard
@@ -106,6 +113,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         onDragEnd={() => {
           setIsMultiDragging(false);
         }}
+        customMarginLeft={customMarginLeft}
       />
     );
   };
@@ -134,21 +142,57 @@ const GameBoard: React.FC<GameBoardProps> = ({
           <Text style={styles.gameOverText}>
             {t('game.winner', { winner: gameOver.winner })}
           </Text>
+          <View style={styles.gameOverButtons}>
+            {onReset && (
+              <Button
+                title={t('game.resetGame', '再开一局')}
+                onPress={() => onReset()}
+                color="#4CAF50"
+              />
+            )}
+            {onExit && (
+              <Button
+                title={t('game.exit', '返回主界面')}
+                onPress={() => onExit()}
+                color="#F44336"
+              />
+            )}
+          </View>
         </View>
       )}
 
       {opponents.map((opponentId: string, index: number) => {
         const opponentHand = G.hands && G.hands[opponentId] ? G.hands[opponentId] : [];
         const isOpponentTurn = currentPlayerIdString === opponentId;
+        const pIndex = (G.players || []).indexOf(opponentId) + 1;
+        const shortName = `P${pIndex}`;
+
+        // 左边2人，左上角1人，上边3人，右上角1人，右边2人 共9个位置
+        const positions: any[] = [
+          { top: 50, alignSelf: 'center' as const }, // Top middle
+          { top: '35%', left: 10 },                  // Left 1
+          { top: '35%', right: 10 },                 // Right 1
+          { top: 50, left: '25%' },                  // Top left-ish
+          { top: 50, right: '25%' },                 // Top right-ish
+          { top: '55%', left: 10 },                  // Left 2
+          { top: '55%', right: 10 },                 // Right 2
+          { top: 50, left: 10 },                     // Top-Left corner
+          { top: 50, right: 10 },                    // Top-Right corner
+        ];
+        const layoutStyle = positions[index % positions.length];
+
         return (
-          <View key={opponentId} style={[styles.opponentPill, { top: 40 + (index * 45), backgroundColor: isOpponentTurn ? 'rgba(255, 215, 0, 0.9)' : 'rgba(0,0,0,0.5)' }]}>
-            <Text style={{ color: isOpponentTurn ? 'black' : 'white', fontWeight: 'bold' }}>
-              {opponentId}: {opponentHand.length} 张 {isOpponentTurn ? '(Turn)' : ''}
+          <View key={opponentId} style={[styles.opponentCard, layoutStyle, { borderColor: isOpponentTurn ? '#FFD700' : 'transparent' }]}>
+            <Text style={[styles.opponentName, { color: isOpponentTurn ? '#FFD700' : 'white' }]}>
+              {shortName} {isOpponentTurn ? '(Turn)' : ''}
             </Text>
+            <View style={styles.opponentCardCount}>
+              <Text style={styles.opponentCardCountText}>{opponentHand.length} 张</Text>
+            </View>
             {isSandbox && (
-              <View style={{ marginLeft: 10 }}>
-                <Button title="Draw" onPress={() => onAction('drawAndPass')} disabled={!isOpponentTurn || gameOver} />
-              </View>
+              <TouchableOpacity style={{ marginTop: 5, backgroundColor: '#2196F3', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }} onPress={() => onAction('drawAndPass')} disabled={!isOpponentTurn || gameOver}>
+                <Text style={{ color: 'white', fontSize: 10 }}>Draw</Text>
+              </TouchableOpacity>
             )}
           </View>
         );
@@ -238,14 +282,41 @@ const GameBoard: React.FC<GameBoardProps> = ({
         </View>
 
         <Text style={[styles.sandboxTitle, { marginBottom: 10 }]}>
-          {myPlayerId} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
+          P{(G.players || []).indexOf(myPlayerId) + 1} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
         </Text>
 
-        <View style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 20 }}>
-          <View style={{ width: 20 }} /> {/* Padding to prevent cut-off on scroll edge */}
-          {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false))}
-          <View style={{ width: 40 }} /> {/* Extra padding at end for overlapping cards */}
-        </View>
+        {(() => {
+          const windowWidth = Dimensions.get('window').width;
+          const paddingHorizontal = 20;
+          const cardWidth = 70;
+          const minSpacing = 30; // 最小可见、可操作间距
+          const maxSpacing = 35; // 最大间距 (也就是-35 margin)
+
+          let customMarginLeft = 0;
+          if (myHand.length > 1) {
+            const availableWidth = windowWidth - paddingHorizontal * 2;
+            const calculatedSpacing = (availableWidth - cardWidth) / (myHand.length - 1);
+            const spacing = Math.max(minSpacing, Math.min(maxSpacing, calculatedSpacing));
+            customMarginLeft = spacing - cardWidth;
+          }
+
+          return (
+            <View style={{ width: '100%' }}>
+              <ScrollView
+                horizontal={true}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal }}
+                style={{ width: '100%' }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 20 }}>
+                  {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false, index > 0 ? customMarginLeft : 0))}
+                  {/* 给最后一张牌选择时往上腾出空间，以及往右的拖动缓冲 */}
+                  <View style={{ width: 20 }} />
+                </View>
+              </ScrollView>
+            </View>
+          );
+        })()}
 
       </View>
     </View>
@@ -260,21 +331,39 @@ const styles = StyleSheet.create({
     overflow: 'visible',
     backgroundColor: '#2E7D32',
   },
-  opponentPill: {
+  opponentCard: {
     position: 'absolute',
-    alignSelf: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-    zIndex: 10,
-    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 2,
     alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    minWidth: 60,
+  },
+  opponentName: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  opponentCardCount: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  opponentCardCountText: {
+    color: 'black',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   interactionArea: {
     flex: 1,
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
+    marginTop: 60, // Give some room for top opponents
   },
   tableArea: {
     flex: 1,
@@ -388,6 +477,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 32,
     fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  gameOverButtons: {
+    flexDirection: 'row',
+    gap: 20,
+    marginTop: 20,
   }
 });
 
