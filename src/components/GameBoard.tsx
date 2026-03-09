@@ -198,64 +198,58 @@ const GameBoard: React.FC<GameBoardProps> = ({
         );
       })}
 
-      {/* Upper 2/3: Interaction Area (Round Table) */}
-      <View style={styles.interactionArea}>
-
-        {/* Center: Table Area */}
-        <View style={styles.tableArea}>
-          {gameName === 'UnoLite' ? (
-            <>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
-                <Text style={styles.sandboxTitle}>{t('game.discardPileTop')}</Text>
-                <Text style={styles.sandboxTitle}>{t('game.deckCount', { count: deckCount })}</Text>
-              </View>
-              <View style={styles.tableContainer}>
-                {discardPile.length > 0 && (
-                  (() => {
-                    const topCard = discardPile[discardPile.length - 1];
-                    const cardColor = topCard.color ? topCard.color.toLowerCase() : 'gray';
-                    return (
-                      <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90 }]}>
-                        <Text style={[styles.cardText, { color: 'white', fontSize: 24 }]}>
-                          {topCard.value}
-                        </Text>
-                      </View>
-                    );
-                  })()
-                )}
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
-                <Text style={styles.sandboxTitle}>{t('game.currentTrick')}</Text>
-              </View>
-              <View style={styles.tableContainer}>
-                {currentTrick.map((c: any, index: number) => {
-                  const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
+      {/* Table Area (Absolute Full Screen, zIndex 1) */}
+      <View style={styles.tableArea}>
+        {gameName === 'UnoLite' ? (
+          <>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
+              <Text style={styles.sandboxTitle}>{t('game.discardPileTop')}</Text>
+              <Text style={styles.sandboxTitle}>{t('game.deckCount', { count: deckCount })}</Text>
+            </View>
+            <View style={styles.tableContainer}>
+              {discardPile.length > 0 && (
+                (() => {
+                  const topCard = discardPile[discardPile.length - 1];
+                  const cardColor = topCard.color ? topCard.color.toLowerCase() : 'gray';
                   return (
-                    <View key={`trick-${index}`} style={[styles.card, { backgroundColor: 'white', width: 60, height: 90 }]}>
-                      <Text style={[styles.cardText, { color: textColor, fontSize: 20 }]}>
-                        {c.rank}
+                    <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90 }]}>
+                      <Text style={[styles.cardText, { color: 'white', fontSize: 24 }]}>
+                        {topCard.value}
                       </Text>
-                      {c.suit && (
-                        <Text style={{ color: textColor, fontSize: 16 }}>
-                          {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
-                        </Text>
-                      )}
                     </View>
                   );
-                })}
-              </View>
-            </>
-          )}
-        </View>
-
+                })()
+              )}
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
+              <Text style={styles.sandboxTitle}>{t('game.currentTrick')}</Text>
+            </View>
+            <View style={styles.tableContainer}>
+              {currentTrick.map((c: any, index: number) => {
+                const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
+                return (
+                  <View key={`trick-${index}`} style={[styles.card, { backgroundColor: 'white', width: 60, height: 90 }]}>
+                    <Text style={[styles.cardText, { color: textColor, fontSize: 20 }]}>
+                      {c.rank}
+                    </Text>
+                    {c.suit && (
+                      <Text style={{ color: textColor, fontSize: 16 }}>
+                        {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
       </View>
 
-      {/* Lower 1/3: My Hand & Controls */}
-      <View style={styles.myHandArea}>
-
+      {/* Controls Area (Absolutely Positioned above hand) */}
+      <View style={styles.controlsArea}>
         <View style={styles.controlRow}>
           {gameName === 'UnoLite' ? (
             <TouchableOpacity
@@ -280,11 +274,13 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </>
           )}
         </View>
-
-        <Text style={[styles.sandboxTitle, { marginBottom: 10 }]}>
+        <Text style={[styles.sandboxTitle, { marginBottom: 10, textAlign: 'center' }]}>
           P{(G.players || []).indexOf(myPlayerId) + 1} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
         </Text>
+      </View>
 
+      {/* My Hand Area (Absolutely Positioned at Bottom, Fixed Height, High Z-Index) */}
+      <View style={styles.myHandArea}>
         {(() => {
           const paddingHorizontal = 20;
 
@@ -293,15 +289,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
           const customMarginLeft = myHand.length > 1 ? -35 : 0;
 
           return (
-            <View style={{ width: '100%' }}>
+            <View style={{ width: '100%', height: '100%' }}>
               <ScrollView
                 horizontal={true}
                 showsHorizontalScrollIndicator={false}
                 // Removing justifyContent: 'center' so it scrolls properly from left to right when content is wide
-                contentContainerStyle={{ flexGrow: 1, paddingHorizontal, paddingRight: 40 }}
-                style={{ width: '100%' }}
+                contentContainerStyle={{ flexGrow: 1, paddingHorizontal, paddingRight: 40, alignItems: 'flex-end', paddingBottom: 20 }}
+                style={{ width: '100%', height: '100%', overflow: 'visible' }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 20 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingVertical: 20 }}>
                   {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false, index > 0 ? customMarginLeft : 0))}
                   {/* 给最后一张牌选择时往上腾出空间，以及往右的拖动缓冲 */}
                   <View style={{ width: 20 }} />
@@ -310,7 +306,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </View>
           );
         })()}
-
       </View>
     </View>
   );
@@ -351,26 +346,31 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
-  interactionArea: {
-    flex: 1,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    marginTop: 60, // Give some room for top opponents
-  },
   tableArea: {
-    flex: 1,
-    width: '100%',
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
     paddingHorizontal: 10,
+    zIndex: 1,
+  },
+  controlsArea: {
+    position: 'absolute',
+    bottom: 230,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 50,
   },
   myHandArea: {
-    flex: 1,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 220,
     zIndex: 100,
     elevation: 100,
     overflow: 'visible',
