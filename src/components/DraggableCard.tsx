@@ -167,7 +167,11 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   const marginLeft = customMarginLeft !== undefined ? customMarginLeft : (index > 0 ? -35 : 0);
   // Make cards darker when not turn
   const opacity = isMyTurn ? 1 : 0.6;
+
+  // When actively dragging, we must force the highest possible zIndex and elevation
+  // PanResponder updates `zIndex` state to 999 internally when drag starts.
   let calculatedZIndex = Math.max(zIndex, isMultiDragging ? 999 : isSelected ? 100 : 1);
+  let calculatedElevation = calculatedZIndex === 999 ? 999 : 6;
 
   const renderCardContent = () => {
     if (gameName === 'UnoLite') {
@@ -227,7 +231,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       {...panResponder.panHandlers}
       style={[
         styles.cardContainer,
-        { marginLeft, opacity, zIndex: calculatedZIndex, elevation: calculatedZIndex, touchAction: 'none' } as any,
+        { marginLeft, opacity, zIndex: calculatedZIndex, elevation: calculatedElevation, touchAction: 'none' } as any,
         {
           transform: [
             { translateX: currentPan.x },

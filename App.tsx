@@ -715,6 +715,6 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     flexDirection: 'column',
-    overflow: 'hidden',
+    overflow: 'visible',
   }
 });
