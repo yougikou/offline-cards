@@ -170,7 +170,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
   // When actively dragging, we must force the highest possible zIndex and elevation
   // PanResponder updates `zIndex` state to 999 internally when drag starts.
-  let calculatedZIndex = Math.max(zIndex, isMultiDragging ? 999 : isSelected ? 100 : 1);
+  let calculatedZIndex = Math.max(zIndex, isMultiDragging ? 999 : 1);
   let calculatedElevation = calculatedZIndex === 999 ? 999 : 6;
 
   const renderCardContent = () => {
