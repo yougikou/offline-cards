@@ -371,6 +371,9 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: 'center',
     justifyContent: 'flex-end',
+    zIndex: 100,
+    elevation: 100,
+    overflow: 'visible',
   },
   controlRow: {
     flexDirection: 'row',
