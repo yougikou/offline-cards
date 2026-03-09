@@ -167,12 +167,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   const marginLeft = customMarginLeft !== undefined ? customMarginLeft : (index > 0 ? -35 : 0);
   // Make cards darker when not turn
   const opacity = isMyTurn ? 1 : 0.6;
-  let calculatedZIndex = zIndex;
-  if (isMultiDragging) {
-    calculatedZIndex = 999;
-  } else if (isSelected) {
-    calculatedZIndex = 100;
-  }
+  let calculatedZIndex = Math.max(zIndex, isMultiDragging ? 999 : isSelected ? 100 : 1);
 
   const renderCardContent = () => {
     if (gameName === 'UnoLite') {
