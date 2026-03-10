@@ -1,5 +1,5 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, Button, ScrollView, TouchableOpacity, Modal, Animated, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Button, TouchableOpacity, Modal, Animated, Dimensions, PanResponder } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import DraggableCard from './DraggableCard';
 
@@ -26,6 +26,81 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const [modalVisible, setModalVisible] = useState(false);
   const [isMultiDragging, setIsMultiDragging] = useState(false);
 
+  const containerWidthRef = useRef(0);
+  const contentWidthRef = useRef(0);
+
+  const handPanX = useRef(new Animated.Value(0)).current;
+  const lastHandPanX = useRef(0);
+
+  const handPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Only trigger hand sliding if we're swiping horizontally significantly.
+        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onMoveShouldSetPanResponderCapture: () => false,
+      onPanResponderGrant: () => {
+        handPanX.setOffset(lastHandPanX.current);
+        handPanX.setValue(0);
+      },
+      onPanResponderMove: Animated.event([null, { dx: handPanX }], { useNativeDriver: false }),
+      onPanResponderRelease: (evt, gestureState) => {
+        handPanX.flattenOffset();
+        let newX = lastHandPanX.current + gestureState.dx;
+
+        const cWidth = containerWidthRef.current;
+        const ctWidth = contentWidthRef.current;
+
+        // Left bound: content should not go further right than 0.
+        // Right bound: content should not go further left than -(contentWidth - containerWidth).
+        const minX = cWidth < ctWidth ? -(ctWidth - cWidth + 40) : 0;
+        const maxX = 0;
+
+        if (newX > maxX) {
+          newX = maxX;
+        } else if (newX < minX) {
+          newX = minX;
+        }
+
+        Animated.spring(handPanX, {
+          toValue: newX,
+          useNativeDriver: true,
+          friction: 8,
+          tension: 40,
+        }).start(() => {
+          lastHandPanX.current = newX;
+        });
+      },
+      onPanResponderTerminate: (evt, gestureState) => {
+        handPanX.flattenOffset();
+        let newX = lastHandPanX.current + gestureState.dx;
+
+        const cWidth = containerWidthRef.current;
+        const ctWidth = contentWidthRef.current;
+
+        const minX = cWidth < ctWidth ? -(ctWidth - cWidth + 40) : 0;
+        const maxX = 0;
+
+        if (newX > maxX) {
+          newX = maxX;
+        } else if (newX < minX) {
+          newX = minX;
+        }
+
+        Animated.spring(handPanX, {
+          toValue: newX,
+          useNativeDriver: true,
+          friction: 8,
+          tension: 40,
+        }).start(() => {
+          lastHandPanX.current = newX;
+        });
+      }
+    })
+  ).current;
+
   const multiPan = useRef(new Animated.ValueXY()).current;
   const multiScale = useRef(new Animated.Value(1)).current;
 
@@ -48,6 +123,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const currentPlayerIdString = G.players ? G.players[parseInt(ctx.currentPlayer, 10)] : null;
   const isMyTurn = currentPlayerIdString === myPlayerId;
   const gameOver = ctx.gameover;
+
+  useEffect(() => {
+    // Reset scroll if hand becomes small again
+    if (myHand.length <= 1) {
+       handPanX.setValue(0);
+       lastHandPanX.current = 0;
+    }
+  }, [myHand.length]);
 
   const handleCardPress = (cardIndex: number) => {
     if (!isMyTurn || gameOver) return;
@@ -284,25 +367,31 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {(() => {
           const paddingHorizontal = 20;
 
-          // Always use a fixed overlap to ensure hand looks consistent,
-          // allowing the ScrollView to handle horizontal overflow naturally.
+          // Always use a fixed overlap to ensure hand looks consistent.
           const customMarginLeft = myHand.length > 1 ? -35 : 0;
 
           return (
-            <View style={{ width: '100%', height: '100%' }}>
-              <ScrollView
-                horizontal={true}
-                showsHorizontalScrollIndicator={false}
-                // Removing justifyContent: 'center' so it scrolls properly from left to right when content is wide
-                contentContainerStyle={{ flexGrow: 1, paddingHorizontal, paddingRight: 40, alignItems: 'flex-end', paddingBottom: 20 }}
-                style={{ width: '100%', height: '100%', overflow: 'visible' }}
+            <View
+              style={{ width: '100%', height: '100%', overflow: 'visible' }}
+              onLayout={(e) => { containerWidthRef.current = e.nativeEvent.layout.width; }}
+            >
+              <Animated.View
+                {...handPanResponder.panHandlers}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-end',
+                  paddingVertical: 20,
+                  paddingHorizontal: paddingHorizontal,
+                  transform: [{ translateX: handPanX }],
+                  // Ensure container expands to hold all children
+                  alignSelf: 'flex-start'
+                }}
+                onLayout={(e) => { contentWidthRef.current = e.nativeEvent.layout.width; }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingVertical: 20 }}>
-                  {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false, index > 0 ? customMarginLeft : 0))}
-                  {/* 给最后一张牌选择时往上腾出空间，以及往右的拖动缓冲 */}
-                  <View style={{ width: 20 }} />
-                </View>
-              </ScrollView>
+                {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false, index > 0 ? customMarginLeft : 0))}
+                {/* 给最后一张牌选择时往上腾出空间，以及往右的拖动缓冲 */}
+                <View style={{ width: 40 }} />
+              </Animated.View>
             </View>
           );
         })()}
