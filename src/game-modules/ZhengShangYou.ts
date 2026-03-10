@@ -17,6 +17,7 @@ export interface ZhengShangYouState {
   lastPlayPlayer: string | null;
   gameName: string;
   exitedPlayers: string[];
+  extraPile?: Card[];
 }
 
 const SUITS: ('Hearts' | 'Diamonds' | 'Clubs' | 'Spades')[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
@@ -66,12 +67,26 @@ export const ZhengShangYouGame = (playerIds: string[]): Game<ZhengShangYouState>
       hands[id] = [];
     }
 
+    const extraPile: Card[] = [];
+
     // Deal all cards evenly
     let currentPlayerIndex = 0;
     while (deck.length > 0) {
       const card = deck.pop()!;
-      const playerId = playerIds[currentPlayerIndex % playerIds.length];
-      hands[playerId].push(card);
+
+      if (playerIds.length === 2) {
+        // If 2 players, deal into 3 piles
+        const pileIndex = currentPlayerIndex % 3;
+        if (pileIndex === 2) {
+          extraPile.push(card);
+        } else {
+          const playerId = playerIds[pileIndex];
+          hands[playerId].push(card);
+        }
+      } else {
+        const playerId = playerIds[currentPlayerIndex % playerIds.length];
+        hands[playerId].push(card);
+      }
       currentPlayerIndex++;
     }
 
@@ -86,7 +101,8 @@ export const ZhengShangYouGame = (playerIds: string[]): Game<ZhengShangYouState>
       currentTrick: [],
       lastPlayPlayer: null,
       gameName: 'ZhengShangYou',
-      exitedPlayers: []
+      exitedPlayers: [],
+      extraPile
     };
   },
 
@@ -200,6 +216,15 @@ export const ZhengShangYouGame = (playerIds: string[]): Game<ZhengShangYouState>
           }));
         }
       }
+    }
+
+    if (safeG.extraPile) {
+      safeG.extraPile = safeG.extraPile.map(() => ({
+        id: Math.random().toString(),
+        rank: '',
+        value: 0,
+        hidden: true
+      }));
     }
 
     return safeG;
