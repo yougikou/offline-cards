@@ -231,7 +231,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       {...panResponder.panHandlers}
       style={[
         styles.cardContainer,
-        { marginLeft, opacity, zIndex: calculatedZIndex, elevation: calculatedElevation, touchAction: isSelected ? 'none' : 'pan-x' } as any,
+        { marginLeft, opacity, zIndex: calculatedZIndex, elevation: calculatedElevation, touchAction: 'none' } as any,
         {
           transform: [
             { translateX: currentPan.x },
