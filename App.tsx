@@ -120,7 +120,7 @@ export default function App() {
     messagesRef.current = messages;
     gameStateRef.current = gameState;
     appStateRef.current = appState;
-  }, [role, roomId, playerId, messages, gameState, appState]);
+  }, [selectedGameMode, role, roomId, playerId, messages, gameState, appState]);
 
   // Handle Guest Connection
   useEffect(() => {
