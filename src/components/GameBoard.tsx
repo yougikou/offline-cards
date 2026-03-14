@@ -358,35 +358,61 @@ const GameBoard: React.FC<GameBoardProps> = ({
       </View>
 
       {/* My Hand Area (Absolutely Positioned at Bottom, Fixed Height, High Z-Index) */}
-      <View style={styles.myHandArea}>
+      <View style={styles.myHandArea} pointerEvents="box-none">
         {(() => {
           const paddingHorizontal = 20;
 
-          // Always use a fixed overlap to ensure hand looks consistent.
-          const customMarginLeft = myHand.length > 1 ? -35 : 0;
+          // Separate cards by selection status.
+          const selectedCardsData = selectedCards.map(idx => ({ card: myHand[idx], originalIndex: idx }));
+          const unselectedCardsData = myHand.map((c: any, i: number) => ({ card: c, originalIndex: i })).filter((_, i) => !selectedCards.includes(i));
+
+          const unselectedMarginLeft = unselectedCardsData.length > 1 ? -35 : 0;
+          const selectedMarginLeft = selectedCardsData.length > 1 ? -35 : 0;
 
           return (
             <View
-              style={{ width: '100%', height: '100%', overflow: 'visible' }}
-              onLayout={(e) => { containerWidthRef.current = e.nativeEvent.layout.width; }}
+              style={{ width: '100%', height: '100%', overflow: 'visible', justifyContent: 'flex-end' }}
+              pointerEvents="box-none"
             >
-              <Animated.View
-                {...handPanResponder.panHandlers}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'flex-end',
-                  paddingVertical: 20,
-                  paddingHorizontal: paddingHorizontal,
-                  transform: [{ translateX: handPanX }],
-                  // Ensure container expands to hold all children
-                  alignSelf: 'flex-start'
-                }}
-                onLayout={(e) => { contentWidthRef.current = e.nativeEvent.layout.width; }}
+              {/* Selected Cards (Upper Area) */}
+              {selectedCardsData.length > 0 && (
+                <View style={styles.selectedCardsContainer} pointerEvents="box-none">
+                  <Animated.View
+                    {...handPanResponder.panHandlers}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transform: [{ translateX: handPanX }],
+                    }}
+                  >
+                    {selectedCardsData.map((item, index) => renderCard(item.card, myPlayerId, item.originalIndex, false, index > 0 ? selectedMarginLeft : 0))}
+                  </Animated.View>
+                </View>
+              )}
+
+              {/* Unselected Cards (Lower Area, flush with bottom) */}
+              <View
+                style={styles.unselectedHandContainer}
+                onLayout={(e) => { containerWidthRef.current = e.nativeEvent.layout.width; }}
+                pointerEvents="box-none"
               >
-                {myHand.map((c: any, index: number) => renderCard(c, myPlayerId, index, false, index > 0 ? customMarginLeft : 0))}
-                {/* 给最后一张牌选择时往上腾出空间，以及往右的拖动缓冲 */}
-                <View style={{ width: 40 }} />
-              </Animated.View>
+                <Animated.View
+                  {...handPanResponder.panHandlers}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'flex-end',
+                    paddingBottom: 5,
+                    paddingHorizontal: paddingHorizontal,
+                    transform: [{ translateX: handPanX }],
+                    alignSelf: 'flex-start'
+                  }}
+                  onLayout={(e) => { contentWidthRef.current = e.nativeEvent.layout.width; }}
+                >
+                  {unselectedCardsData.map((item, index) => renderCard(item.card, myPlayerId, item.originalIndex, false, index > 0 ? unselectedMarginLeft : 0))}
+                  <View style={{ width: 40 }} />
+                </Animated.View>
+              </View>
             </View>
           );
         })()}
@@ -445,7 +471,7 @@ const styles = StyleSheet.create({
   },
   controlsArea: {
     position: 'absolute',
-    bottom: 230,
+    bottom: 280,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -456,10 +482,22 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 220,
+    height: 300,
     zIndex: 100,
     elevation: 100,
     overflow: 'visible',
+  },
+  selectedCardsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 120, // fixed height for upper selection area
+    paddingBottom: 5,
+  },
+  unselectedHandContainer: {
+    flex: 1,
+    overflow: 'visible',
+    justifyContent: 'flex-end',
   },
   controlRow: {
     flexDirection: 'row',

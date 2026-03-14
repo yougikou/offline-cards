@@ -49,15 +49,6 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
     propsRef.current = { isMyTurn, isOpponent, onDragUp, index, isSelected, currentPan, currentScale, onDragStart, onDragEnd };
   }, [isMyTurn, isOpponent, onDragUp, index, isSelected, currentPan, currentScale, onDragStart, onDragEnd]);
 
-  useEffect(() => {
-    Animated.spring(translateY, {
-      toValue: isSelected ? -20 : 0,
-      useNativeDriver: true,
-      friction: 6,
-      tension: 40,
-    }).start();
-  }, [isSelected]);
-
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -235,7 +226,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         {
           transform: [
             { translateX: currentPan.x },
-            { translateY: Animated.add(currentPan.y, translateY) },
+            { translateY: currentPan.y },
             { scale: currentScale }
           ]
         }
