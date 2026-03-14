@@ -305,11 +305,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
             <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
               <Text style={styles.sandboxTitle}>{t('game.currentTrick')}</Text>
             </View>
-            <View style={styles.tableContainer}>
+            <View style={[styles.tableContainer, { flexWrap: 'nowrap' }]}>
               {currentTrick.map((c: any, index: number) => {
                 const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
                 return (
-                  <View key={`trick-${index}`} style={[styles.card, { backgroundColor: 'white', width: 60, height: 90 }]}>
+                  <View key={`trick-${index}`} style={[styles.card, { backgroundColor: 'white', width: 60, height: 90, marginLeft: index > 0 ? -40 : 0 }]}>
                     <Text style={[styles.cardText, { color: textColor, fontSize: 20, userSelect: 'none' as any }]}>
                       {c.rank}
                     </Text>
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   tableArea: {
     position: 'absolute',
     top: 0,
-    bottom: 0,
+    bottom: 200,
     left: 0,
     right: 0,
     alignItems: 'center',
