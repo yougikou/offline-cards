@@ -377,17 +377,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
               {/* Selected Cards (Upper Area) */}
               {selectedCardsData.length > 0 && (
                 <View style={styles.selectedCardsContainer} pointerEvents="box-none">
-                  <Animated.View
-                    {...handPanResponder.panHandlers}
+                  <View
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      transform: [{ translateX: handPanX }],
                     }}
                   >
                     {selectedCardsData.map((item, index) => renderCard(item.card, myPlayerId, item.originalIndex, false, index > 0 ? selectedMarginLeft : 0))}
-                  </Animated.View>
+                  </View>
                 </View>
               )}
 
