@@ -440,12 +440,11 @@ export default function App() {
     const currentLangLabel = i18n.language === 'zh' ? '中文' : i18n.language === 'ja' ? '日本語' : 'English';
     return (
       <View style={styles.languageSwitcher}>
-        <Text style={styles.languageLabel}>{t('lobby.language')}</Text>
         <TouchableOpacity
           style={styles.languageDropdownButton}
           onPress={() => setLanguageMenuVisible(!languageMenuVisible)}
         >
-          <Text style={styles.languageDropdownText}>{currentLangLabel} ▼</Text>
+          <Text style={styles.languageDropdownText}>🌐 {currentLangLabel} ▼</Text>
         </TouchableOpacity>
 
         {languageMenuVisible && (
@@ -488,28 +487,28 @@ export default function App() {
             <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
 
             <View style={styles.gameListContainer}>
-              <ScrollView nestedScrollEnabled={true}>
-                <TouchableOpacity
-                  style={[styles.gameListItem, selectedGameMode === 'UnoLite' && styles.gameListItemSelected]}
-                  onPress={() => setSelectedGameMode('UnoLite')}
-                >
-                  <Text style={[styles.gameListItemText, selectedGameMode === 'UnoLite' && styles.gameListItemTextSelected]}>
-                    {t('lobby.game_UnoLite')}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.gameListItem, selectedGameMode === 'ZhengShangYou' && styles.gameListItemSelected]}
-                  onPress={() => setSelectedGameMode('ZhengShangYou')}
-                >
-                  <Text style={[styles.gameListItemText, selectedGameMode === 'ZhengShangYou' && styles.gameListItemTextSelected]}>
-                    {t('lobby.game_ZhengShangYou')}
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
+              <TouchableOpacity
+                style={[styles.gameListItem, selectedGameMode === 'UnoLite' && styles.gameListItemSelected]}
+                onPress={() => setSelectedGameMode('UnoLite')}
+              >
+                <Text style={[styles.gameListItemText, selectedGameMode === 'UnoLite' && styles.gameListItemTextSelected]}>
+                  {t('lobby.game_UnoLite')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.gameListItem, selectedGameMode === 'ZhengShangYou' && styles.gameListItemSelected]}
+                onPress={() => setSelectedGameMode('ZhengShangYou')}
+              >
+                <Text style={[styles.gameListItemText, selectedGameMode === 'ZhengShangYou' && styles.gameListItemTextSelected]}>
+                  {t('lobby.game_ZhengShangYou')}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <View style={{ marginVertical: 15 }}>
-              <Button title={t('lobby.createRoom')} onPress={() => handleHost(false)} />
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#007AFF' }]} onPress={() => handleHost(false)}>
+                <Text style={styles.actionButtonText}>{t('lobby.createRoom')}</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={{ marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#e0e0e0', alignItems: 'center' }}>
@@ -521,18 +520,22 @@ export default function App() {
                 </Text>
                 <Button title="+" onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} />
               </View>
-              <Button title={t('lobby.sandboxTesting')} color="purple" onPress={() => {
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#9C27B0', width: '100%' }]} onPress={() => {
                 setAppState('SANDBOX');
                 setPlayerId('player_1');
                 const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
                 startBoardGameHost(players);
-              }} />
+              }}>
+                <Text style={styles.actionButtonText}>{t('lobby.sandboxTesting')}</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.joinRoomSection}>
             <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray', fontSize: 12 }}>Join an existing game (Mode is set by Host)</Text>
-            <Button title={t('lobby.joinRoom')} onPress={() => handleGuest(false)} color="#4CAF50" />
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#4CAF50' }]} onPress={() => handleGuest(false)}>
+              <Text style={styles.actionButtonText}>{t('lobby.joinRoom')}</Text>
+            </TouchableOpacity>
           </View>
 
         </View>
@@ -758,27 +761,26 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   languageDropdownButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     minWidth: 100,
     alignItems: 'center',
   },
   languageDropdownText: {
     fontSize: 14,
     color: '#333',
+    fontWeight: 'bold',
   },
   languageDropdownMenu: {
     position: 'absolute',
-    top: 50,
+    top: 45,
     right: 0,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 6,
+    borderRadius: 12,
     width: 120,
     zIndex: 1000,
     elevation: 5,
@@ -833,20 +835,31 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   gameListContainer: {
-    height: 120,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
+    backgroundColor: 'transparent',
     marginBottom: 10,
-    backgroundColor: '#fafafa',
+    gap: 10,
   },
   gameListItem: {
     padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    marginVertical: 4,
   },
   gameListItemSelected: {
+    borderColor: '#007AFF',
     backgroundColor: '#e3f2fd',
+  },
+  actionButton: {
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   gameListItemText: {
     fontSize: 16,
