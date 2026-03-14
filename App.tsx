@@ -398,9 +398,11 @@ export default function App() {
   const handleGameAction = (moveName: string, ...args: any[]) => {
     if (appState === 'SANDBOX') {
       if (hostClientRef.current) {
-        // In sandbox, we just execute the move on the local client without playerID impersonation
-        // Actually, if we play as different players in sandbox, we should impersonate:
-        // For now, assume we just call the move. boardgame.io will validate it against ctx.currentPlayer
+        // In sandbox hotseat mode, we must impersonate the active player before calling the move
+        const currentPlayerIndex = gameStateRef.current?.ctx?.currentPlayer;
+        if (currentPlayerIndex !== undefined) {
+          hostClientRef.current.updatePlayerID(currentPlayerIndex);
+        }
         hostClientRef.current.moves[moveName](...args);
       }
     } else if (appState === 'CONNECTED') {
@@ -473,8 +475,8 @@ export default function App() {
             <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>{t('lobby.localTesting')}</Text>
             <Button title={t('lobby.sandboxTesting')} color="purple" onPress={() => {
               setAppState('SANDBOX');
-              setPlayerId('host');
-              const players = ['host', 'guest_1'];
+              setPlayerId('player_1');
+              const players = ['player_1', 'player_2', 'player_3'];
               startBoardGameHost(players);
             }} />
           </View>
@@ -485,39 +487,47 @@ export default function App() {
 
   const renderSandbox = () => {
     if (!gameState) return null;
+    const activePlayerId = gameState.G.players[parseInt(gameState.ctx.currentPlayer, 10)];
     return (
-      <GameBoard
-        gameState={gameState}
-        myPlayerId="host"
-        onAction={handleGameAction}
-        onExit={() => {
-          const doExit = () => {
-            if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
-            setGameState(null);
-            setAppState('HOME');
-          };
-          const msg = t('game.exitConfirmHost');
-          if (Platform.OS === 'web') {
-            if (window.confirm(msg)) doExit();
-          } else {
-            setTimeout(() => {
-              Alert.alert(
-                t('game.exitConfirmTitle'),
-                msg,
-                [
-                  { text: t('game.cancel'), style: 'cancel' },
-                  { text: t('game.confirm'), style: 'destructive', onPress: doExit }
-                ]
-              );
-            }, 300);
-          }
-        }}
-        onReset={() => {
-          if (hostClientRef.current) hostClientRef.current.stop();
-          startBoardGameHost(['host', 'guest_1']);
-        }}
-        isSandbox={true}
-      />
+      <View style={{ flex: 1 }}>
+        <View style={{ backgroundColor: '#FFD700', padding: 5, alignItems: 'center', zIndex: 1000, elevation: 1000 }}>
+          <Text style={{ fontWeight: 'bold', color: 'black' }}>
+            🛠 沙盒测试模式 | 当前扮演: {activePlayerId}
+          </Text>
+        </View>
+        <GameBoard
+          gameState={gameState}
+          myPlayerId={activePlayerId}
+          onAction={handleGameAction}
+          onExit={() => {
+            const doExit = () => {
+              if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
+              setGameState(null);
+              setAppState('HOME');
+            };
+            const msg = t('game.exitConfirmHost');
+            if (Platform.OS === 'web') {
+              if (window.confirm(msg)) doExit();
+            } else {
+              setTimeout(() => {
+                Alert.alert(
+                  t('game.exitConfirmTitle'),
+                  msg,
+                  [
+                    { text: t('game.cancel'), style: 'cancel' },
+                    { text: t('game.confirm'), style: 'destructive', onPress: doExit }
+                  ]
+                );
+              }, 300);
+            }
+          }}
+          onReset={() => {
+            if (hostClientRef.current) hostClientRef.current.stop();
+            startBoardGameHost(['player_1', 'player_2', 'player_3']);
+          }}
+          isSandbox={true}
+        />
+      </View>
     );
   };
 
