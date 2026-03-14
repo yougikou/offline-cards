@@ -179,12 +179,12 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         <View style={{ flex: 1, width: '100%' }}>
           {/* Top Left Corner */}
           <View style={{ position: 'absolute', top: 4, left: 4, alignItems: 'center' }}>
-            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold' }}>{card.value}</Text>
+            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{card.value}</Text>
           </View>
 
           {/* Bottom Right Corner (Upside Down) */}
           <View style={{ position: 'absolute', bottom: 4, right: 4, alignItems: 'center', transform: [{ rotate: '180deg' }] }}>
-            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold' }}>{card.value}</Text>
+            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{card.value}</Text>
           </View>
 
           {/* Center */}
@@ -201,24 +201,24 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         <View style={{ flex: 1, width: '100%' }}>
           {/* Top Left Corner */}
           <View style={{ position: 'absolute', top: 4, left: 4, alignItems: 'center' }}>
-            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold' }}>{card.rank}</Text>
-            {suitIcon ? <Text style={{ color: textColor, fontSize: 14 }}>{suitIcon}</Text> : null}
+            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{card.rank}</Text>
+            {suitIcon ? <Text style={{ color: textColor, fontSize: 14, userSelect: 'none' as any }}>{suitIcon}</Text> : null}
           </View>
 
           {/* Bottom Right Corner (Upside Down) */}
           <View style={{ position: 'absolute', bottom: 4, right: 4, alignItems: 'center', transform: [{ rotate: '180deg' }] }}>
-            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold' }}>{card.rank}</Text>
-            {suitIcon ? <Text style={{ color: textColor, fontSize: 14 }}>{suitIcon}</Text> : null}
+            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{card.rank}</Text>
+            {suitIcon ? <Text style={{ color: textColor, fontSize: 14, userSelect: 'none' as any }}>{suitIcon}</Text> : null}
           </View>
 
           {/* Center (Optional, could just leave empty for standard cards, or put a big suit) */}
           {suitIcon ? (
              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-               <Text style={{ color: textColor, fontSize: 32, opacity: 0.2 }}>{suitIcon}</Text>
+               <Text style={{ color: textColor, fontSize: 32, opacity: 0.2, userSelect: 'none' as any }}>{suitIcon}</Text>
              </View>
           ) : (
              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-               <Text style={{ color: textColor, fontSize: 24, fontWeight: 'bold' }}>{card.rank}</Text>
+               <Text style={{ color: textColor, fontSize: 24, fontWeight: 'bold', userSelect: 'none' as any }}>{card.rank}</Text>
              </View>
           )}
         </View>
@@ -257,6 +257,7 @@ const styles = StyleSheet.create({
     // Allows the shadow to show around the card
     padding: 2,
     zIndex: 1, // Standard zIndex; the actual stack will naturally follow the rendering order
+    userSelect: 'none' as any,
   },
   card: {
     width: 70,
@@ -271,6 +272,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 5,
     elevation: 6,
+    userSelect: 'none' as any,
   },
   cardBack: {
     width: 45,

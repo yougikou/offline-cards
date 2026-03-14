@@ -291,7 +291,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   const cardColor = topCard.color ? topCard.color.toLowerCase() : 'gray';
                   return (
                     <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90 }]}>
-                      <Text style={[styles.cardText, { color: 'white', fontSize: 24 }]}>
+                      <Text style={[styles.cardText, { color: 'white', fontSize: 24, userSelect: 'none' as any }]}>
                         {topCard.value}
                       </Text>
                     </View>
@@ -310,11 +310,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
                 return (
                   <View key={`trick-${index}`} style={[styles.card, { backgroundColor: 'white', width: 60, height: 90 }]}>
-                    <Text style={[styles.cardText, { color: textColor, fontSize: 20 }]}>
+                    <Text style={[styles.cardText, { color: textColor, fontSize: 20, userSelect: 'none' as any }]}>
                       {c.rank}
                     </Text>
                     {c.suit && (
-                      <Text style={{ color: textColor, fontSize: 16 }}>
+                      <Text style={{ color: textColor, fontSize: 16, userSelect: 'none' as any }}>
                         {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
                       </Text>
                     )}
@@ -418,6 +418,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
     marginBottom: 4,
+    userSelect: 'none' as any,
   },
   opponentCardCount: {
     backgroundColor: 'white',
@@ -429,6 +430,7 @@ const styles = StyleSheet.create({
     color: 'black',
     fontWeight: 'bold',
     fontSize: 12,
+    userSelect: 'none' as any,
   },
   tableArea: {
     position: 'absolute',
@@ -486,15 +488,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     textAlign: 'center',
+    userSelect: 'none' as any,
   },
   sandboxTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
     color: '#fff',
+    userSelect: 'none' as any,
   },
   activePlayerText: {
     color: '#FFD700', // Gold for active player
+    userSelect: 'none' as any,
   },
   handContainer: {
     flexDirection: 'row',
@@ -528,6 +533,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 2,
     elevation: 3,
+    userSelect: 'none' as any,
   },
   cardBack: {
     backgroundColor: '#111',
