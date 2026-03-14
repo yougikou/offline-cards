@@ -536,11 +536,13 @@ const styles = StyleSheet.create({
   cardText: {
     fontSize: 18,
     fontWeight: 'bold',
+    userSelect: 'none' as any,
   },
   cardBackText: {
     fontSize: 14,
     color: '#D32F2F',
     fontWeight: 'bold',
+    userSelect: 'none' as any,
   },
   gameOverOverlay: {
     position: 'absolute',
