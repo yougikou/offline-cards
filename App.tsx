@@ -453,41 +453,58 @@ export default function App() {
         <Text style={styles.title}>{t('lobby.title')}</Text>
         <Text style={styles.subtitle}>{t('lobby.subtitle')}</Text>
         <View style={styles.buttonContainer}>
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
-              <Button
-                title={t('lobby.game_UnoLite')}
-                onPress={() => setSelectedGameMode('UnoLite')}
-                color={selectedGameMode === 'UnoLite' ? '#007AFF' : '#999'}
-              />
-              <Button
-                title={t('lobby.game_ZhengShangYou')}
-                onPress={() => setSelectedGameMode('ZhengShangYou')}
-                color={selectedGameMode === 'ZhengShangYou' ? '#007AFF' : '#999'}
-              />
-            </View>
-          </View>
-          <Button title={t('lobby.createRoom')} onPress={() => handleHost(false)} />
-          <View style={{ height: 20 }} />
-          <Button title={t('lobby.joinRoom')} onPress={() => handleGuest(false)} />
 
-          <View style={{ marginTop: 40, alignItems: 'center' }}>
-            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>{t('lobby.localTesting')}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-              <Button title="-" onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} />
-              <Text style={{ marginHorizontal: 15, fontSize: 16 }}>
-                {sandboxPlayerCount} Players
-              </Text>
-              <Button title="+" onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} />
+          <View style={styles.gameConfigSection}>
+            <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
+
+            <View style={styles.gameListContainer}>
+              <ScrollView nestedScrollEnabled={true}>
+                <TouchableOpacity
+                  style={[styles.gameListItem, selectedGameMode === 'UnoLite' && styles.gameListItemSelected]}
+                  onPress={() => setSelectedGameMode('UnoLite')}
+                >
+                  <Text style={[styles.gameListItemText, selectedGameMode === 'UnoLite' && styles.gameListItemTextSelected]}>
+                    {t('lobby.game_UnoLite')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.gameListItem, selectedGameMode === 'ZhengShangYou' && styles.gameListItemSelected]}
+                  onPress={() => setSelectedGameMode('ZhengShangYou')}
+                >
+                  <Text style={[styles.gameListItemText, selectedGameMode === 'ZhengShangYou' && styles.gameListItemTextSelected]}>
+                    {t('lobby.game_ZhengShangYou')}
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-            <Button title={t('lobby.sandboxTesting')} color="purple" onPress={() => {
-              setAppState('SANDBOX');
-              setPlayerId('player_1');
-              const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
-              startBoardGameHost(players);
-            }} />
+
+            <View style={{ marginVertical: 15 }}>
+              <Button title={t('lobby.createRoom')} onPress={() => handleHost(false)} />
+            </View>
+
+            <View style={{ marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#e0e0e0', alignItems: 'center' }}>
+              <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>{t('lobby.localTesting')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                <Button title="-" onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} />
+                <Text style={{ marginHorizontal: 15, fontSize: 16 }}>
+                  {sandboxPlayerCount} Players
+                </Text>
+                <Button title="+" onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} />
+              </View>
+              <Button title={t('lobby.sandboxTesting')} color="purple" onPress={() => {
+                setAppState('SANDBOX');
+                setPlayerId('player_1');
+                const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
+                startBoardGameHost(players);
+              }} />
+            </View>
           </View>
+
+          <View style={styles.joinRoomSection}>
+            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray', fontSize: 12 }}>Join an existing game (Mode is set by Host)</Text>
+            <Button title={t('lobby.joinRoom')} onPress={() => handleGuest(false)} color="#4CAF50" />
+          </View>
+
         </View>
       </View>
     );
@@ -724,6 +741,52 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     maxWidth: 300,
+  },
+  gameConfigSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 20,
+  },
+  gameListContainer: {
+    height: 120,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#fafafa',
+  },
+  gameListItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  gameListItemSelected: {
+    backgroundColor: '#e3f2fd',
+  },
+  gameListItemText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+  },
+  gameListItemTextSelected: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
+  joinRoomSection: {
+    backgroundColor: '#f1f8e9',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   section: {
     alignItems: 'center',
