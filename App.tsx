@@ -55,6 +55,7 @@ export default function App() {
 
   // Sandbox & Game state is now boardgame.io full state { G, ctx, plugins, ... }
   const [gameState, setGameState] = useState<any>(null);
+  const [sandboxPlayerCount, setSandboxPlayerCount] = useState<number>(3);
 
   // Persistence helpers
   const saveHostState = async (id: string, msgs: string[]) => {
@@ -473,10 +474,17 @@ export default function App() {
 
           <View style={{ marginTop: 40, alignItems: 'center' }}>
             <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>{t('lobby.localTesting')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <Button title="-" onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} />
+              <Text style={{ marginHorizontal: 15, fontSize: 16 }}>
+                {sandboxPlayerCount} Players
+              </Text>
+              <Button title="+" onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} />
+            </View>
             <Button title={t('lobby.sandboxTesting')} color="purple" onPress={() => {
               setAppState('SANDBOX');
               setPlayerId('player_1');
-              const players = ['player_1', 'player_2', 'player_3'];
+              const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
               startBoardGameHost(players);
             }} />
           </View>
@@ -523,7 +531,8 @@ export default function App() {
           }}
           onReset={() => {
             if (hostClientRef.current) hostClientRef.current.stop();
-            startBoardGameHost(['player_1', 'player_2', 'player_3']);
+            const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
+            startBoardGameHost(players);
           }}
           isSandbox={true}
         />
