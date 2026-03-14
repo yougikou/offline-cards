@@ -3,7 +3,7 @@
     "title": "Offline Cards",
     "subtitle": "基于 boardgame.io 的局域网卡牌游戏",
     "selectGame": "选择游戏：",
-    "language": "语言/Language",
+    "language": "语言",
     "createRoom": "创建房间",
     "joinRoom": "加入房间",
     "localTesting": "本地测试",
