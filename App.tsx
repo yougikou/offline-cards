@@ -57,6 +57,9 @@ export default function App() {
   const [gameState, setGameState] = useState<any>(null);
   const [sandboxPlayerCount, setSandboxPlayerCount] = useState<number>(3);
 
+  // Language Dropdown state
+  const [languageMenuVisible, setLanguageMenuVisible] = useState<boolean>(false);
+
   // Persistence helpers
   const saveHostState = async (id: string, msgs: string[]) => {
     await Storage.setItem('hostRoomId', id);
@@ -433,16 +436,43 @@ export default function App() {
     setAppState('CONNECTED');
   };
 
-  const renderLanguageSwitcher = () => (
-    <View style={styles.languageSwitcher}>
-      <Text style={styles.languageLabel}>{t('lobby.language')}</Text>
-      <View style={{ flexDirection: 'row', gap: 5 }}>
-        <Button title="中文" onPress={() => i18n.changeLanguage('zh')} color={i18n.language === 'zh' ? '#007AFF' : '#999'} />
-        <Button title="EN" onPress={() => i18n.changeLanguage('en')} color={i18n.language === 'en' ? '#007AFF' : '#999'} />
-        <Button title="日本語" onPress={() => i18n.changeLanguage('ja')} color={i18n.language === 'ja' ? '#007AFF' : '#999'} />
+  const renderLanguageSwitcher = () => {
+    const currentLangLabel = i18n.language === 'zh' ? '中文' : i18n.language === 'ja' ? '日本語' : 'English';
+    return (
+      <View style={styles.languageSwitcher}>
+        <Text style={styles.languageLabel}>{t('lobby.language')}</Text>
+        <TouchableOpacity
+          style={styles.languageDropdownButton}
+          onPress={() => setLanguageMenuVisible(!languageMenuVisible)}
+        >
+          <Text style={styles.languageDropdownText}>{currentLangLabel} ▼</Text>
+        </TouchableOpacity>
+
+        {languageMenuVisible && (
+          <View style={styles.languageDropdownMenu}>
+            <TouchableOpacity
+              style={[styles.languageDropdownItem, i18n.language === 'zh' && styles.languageDropdownItemSelected]}
+              onPress={() => { i18n.changeLanguage('zh'); setLanguageMenuVisible(false); }}
+            >
+              <Text style={[styles.languageDropdownItemText, i18n.language === 'zh' && styles.languageDropdownItemTextSelected]}>中文</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.languageDropdownItem, i18n.language === 'en' && styles.languageDropdownItemSelected]}
+              onPress={() => { i18n.changeLanguage('en'); setLanguageMenuVisible(false); }}
+            >
+              <Text style={[styles.languageDropdownItemText, i18n.language === 'en' && styles.languageDropdownItemTextSelected]}>English</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.languageDropdownItem, i18n.language === 'ja' && styles.languageDropdownItemSelected]}
+              onPress={() => { i18n.changeLanguage('ja'); setLanguageMenuVisible(false); }}
+            >
+              <Text style={[styles.languageDropdownItemText, i18n.language === 'ja' && styles.languageDropdownItemTextSelected]}>日本語</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderHome = () => {
     return (
@@ -720,11 +750,60 @@ const styles = StyleSheet.create({
   },
   languageSwitcher: {
     alignItems: 'flex-end',
+    position: 'relative',
   },
   languageLabel: {
     fontSize: 12,
     color: '#666',
     marginBottom: 5,
+  },
+  languageDropdownButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  languageDropdownText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  languageDropdownMenu: {
+    position: 'absolute',
+    top: 50,
+    right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    width: 120,
+    zIndex: 1000,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  languageDropdownItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  languageDropdownItemSelected: {
+    backgroundColor: '#e3f2fd',
+  },
+  languageDropdownItemText: {
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
+  },
+  languageDropdownItemTextSelected: {
+    color: '#007AFF',
+    fontWeight: 'bold',
   },
   title: {
     fontSize: 28,
