@@ -272,11 +272,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
             <View style={styles.opponentCardCount}>
               <Text style={styles.opponentCardCountText}>{opponentHand.length} 张</Text>
             </View>
-            {isSandbox && (
-              <TouchableOpacity style={{ marginTop: 5, backgroundColor: '#2196F3', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }} onPress={() => onAction('drawAndPass')} disabled={!isOpponentTurn || gameOver}>
-                <Text style={{ color: 'white', fontSize: 10 }}>Draw</Text>
-              </TouchableOpacity>
-            )}
           </View>
         );
       })}
