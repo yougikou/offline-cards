@@ -308,16 +308,22 @@ const GameBoard: React.FC<GameBoardProps> = ({
             <View style={[styles.tableContainer, { flexWrap: 'nowrap' }]}>
               {currentTrick.map((c: any, index: number) => {
                 const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
+                const suitIcon = c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : c.suit === 'Spades' ? '♠' : '';
                 return (
                   <View key={`trick-${index}`} style={[styles.card, { backgroundColor: 'white', width: 60, height: 90, marginLeft: index > 0 ? -40 : 0 }]}>
-                    <Text style={[styles.cardText, { color: textColor, fontSize: 20, userSelect: 'none' as any }]}>
-                      {c.rank}
-                    </Text>
-                    {c.suit && (
-                      <Text style={{ color: textColor, fontSize: 16, userSelect: 'none' as any }}>
-                        {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
+                    <View style={{ position: 'absolute', top: 4, left: 4, alignItems: 'center' }}>
+                      <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{c.rank}</Text>
+                      {suitIcon ? <Text style={{ color: textColor, fontSize: 14, userSelect: 'none' as any }}>{suitIcon}</Text> : null}
+                    </View>
+                    <View style={{ position: 'absolute', bottom: 4, right: 4, alignItems: 'center', transform: [{ rotate: '180deg' }] }}>
+                      <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{c.rank}</Text>
+                      {suitIcon ? <Text style={{ color: textColor, fontSize: 14, userSelect: 'none' as any }}>{suitIcon}</Text> : null}
+                    </View>
+                    <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                      <Text style={[styles.cardText, { color: textColor, fontSize: 20, userSelect: 'none' as any }]}>
+                        {c.rank}
                       </Text>
-                    )}
+                    </View>
                   </View>
                 );
               })}
@@ -362,36 +368,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {(() => {
           const paddingHorizontal = 20;
 
-          // Separate cards by selection status.
-          const selectedCardsData = selectedCards.map(idx => ({ card: myHand[idx], originalIndex: idx }));
-          const unselectedCardsData = myHand.map((c: any, i: number) => ({ card: c, originalIndex: i })).filter((_, i) => !selectedCards.includes(i));
-
-          const unselectedMarginLeft = unselectedCardsData.length > 1 ? -35 : 0;
-          const selectedMarginLeft = selectedCardsData.length > 1 ? -35 : 0;
-
           return (
             <View
               style={{ width: '100%', height: '100%', overflow: 'visible', justifyContent: 'flex-end' }}
               pointerEvents="box-none"
             >
-              {/* Selected Cards (Upper Area) */}
-              {selectedCardsData.length > 0 && (
-                <View style={styles.selectedCardsContainer} pointerEvents="box-none">
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {selectedCardsData.map((item, index) => renderCard(item.card, myPlayerId, item.originalIndex, false, index > 0 ? selectedMarginLeft : 0))}
-                  </View>
-                </View>
-              )}
-
-              {/* Unselected Cards (Lower Area, flush with bottom) */}
+              {/* All Cards (Lower Area, flush with bottom) */}
               <View
-                style={styles.unselectedHandContainer}
+                style={[styles.unselectedHandContainer, { height: '100%', paddingBottom: 20 }]}
                 onLayout={(e) => { containerWidthRef.current = e.nativeEvent.layout.width; }}
                 pointerEvents="box-none"
               >
@@ -407,7 +391,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   }}
                   onLayout={(e) => { contentWidthRef.current = e.nativeEvent.layout.width; }}
                 >
-                  {unselectedCardsData.map((item, index) => renderCard(item.card, myPlayerId, item.originalIndex, false, index > 0 ? unselectedMarginLeft : 0))}
+                  {myHand.map((card: any, index: number) => renderCard(card, myPlayerId, index, false, index > 0 ? -35 : 0))}
                   <View style={{ width: 40 }} />
                 </Animated.View>
               </View>
@@ -484,13 +468,6 @@ const styles = StyleSheet.create({
     zIndex: 100,
     elevation: 100,
     overflow: 'visible',
-  },
-  selectedCardsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 120, // fixed height for upper selection area
-    paddingBottom: 5,
   },
   unselectedHandContainer: {
     overflow: 'visible',
