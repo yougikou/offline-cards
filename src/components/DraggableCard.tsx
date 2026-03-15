@@ -38,7 +38,6 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 }) => {
   const pan = useRef(new Animated.ValueXY()).current;
   const scale = useRef(new Animated.Value(1)).current;
-  const translateY = useRef(new Animated.Value(isSelected ? -20 : 0)).current;
   const [zIndex, setZIndex] = useState(1);
 
   const currentPan = (isSelected && multiPan) ? multiPan : pan;

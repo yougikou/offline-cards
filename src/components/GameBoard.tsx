@@ -493,7 +493,6 @@ const styles = StyleSheet.create({
     paddingBottom: 5,
   },
   unselectedHandContainer: {
-    flex: 1,
     overflow: 'visible',
     justifyContent: 'flex-end',
   },
