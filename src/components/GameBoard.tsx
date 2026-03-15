@@ -308,16 +308,22 @@ const GameBoard: React.FC<GameBoardProps> = ({
             <View style={[styles.tableContainer, { flexWrap: 'nowrap' }]}>
               {currentTrick.map((c: any, index: number) => {
                 const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
+                const suitIcon = c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : c.suit === 'Spades' ? '♠' : '';
                 return (
                   <View key={`trick-${index}`} style={[styles.card, { backgroundColor: 'white', width: 60, height: 90, marginLeft: index > 0 ? -40 : 0 }]}>
-                    <Text style={[styles.cardText, { color: textColor, fontSize: 20, userSelect: 'none' as any }]}>
-                      {c.rank}
-                    </Text>
-                    {c.suit && (
-                      <Text style={{ color: textColor, fontSize: 16, userSelect: 'none' as any }}>
-                        {c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : '♠'}
+                    <View style={{ position: 'absolute', top: 4, left: 4, alignItems: 'center' }}>
+                      <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{c.rank}</Text>
+                      {suitIcon ? <Text style={{ color: textColor, fontSize: 14, userSelect: 'none' as any }}>{suitIcon}</Text> : null}
+                    </View>
+                    <View style={{ position: 'absolute', bottom: 4, right: 4, alignItems: 'center', transform: [{ rotate: '180deg' }] }}>
+                      <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{c.rank}</Text>
+                      {suitIcon ? <Text style={{ color: textColor, fontSize: 14, userSelect: 'none' as any }}>{suitIcon}</Text> : null}
+                    </View>
+                    <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                      <Text style={[styles.cardText, { color: textColor, fontSize: 20, userSelect: 'none' as any }]}>
+                        {c.rank}
                       </Text>
-                    )}
+                    </View>
                   </View>
                 );
               })}
