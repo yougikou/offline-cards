@@ -232,10 +232,12 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       ]}
     >
       <TouchableWithoutFeedback onPress={() => onPress(index)}>
-        <View
-          style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
-        >
-          {renderCardContent()}
+        <View style={{ transform: [{ translateY: isSelected ? -20 : 0 }] }}>
+          <View
+            style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
+          >
+            {renderCardContent()}
+          </View>
         </View>
       </TouchableWithoutFeedback>
     </Animated.View>
