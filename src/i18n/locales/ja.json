@@ -52,6 +52,8 @@
     "exitConfirmHost": "あなたはホストです。終了すると全員のゲームが終了します。本当に終了しますか？",
     "exitConfirmGuest": "本当にゲームを放棄して終了しますか？",
     "cancel": "キャンセル",
-    "confirm": "確認"
+    "confirm": "確認",
+    "tutorialHint": "タップして選択、上にドラッグしてプレイ！",
+    "dismiss": "了解"
   }
 }

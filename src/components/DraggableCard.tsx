@@ -151,7 +151,15 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
   const cardColor = card.color ? card.color.toLowerCase() : 'white';
   const textColor = card.color ? 'white' : (card.suit === 'Hearts' || card.suit === 'Diamonds' || card.rank === 'Red Joker' ? '#D32F2F' : '#212121');
-  const borderStyle = isSelected ? { borderColor: '#FFD700', borderWidth: 3 } : { borderColor: '#E0E0E0' };
+  const borderStyle = isSelected ? {
+    borderColor: '#FFD700',
+    borderWidth: 3,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 10
+  } : { borderColor: '#E0E0E0' };
 
   // Calculate overlapping margin
   const marginLeft = customMarginLeft !== undefined ? customMarginLeft : (index > 0 ? -35 : 0);
@@ -232,7 +240,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       ]}
     >
       <TouchableWithoutFeedback onPress={() => onPress(index)}>
-        <View style={{ transform: [{ translateY: isSelected ? -20 : 0 }] }}>
+        <View style={{ transform: [{ translateY: isSelected ? -30 : 0 }] }}>
           <View
             style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
           >
