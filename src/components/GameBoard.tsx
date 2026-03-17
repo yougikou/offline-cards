@@ -2,6 +2,7 @@ import React, { memo, useState, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, Button, TouchableOpacity, Modal, Animated, Dimensions, PanResponder } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import DraggableCard from './DraggableCard';
+import { Storage } from '../storage';
 
 interface GameBoardProps {
   // gameState now contains the boardgame.io state object structure { G, ctx, plugins }
@@ -25,6 +26,22 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [isMultiDragging, setIsMultiDragging] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    const checkTutorial = async () => {
+      const dismissed = await Storage.getItem('sandboxTutorialDismissed');
+      if (!dismissed && isSandbox) {
+        setShowTutorial(true);
+      }
+    };
+    checkTutorial();
+  }, [isSandbox]);
+
+  const dismissTutorial = async () => {
+    setShowTutorial(false);
+    await Storage.setItem('sandboxTutorialDismissed', 'true');
+  };
 
   const containerWidthRef = useRef(0);
   const contentWidthRef = useRef(0);
@@ -334,6 +351,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
       {/* Controls Area (Absolutely Positioned above hand) */}
       <View style={styles.controlsArea}>
+        {showTutorial && isMyTurn && !gameOver && (
+          <View style={styles.tutorialBanner}>
+            <Text style={styles.tutorialText}>{t('game.tutorialHint')}</Text>
+            <TouchableOpacity style={styles.tutorialDismissBtn} onPress={dismissTutorial}>
+              <Text style={styles.tutorialDismissText}>{t('game.dismiss')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.controlRow}>
           {gameName === 'UnoLite' ? (
             <TouchableOpacity
@@ -443,7 +469,7 @@ const styles = StyleSheet.create({
   tableArea: {
     position: 'absolute',
     top: 0,
-    bottom: 200,
+    bottom: 220,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -453,7 +479,7 @@ const styles = StyleSheet.create({
   },
   controlsArea: {
     position: 'absolute',
-    bottom: 280,
+    bottom: 200,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -464,7 +490,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 300,
+    height: 180,
     zIndex: 100,
     elevation: 100,
     overflow: 'visible',
@@ -583,6 +609,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 20,
     marginTop: 20,
+  },
+  tutorialBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEB3B',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 10,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  tutorialText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginRight: 10,
+  },
+  tutorialDismissBtn: {
+    backgroundColor: '#000',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  tutorialDismissText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   }
 });
 

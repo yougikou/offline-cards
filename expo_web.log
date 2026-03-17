@@ -4,21 +4,8 @@ Starting Metro Bundler
 Waiting on http://localhost:8081
 Logs for your project will appear below.
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 73.1% ( 74/103)
-Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 73.1% (214/286)
+Web ./index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 61.6% (107/146)
  WARN  Attempted to import the module "/app/node_modules/react-native-webrtc/node_modules/event-target-shim/index" which is not listed in the "exports" of "/app/node_modules/react-native-webrtc/node_modules/event-target-shim" under the requested subpath "./index". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
-Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 87.0% (444/476)
-Web Bundled 12609ms index.js (500 modules)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 39ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 35ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 69ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 63ms index.js (1 module)
+Web ./index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 61.8% (243/309)
+Web Bundled 9960ms index.js (500 modules)
  LOG  [web] Logs will appear in the browser console

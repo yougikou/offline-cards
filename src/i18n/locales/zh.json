@@ -52,6 +52,8 @@
     "exitConfirmHost": "您是房主。退出将结束所有人的游戏。确定要退出吗？",
     "exitConfirmGuest": "确定要退出并弃权吗？",
     "cancel": "取消",
-    "confirm": "确定"
+    "confirm": "确定",
+    "tutorialHint": "点击选择卡牌，向上滑动出牌！",
+    "dismiss": "知道了"
   }
 }
