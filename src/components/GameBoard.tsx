@@ -360,15 +360,55 @@ const GameBoard: React.FC<GameBoardProps> = ({
           </View>
         )}
 
+        {selectedCards.length > 0 && (
+          <View style={styles.selectedSummaryContainer}>
+            {[...selectedCards].sort((a, b) => a - b).map(idx => {
+              const c = myHand[idx];
+              if (!c) return null;
+              if (gameName === 'UnoLite') {
+                 const cardColor = c.color ? c.color.toLowerCase() : 'gray';
+                 return (
+                   <View key={`sel-${idx}`} style={[styles.miniCard, { backgroundColor: cardColor }]}>
+                     <Text style={[styles.miniCardText, { color: 'white' }]}>{c.value}</Text>
+                   </View>
+                 );
+              } else {
+                 const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
+                 const suitIcon = c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : c.suit === 'Spades' ? '♠' : '';
+                 return (
+                   <View key={`sel-${idx}`} style={[styles.miniCard, { backgroundColor: 'white' }]}>
+                     <Text style={[styles.miniCardText, { color: textColor }]}>{c.rank}</Text>
+                     {suitIcon ? <Text style={[styles.miniCardSuit, { color: textColor }]}>{suitIcon}</Text> : null}
+                   </View>
+                 );
+              }
+            })}
+          </View>
+        )}
+
         <View style={styles.controlRow}>
           {gameName === 'UnoLite' ? (
-            <TouchableOpacity
-              style={[styles.fab, (!isMyTurn || gameOver) ? styles.fabDisabled : { backgroundColor: '#2196F3' }]}
-              onPress={() => onAction('drawAndPass')}
-              disabled={!isMyTurn || gameOver}
-            >
-              <Text style={styles.fabText}>{isMyTurn ? t('game.drawCard') : t('game.waitingForOpponent')}</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={[styles.fab, (!isMyTurn || gameOver) ? styles.fabDisabled : { backgroundColor: '#2196F3' }]}
+                onPress={() => onAction('drawAndPass')}
+                disabled={!isMyTurn || gameOver}
+              >
+                <Text style={styles.fabText}>{isMyTurn ? t('game.drawCard') : t('game.waitingForOpponent')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 }]}
+                onPress={() => {
+                  if (selectedCards.length > 0) {
+                    onAction('playCard', selectedCards[0]);
+                    setSelectedCards([]);
+                  }
+                }}
+                disabled={!isMyTurn || gameOver || selectedCards.length === 0}
+              >
+                <Text style={styles.fabText}>{t('game.playSelected')}</Text>
+              </TouchableOpacity>
+            </>
           ) : (
             <>
               <TouchableOpacity
@@ -380,6 +420,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 disabled={!isMyTurn || gameOver || currentTrick.length === 0}
               >
                 <Text style={styles.fabText}>{t('game.pass')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 }]}
+                onPress={() => {
+                  if (selectedCards.length > 0) {
+                    onAction('playCard', selectedCards);
+                    setSelectedCards([]);
+                  }
+                }}
+                disabled={!isMyTurn || gameOver || selectedCards.length === 0}
+              >
+                <Text style={styles.fabText}>{t('game.playSelected')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -640,6 +693,42 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  selectedSummaryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 12,
+    flexWrap: 'wrap',
+    maxWidth: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  miniCard: {
+    width: 32,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 3,
+    marginVertical: 3,
+  },
+  miniCardText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    userSelect: 'none' as any,
+  },
+  miniCardSuit: {
+    fontSize: 12,
+    userSelect: 'none' as any,
   }
 });
 
