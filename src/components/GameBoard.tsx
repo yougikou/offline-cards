@@ -29,6 +29,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const [modalVisible, setModalVisible] = useState(false);
   const [isMultiDragging, setIsMultiDragging] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [layoutWidth, setLayoutWidth] = useState(() => Dimensions.get('window').width);
 
   useEffect(() => {
     const checkTutorial = async () => {
@@ -519,6 +520,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
       <View style={styles.myHandArea} pointerEvents="box-none">
         {(() => {
           const paddingHorizontal = 20;
+          const estimatedContentWidth = myHand.length > 0 ? 70 + (myHand.length - 1) * 35 + 40 + paddingHorizontal * 2 : 0;
+          const isCentered = estimatedContentWidth < layoutWidth;
 
           return (
             <View
@@ -528,7 +531,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
               {/* All Cards (Lower Area, flush with bottom) */}
               <View
                 style={[styles.unselectedHandContainer, { height: '100%', paddingBottom: 20 }]}
-                onLayout={(e) => { containerWidthRef.current = e.nativeEvent.layout.width; }}
+                onLayout={(e) => {
+                  containerWidthRef.current = e.nativeEvent.layout.width;
+                  setLayoutWidth(e.nativeEvent.layout.width);
+                }}
                 pointerEvents="box-none"
               >
                 <Animated.View
@@ -539,7 +545,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                     paddingBottom: 5,
                     paddingHorizontal: paddingHorizontal,
                     transform: [{ translateX: handPanX }],
-                    alignSelf: 'flex-start'
+                    alignSelf: isCentered ? 'center' : 'flex-start'
                   }}
                   onLayout={(e) => { contentWidthRef.current = e.nativeEvent.layout.width; }}
                 >
