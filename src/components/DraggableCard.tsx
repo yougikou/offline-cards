@@ -151,7 +151,9 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
     );
   }
 
-  const cardColor = card.color ? card.color.toLowerCase() : 'white';
+  // If a wild card, use #1E1E1E (black-ish), else lower case the color name.
+  const isWildColor = card.color === 'Black';
+  const cardColor = isWildColor ? '#2C2C2C' : (card.color ? card.color.toLowerCase() : 'white');
   const textColor = card.color ? 'white' : (card.suit === 'Hearts' || card.suit === 'Diamonds' || card.rank === 'Red Joker' ? '#D32F2F' : '#212121');
   const borderStyle = { borderColor: '#E0E0E0' };
 
@@ -171,22 +173,38 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
   const renderCardContent = () => {
     if (gameName === 'UnoLite') {
+      let displayValue = card.value;
+      if (card.value === 'Skip') displayValue = '⊘';
+      if (card.value === 'Reverse') displayValue = '⇄';
+      if (card.value === 'Draw2') displayValue = '+2';
+      if (card.value === 'Wild') displayValue = 'Wild';
+      if (card.value === 'WildDraw4') displayValue = '+4';
+
+      const isWild = card.color === 'Black';
+
+      // Provide strong text shadow for better readability
+      const textShadowStyle = {
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 2,
+      };
+
       return (
         <View style={{ flex: 1, width: '100%' }}>
           {/* Top Left Corner */}
           <View style={{ position: 'absolute', top: 4, left: 4, alignItems: 'center' }}>
-            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{card.value}</Text>
+            <Text style={[{ color: textColor, fontSize: isWild ? 12 : 16, fontWeight: '900', userSelect: 'none' as any }, textShadowStyle]}>{displayValue}</Text>
           </View>
 
           {/* Bottom Right Corner (Upside Down) */}
           <View style={{ position: 'absolute', bottom: 4, right: 4, alignItems: 'center', transform: [{ rotate: '180deg' }] }}>
-            <Text style={{ color: textColor, fontSize: 16, fontWeight: 'bold', userSelect: 'none' as any }}>{card.value}</Text>
+            <Text style={[{ color: textColor, fontSize: isWild ? 12 : 16, fontWeight: '900', userSelect: 'none' as any }, textShadowStyle]}>{displayValue}</Text>
           </View>
 
           {/* Center */}
           <View style={{ alignItems: 'center', justifyContent: 'center', flex: 1 }}>
-            <Text style={[styles.cardText, { color: textColor }]}>
-              {card.value !== undefined ? card.value : ''}
+            <Text style={[styles.cardText, { color: textColor, fontSize: isWild ? 20 : 28, fontWeight: '900' }, textShadowStyle]}>
+              {displayValue !== undefined ? displayValue : ''}
             </Text>
           </View>
         </View>

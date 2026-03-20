@@ -30,6 +30,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const [isMultiDragging, setIsMultiDragging] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [layoutWidth, setLayoutWidth] = useState(() => Dimensions.get('window').width);
+  const [colorPickerVisible, setColorPickerVisible] = useState(false);
+  const [pendingWildCardIndex, setPendingWildCardIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const checkTutorial = async () => {
@@ -217,8 +219,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
     if (!isMyTurn || gameOver) return;
 
     if (gameName === 'UnoLite') {
-      onAction('playCard', cardIndex);
-      setSelectedCards([]);
+      const card = myHand[cardIndex];
+      if (card && card.color === 'Black') {
+        setPendingWildCardIndex(cardIndex);
+        setColorPickerVisible(true);
+      } else {
+        onAction('playCard', cardIndex);
+        setSelectedCards([]);
+      }
     } else {
       if (selectedCards.includes(cardIndex)) {
         onAction('playCard', selectedCards);
@@ -228,6 +236,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
         setSelectedCards([]);
       }
     }
+  };
+
+  const handleColorSelection = (color: 'Red' | 'Blue' | 'Green' | 'Yellow') => {
+    if (pendingWildCardIndex !== null) {
+      onAction('playCard', { cardIndex: pendingWildCardIndex, chosenColor: color });
+      setSelectedCards([]);
+      setPendingWildCardIndex(null);
+    }
+    setColorPickerVisible(false);
   };
 
   const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false, customMarginLeft?: number) => {
@@ -277,6 +294,28 @@ const GameBoard: React.FC<GameBoardProps> = ({
           </View>
         </View>
       </Modal>
+
+      {colorPickerVisible && (
+        <View style={styles.colorPickerOverlay}>
+          <Text style={styles.colorPickerTitle}>{t('game.chooseColor', 'Choose Color')}</Text>
+          <View style={styles.colorPickerButtons}>
+            {['Red', 'Blue', 'Green', 'Yellow'].map((color) => {
+              const bg = color === 'Red' ? '#F44336' : color === 'Blue' ? '#2196F3' : color === 'Green' ? '#4CAF50' : '#FFEB3B';
+              return (
+                <TouchableOpacity accessibilityRole="button"
+                  key={color}
+                  style={[styles.colorPickerButton, { backgroundColor: bg }]}
+                  onPress={() => handleColorSelection(color as any)}
+                />
+              );
+            })}
+          </View>
+          <Button title={t('lobby.cancel')} onPress={() => {
+            setColorPickerVisible(false);
+            setPendingWildCardIndex(null);
+          }} color="#9E9E9E" />
+        </View>
+      )}
 
       {gameOver && (
         <View style={styles.gameOverOverlay}>
@@ -375,11 +414,31 @@ const GameBoard: React.FC<GameBoardProps> = ({
               {discardPile.length > 0 && (
                 (() => {
                   const topCard = discardPile[discardPile.length - 1];
-                  const cardColor = topCard.color ? topCard.color.toLowerCase() : 'gray';
+                  const isWildColor = topCard.color === 'Black';
+                  const cardColor = isWildColor ? '#2C2C2C' : (topCard.color ? topCard.color.toLowerCase() : 'white');
+
+                  let displayValue = topCard.value;
+                  if (topCard.value === 'Skip') displayValue = '⊘';
+                  if (topCard.value === 'Reverse') displayValue = '⇄';
+                  if (topCard.value === 'Draw2') displayValue = '+2';
+                  if (topCard.value === 'Wild') displayValue = 'Wild';
+                  if (topCard.value === 'WildDraw4') displayValue = '+4';
+
+                  const textShadowStyle = {
+                    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+                    textShadowOffset: { width: 1, height: 1 },
+                    textShadowRadius: 2,
+                  };
+
+                  const actualColorIfWild = G.chosenColor || topCard.color;
+                  // if wild and a color is chosen, maybe show a hint. We can just use the chosen color as a thick border
+                  const borderColor = (isWildColor && G.chosenColor) ? G.chosenColor.toLowerCase() : '#fff';
+                  const borderWidth = (isWildColor && G.chosenColor) ? 4 : 2;
+
                   return (
-                    <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90 }]}>
-                      <Text style={[styles.cardText, { color: 'white', fontSize: 24, userSelect: 'none' as any }]}>
-                        {topCard.value}
+                    <View style={[styles.card, { backgroundColor: cardColor, width: 60, height: 90, borderColor: borderColor, borderWidth: borderWidth }]}>
+                      <Text style={[styles.cardText, { color: 'white', fontSize: isWildColor ? 20 : 28, fontWeight: '900', userSelect: 'none' as any }, textShadowStyle]}>
+                        {displayValue}
                       </Text>
                     </View>
                   );
@@ -479,8 +538,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 ]}
                 onPress={() => {
                   if (selectedCards.length > 0) {
-                    onAction('playCard', selectedCards[0]);
-                    setSelectedCards([]);
+                    const cardIndex = selectedCards[0];
+                    const card = myHand[cardIndex];
+                    if (card && card.color === 'Black') {
+                      setPendingWildCardIndex(cardIndex);
+                      setColorPickerVisible(true);
+                    } else {
+                      onAction('playCard', cardIndex);
+                      setSelectedCards([]);
+                    }
                   }
                 }}
                 disabled={!isMyTurn || gameOver || selectedCards.length === 0}
@@ -803,6 +869,44 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  colorPickerOverlay: {
+    position: 'absolute',
+    top: '30%',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    padding: 20,
+    borderRadius: 16,
+    zIndex: 200,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 10,
+  },
+  colorPickerTitle: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  colorPickerButtons: {
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 20,
+  },
+  colorPickerButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
+    elevation: 5,
   },
   selectedSummaryContainer: {
     flexDirection: 'row',
