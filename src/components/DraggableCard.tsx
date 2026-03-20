@@ -8,6 +8,7 @@ export interface DraggableCardProps {
   isMyTurn: boolean;
   gameName: string;
   isSelected: boolean;
+  hasSelection?: boolean;
   onPress: (index: number) => void;
   onDragUp: (index: number) => void;
   isOpponent?: boolean;
@@ -26,6 +27,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   isMyTurn,
   gameName,
   isSelected,
+  hasSelection = false,
   onPress,
   onDragUp,
   isOpponent = false,
@@ -153,18 +155,22 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   const textColor = card.color ? 'white' : (card.suit === 'Hearts' || card.suit === 'Diamonds' || card.rank === 'Red Joker' ? '#D32F2F' : '#212121');
   const borderStyle = isSelected ? {
     borderColor: '#FFD700',
-    borderWidth: 3,
+    borderWidth: 4,
     shadowColor: '#FFD700',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 10
+    shadowRadius: 12,
+    elevation: 12
   } : { borderColor: '#E0E0E0' };
 
   // Calculate overlapping margin
   const marginLeft = customMarginLeft !== undefined ? customMarginLeft : (index > 0 ? -35 : 0);
-  // Make cards darker when not turn
-  const opacity = isMyTurn ? 1 : 0.6;
+
+  // Make cards darker when not turn. Also dim slightly if there is a selection but this card isn't selected.
+  let opacity = isMyTurn ? 1 : 0.6;
+  if (isMyTurn && hasSelection && !isSelected) {
+    opacity = 0.8;
+  }
 
   // When actively dragging, we must force the highest possible zIndex and elevation
   // PanResponder updates `zIndex` state to 999 internally when drag starts.
@@ -240,7 +246,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       ]}
     >
       <TouchableWithoutFeedback accessibilityRole="button" onPress={() => onPress(index)}>
-        <View style={{ transform: [{ translateY: isSelected ? -30 : 0 }] }}>
+        <View style={{ transform: [{ translateY: isSelected ? -45 : 0 }] }}>
           <View
             style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
           >

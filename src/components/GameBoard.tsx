@@ -192,6 +192,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false, customMarginLeft?: number) => {
     const isSelected = selectedCards.includes(cardIndex);
+    const hasSelection = selectedCards.length > 0;
     return (
       <DraggableCard
         key={card.id || `${player}-${cardIndex}-${Math.random()}`}
@@ -201,6 +202,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         isMyTurn={isMyTurn && !gameOver}
         gameName={gameName}
         isSelected={isSelected}
+        hasSelection={hasSelection}
         onPress={handleCardPress}
         onDragUp={handleDragUp}
         isOpponent={isOpponent}
@@ -404,7 +406,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 <Text style={styles.fabText}>{isMyTurn ? t('game.drawCard') : t('game.waitingForOpponent')}</Text>
               </TouchableOpacity>
               <TouchableOpacity accessibilityRole="button"
-                style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 }]}
+                style={[
+                  styles.fab,
+                  (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 },
+                  (isMyTurn && !gameOver && selectedCards.length > 0) ? styles.fabActiveGlow : null
+                ]}
                 onPress={() => {
                   if (selectedCards.length > 0) {
                     onAction('playCard', selectedCards[0]);
@@ -430,7 +436,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
               </TouchableOpacity>
 
               <TouchableOpacity accessibilityRole="button"
-                style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 }]}
+                style={[
+                  styles.fab,
+                  (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 },
+                  (isMyTurn && !gameOver && selectedCards.length > 0) ? styles.fabActiveGlow : null
+                ]}
                 onPress={() => {
                   if (selectedCards.length > 0) {
                     onAction('playCard', selectedCards);
@@ -580,6 +590,15 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     elevation: 0,
     shadowOpacity: 0,
+  },
+  fabActiveGlow: {
+    borderColor: '#FFD700',
+    borderWidth: 2,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 8,
   },
   fabText: {
     color: 'white',
