@@ -154,19 +154,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
     tableAnim.setValue(0);
     Animated.spring(tableAnim, {
       toValue: 1,
-      friction: 5,
-      tension: 60,
+      friction: 4,
+      tension: 80,
       useNativeDriver: true,
     }).start();
   }, [gameName === 'UnoLite' ? discardPile : currentTrick]);
 
   useEffect(() => {
     // Bounce turn indicator on turn change
-    turnAnim.setValue(1.3);
+    turnAnim.setValue(1.4);
     Animated.spring(turnAnim, {
       toValue: 1,
-      friction: 5,
-      tension: 100,
+      friction: 4,
+      tension: 120,
       useNativeDriver: true,
     }).start();
   }, [ctx.currentPlayer]);
@@ -374,12 +374,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
             styles.opponentCard,
             layoutStyle,
             {
+              backgroundColor: isOpponentTurn ? 'rgba(0,0,0,0.9)' : 'rgba(0,0,0,0.7)',
               borderColor: isOpponentTurn ? '#FFFFFF' : 'transparent',
+              borderWidth: isOpponentTurn ? 2 : 2,
               transform: isOpponentTurn ? [{ scale: turnAnim }] : [],
               shadowColor: '#000000',
-              shadowOffset: isOpponentTurn ? { width: 0, height: 2 } : { width: 0, height: 2 },
-              shadowOpacity: isOpponentTurn ? 0.8 : 0.3,
-              shadowRadius: isOpponentTurn ? 4 : 3,
+              shadowOffset: isOpponentTurn ? { width: 0, height: 4 } : { width: 0, height: 2 },
+              shadowOpacity: isOpponentTurn ? 0.9 : 0.3,
+              shadowRadius: isOpponentTurn ? 6 : 3,
+              elevation: isOpponentTurn ? 10 : 3,
             }
           ]}>
             <Text style={[styles.opponentName, {
@@ -407,8 +410,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </View>
             <Animated.View style={[styles.tableContainer, {
               transform: [
-                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] }) },
-                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.1, 1] }) }
+                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) },
+                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.2, 1] }) }
               ]
             }]}>
               {discardPile.length > 0 && (
@@ -453,8 +456,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </View>
             <Animated.View style={[styles.tableContainer, { flexWrap: 'nowrap',
               transform: [
-                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] }) },
-                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.1, 1] }) }
+                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) },
+                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.2, 1] }) }
               ]
              }]}>
               {currentTrick.map((c: any, index: number) => {
@@ -586,19 +589,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </>
           )}
         </View>
-        <Animated.Text style={[
-          styles.sandboxTitle,
-          { marginBottom: 10, textAlign: 'center' },
-          isMyTurn ? {
-            color: '#FFFFFF',
-            textShadowColor: 'rgba(0, 0, 0, 0.8)',
-            textShadowOffset: { width: 0, height: 2 },
-            textShadowRadius: 4,
-            transform: [{ scale: turnAnim }]
-          } : null
+        <Animated.View style={[
+          styles.turnBadge,
+          isMyTurn ? styles.turnBadgeActive : styles.turnBadgeInactive,
+          isMyTurn ? { transform: [{ scale: turnAnim }] } : null
         ]}>
-          P{(G.players || []).indexOf(myPlayerId) + 1} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
-        </Animated.Text>
+          <Text style={[
+            styles.turnBadgeText,
+            isMyTurn ? styles.turnBadgeTextActive : styles.turnBadgeTextInactive
+          ]}>
+            P{(G.players || []).indexOf(myPlayerId) + 1} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
+          </Text>
+        </Animated.View>
       </View>
 
       {/* My Hand Area (Absolutely Positioned at Bottom, Fixed Height, High Z-Index) */}
@@ -760,6 +762,37 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     color: '#fff',
     userSelect: 'none' as any,
+  },
+  turnBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  turnBadgeActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  turnBadgeInactive: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  turnBadgeText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    userSelect: 'none' as any,
+  },
+  turnBadgeTextActive: {
+    color: '#000000',
+  },
+  turnBadgeTextInactive: {
+    color: '#FFFFFF',
+    opacity: 0.8,
   },
   activePlayerText: {
     color: '#FFFFFF',
