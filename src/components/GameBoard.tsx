@@ -177,6 +177,20 @@ const GameBoard: React.FC<GameBoardProps> = ({
     }
   }, [myHand.length]);
 
+  useEffect(() => {
+    // Reset scroll to left when it becomes my turn
+    if (isMyTurn) {
+      Animated.spring(handPanX, {
+        toValue: 0,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 40,
+      }).start(() => {
+        lastHandPanX.current = 0;
+      });
+    }
+  }, [isMyTurn, handPanX]);
+
   const handleCardPress = (cardIndex: number) => {
     if (!isMyTurn || gameOver) return;
 
