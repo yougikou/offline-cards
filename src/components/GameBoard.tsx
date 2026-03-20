@@ -152,18 +152,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
     tableAnim.setValue(0);
     Animated.spring(tableAnim, {
       toValue: 1,
-      friction: 6,
-      tension: 40,
+      friction: 5,
+      tension: 60,
       useNativeDriver: true,
     }).start();
   }, [gameName === 'UnoLite' ? discardPile : currentTrick]);
 
   useEffect(() => {
     // Bounce turn indicator on turn change
-    turnAnim.setValue(0.8);
+    turnAnim.setValue(1.3);
     Animated.spring(turnAnim, {
       toValue: 1,
-      friction: 4,
+      friction: 5,
       tension: 100,
       useNativeDriver: true,
     }).start();
@@ -354,8 +354,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </View>
             <Animated.View style={[styles.tableContainer, {
               transform: [
-                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) },
-                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }
+                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] }) },
+                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.1, 1] }) }
               ]
             }]}>
               {discardPile.length > 0 && (
@@ -380,8 +380,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </View>
             <Animated.View style={[styles.tableContainer, { flexWrap: 'nowrap',
               transform: [
-                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) },
-                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }
+                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] }) },
+                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.1, 1] }) }
               ]
              }]}>
               {currentTrick.map((c: any, index: number) => {

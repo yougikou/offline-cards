@@ -4,20 +4,18 @@ Starting Metro Bundler
 Waiting on http://localhost:8081
 Logs for your project will appear below.
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web ./index.js ▓▓▓░░░░░░░░░░░░░ 19.5% ( 80/181)
  WARN  Attempted to import the module "/app/node_modules/react-native-webrtc/node_modules/event-target-shim/index" which is not listed in the "exports" of "/app/node_modules/react-native-webrtc/node_modules/event-target-shim" under the requested subpath "./index". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
-Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 87.7% (426/464)
-Web Bundled 10221ms index.js (500 modules)
+Web Bundled 704ms index.js (495 modules)
  LOG  [web] Logs will appear in the browser console
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 35ms index.js (1 module)
+Web Bundled 34ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules/html5-qrcode/esm/index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web node_modules/html5-qrcode/esm/index.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 91.8% (23/24)
+Web Bundled 3780ms node_modules/html5-qrcode/esm/index.js (24 modules)
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 33ms index.js (1 module)
  LOG  [web] Logs will appear in the browser console
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 31ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 30ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 30ms index.js (1 module)
+Web Bundled 34ms index.js (1 module)
  LOG  [web] Logs will appear in the browser console
