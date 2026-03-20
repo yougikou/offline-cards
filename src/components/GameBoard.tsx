@@ -12,6 +12,7 @@ interface GameBoardProps {
   onExit?: () => void;
   onReset?: () => void;
   isSandbox?: boolean;
+  isGuest?: boolean;
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -20,7 +21,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
   onAction,
   onExit,
   onReset,
-  isSandbox = false
+  isSandbox = false,
+  isGuest = false
 }) => {
   const { t } = useTranslation();
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
@@ -250,9 +252,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 color="#4CAF50"
               />
             )}
+            {isGuest && (
+              <Text style={{ color: 'white', fontSize: 18, alignSelf: 'center' }}>
+                {t('game.waitingForRestart', '等待房主重新开局...')}
+              </Text>
+            )}
             {onExit && (
               <Button
-                title={t('game.exit', '返回主界面')}
+                title={t('game.exit', '退出')}
                 onPress={() => onExit()}
                 color="#F44336"
               />

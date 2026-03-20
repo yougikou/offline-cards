@@ -54,6 +54,7 @@
     "cancel": "取消",
     "confirm": "确定",
     "tutorialHint": "点击选择卡牌，向上滑动出牌！",
-    "dismiss": "知道了"
+    "dismiss": "知道了",
+    "waitingForRestart": "等待房主重新开局..."
   }
 }
