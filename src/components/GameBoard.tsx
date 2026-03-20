@@ -220,7 +220,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   return (
     <View style={styles.sandboxContainer}>
-      <TouchableOpacity style={{ position: 'absolute', top: 20, right: 20, zIndex: 100 }} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity accessibilityRole="button" style={{ position: 'absolute', top: 20, right: 20, zIndex: 100 }} onPress={() => setModalVisible(true)}>
         <Text style={{ fontSize: 24, color: 'white' }}>⚙️</Text>
       </TouchableOpacity>
 
@@ -354,7 +354,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {showTutorial && isMyTurn && !gameOver && (
           <View style={styles.tutorialBanner}>
             <Text style={styles.tutorialText}>{t('game.tutorialHint')}</Text>
-            <TouchableOpacity style={styles.tutorialDismissBtn} onPress={dismissTutorial}>
+            <TouchableOpacity accessibilityRole="button" style={styles.tutorialDismissBtn} onPress={dismissTutorial}>
               <Text style={styles.tutorialDismissText}>{t('game.dismiss')}</Text>
             </TouchableOpacity>
           </View>
@@ -389,14 +389,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
         <View style={styles.controlRow}>
           {gameName === 'UnoLite' ? (
             <>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[styles.fab, (!isMyTurn || gameOver) ? styles.fabDisabled : { backgroundColor: '#2196F3' }]}
                 onPress={() => onAction('drawAndPass')}
                 disabled={!isMyTurn || gameOver}
               >
                 <Text style={styles.fabText}>{isMyTurn ? t('game.drawCard') : t('game.waitingForOpponent')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 }]}
                 onPress={() => {
                   if (selectedCards.length > 0) {
@@ -411,7 +411,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </>
           ) : (
             <>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[styles.fab, (!isMyTurn || gameOver || currentTrick.length === 0) ? styles.fabDisabled : { backgroundColor: '#9E9E9E' }]}
                 onPress={() => {
                   onAction('pass');
@@ -422,7 +422,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 <Text style={styles.fabText}>{t('game.pass')}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[styles.fab, (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 }]}
                 onPress={() => {
                   if (selectedCards.length > 0) {

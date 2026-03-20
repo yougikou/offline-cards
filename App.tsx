@@ -441,6 +441,7 @@ export default function App() {
     return (
       <View style={styles.languageSwitcher}>
         <TouchableOpacity
+          accessibilityRole="button"
           style={styles.languageDropdownButton}
           onPress={() => setLanguageMenuVisible(!languageMenuVisible)}
         >
@@ -450,18 +451,21 @@ export default function App() {
         {languageMenuVisible && (
           <View style={styles.languageDropdownMenu}>
             <TouchableOpacity
+              accessibilityRole="button"
               style={[styles.languageDropdownItem, i18n.language === 'zh' && styles.languageDropdownItemSelected]}
               onPress={() => { i18n.changeLanguage('zh'); setLanguageMenuVisible(false); }}
             >
               <Text style={[styles.languageDropdownItemText, i18n.language === 'zh' && styles.languageDropdownItemTextSelected]}>中文</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityRole="button"
               style={[styles.languageDropdownItem, i18n.language === 'en' && styles.languageDropdownItemSelected]}
               onPress={() => { i18n.changeLanguage('en'); setLanguageMenuVisible(false); }}
             >
               <Text style={[styles.languageDropdownItemText, i18n.language === 'en' && styles.languageDropdownItemTextSelected]}>English</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityRole="button"
               style={[styles.languageDropdownItem, i18n.language === 'ja' && styles.languageDropdownItemSelected]}
               onPress={() => { i18n.changeLanguage('ja'); setLanguageMenuVisible(false); }}
             >
@@ -488,6 +492,7 @@ export default function App() {
 
             <View style={styles.gameListContainer}>
               <TouchableOpacity
+                accessibilityRole="button"
                 style={[styles.gameListItem, selectedGameMode === 'UnoLite' && styles.gameListItemSelected]}
                 onPress={() => setSelectedGameMode('UnoLite')}
               >
@@ -496,6 +501,7 @@ export default function App() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
+                accessibilityRole="button"
                 style={[styles.gameListItem, selectedGameMode === 'ZhengShangYou' && styles.gameListItemSelected]}
                 onPress={() => setSelectedGameMode('ZhengShangYou')}
               >
@@ -506,7 +512,7 @@ export default function App() {
             </View>
 
             <View style={{ marginVertical: 15 }}>
-              <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#007AFF' }]} onPress={() => handleHost(false)}>
+              <TouchableOpacity accessibilityRole="button" style={[styles.actionButton, { backgroundColor: '#007AFF' }]} onPress={() => handleHost(false)}>
                 <Text style={styles.actionButtonText}>{t('lobby.createRoom')}</Text>
               </TouchableOpacity>
             </View>
@@ -520,7 +526,7 @@ export default function App() {
                 </Text>
                 <Button title="+" onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} />
               </View>
-              <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#9C27B0', width: '100%' }]} onPress={() => {
+              <TouchableOpacity accessibilityRole="button" style={[styles.actionButton, { backgroundColor: '#9C27B0', width: '100%' }]} onPress={() => {
                 setAppState('SANDBOX');
                 setPlayerId('player_1');
                 const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
@@ -533,7 +539,7 @@ export default function App() {
 
           <View style={styles.joinRoomSection}>
             <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray', fontSize: 12 }}>Join an existing game (Mode is set by Host)</Text>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#4CAF50' }]} onPress={() => handleGuest(false)}>
+              <TouchableOpacity accessibilityRole="button" style={[styles.actionButton, { backgroundColor: '#4CAF50' }]} onPress={() => handleGuest(false)}>
               <Text style={styles.actionButtonText}>{t('lobby.joinRoom')}</Text>
             </TouchableOpacity>
           </View>
