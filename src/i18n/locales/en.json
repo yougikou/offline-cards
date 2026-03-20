@@ -55,6 +55,10 @@
     "confirm": "Confirm",
     "tutorialHint": "Tap to select, drag up to play!",
     "dismiss": "Got it",
-    "waitingForRestart": "Waiting for host to restart..."
+    "waitingForRestart": "Waiting for host to restart...",
+    "nextGame": "Next Game:",
+    "chooseNextGame": "Choose Next Game:",
+    "game_UnoLite": "UNO Lite",
+    "game_ZhengShangYou": "Zheng Shang You"
   }
 }

@@ -125,6 +125,19 @@ export default function App() {
     appStateRef.current = appState;
   }, [selectedGameMode, role, roomId, playerId, messages, gameState, appState]);
 
+  // Broadcast game mode changes from Host to connected Guests during active game (e.g. at Game Over screen)
+  useEffect(() => {
+    if (appState === 'CONNECTED' && role === 'HOST') {
+      hostConnections.current.forEach(manager => {
+        try {
+          manager.sendMessage(JSON.stringify({ type: 'GAME_MODE_CHANGE', gameMode: selectedGameMode }));
+        } catch (e) {
+          // ignore error
+        }
+      });
+    }
+  }, [selectedGameMode, appState, role]);
+
   // Handle Guest Connection
   useEffect(() => {
     if (role !== 'GUEST' || !guestWebrtcManager) return;
@@ -145,6 +158,10 @@ export default function App() {
             setSelectedGameMode(data.gameMode);
           }
           setGameState(data.state);
+        } else if (data.type === 'GAME_MODE_CHANGE') {
+          if (data.gameMode) {
+            setSelectedGameMode(data.gameMode);
+          }
         } else if (data.type === 'HOST_CLOSE') {
           alert('Host closed the game. Returning to lobby.');
           if (guestWebrtcManager) {
@@ -591,6 +608,8 @@ export default function App() {
             startBoardGameHost(players);
           }}
           isSandbox={true}
+          selectedGameMode={selectedGameMode}
+          onGameModeChange={setSelectedGameMode}
         />
       </View>
     );
@@ -682,6 +701,8 @@ export default function App() {
             const allPlayers = ['host', ...Array.from(hostConnections.current.keys())];
             startBoardGameHost(allPlayers);
           } : undefined}
+          selectedGameMode={selectedGameMode}
+          onGameModeChange={setSelectedGameMode}
           onExit={() => {
             const isHost = role === 'HOST';
             const msg = isHost ? t('game.exitConfirmHost') : t('game.exitConfirmGuest');
