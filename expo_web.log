@@ -1,11 +1,36 @@
+
+> offline-cards@1.0.0 web
+> expo start --web
+
 Starting project at /app
 Starting Metro Bundler
 
 Waiting on http://localhost:8081
 Logs for your project will appear below.
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web ./index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 61.6% (107/146)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 63.6% (118/196)
  WARN  Attempted to import the module "/app/node_modules/react-native-webrtc/node_modules/event-target-shim/index" which is not listed in the "exports" of "/app/node_modules/react-native-webrtc/node_modules/event-target-shim" under the requested subpath "./index". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
-Web ./index.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 61.8% (243/309)
-Web Bundled 9960ms index.js (500 modules)
+Web ./index.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 76.4% (335/404)
+Web Bundled 8464ms index.js (500 modules)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 35ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 31ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 30ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 32ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 33ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 39ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 38ms index.js (1 module)
  LOG  [web] Logs will appear in the browser console

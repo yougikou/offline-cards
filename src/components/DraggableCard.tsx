@@ -40,7 +40,17 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 }) => {
   const pan = useRef(new Animated.ValueXY()).current;
   const scale = useRef(new Animated.Value(1)).current;
+  const selectAnim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
   const [zIndex, setZIndex] = useState(1);
+
+  useEffect(() => {
+    Animated.spring(selectAnim, {
+      toValue: isSelected ? 1 : 0,
+      friction: 5,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  }, [isSelected, selectAnim]);
 
   const currentPan = (isSelected && multiPan) ? multiPan : pan;
   const currentScale = (isSelected && multiScale) ? multiScale : scale;
@@ -160,10 +170,10 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   // Calculate overlapping margin
   const marginLeft = customMarginLeft !== undefined ? customMarginLeft : (index > 0 ? -35 : 0);
 
-  // Make cards darker when not turn. Also dim slightly if there is a selection but this card isn't selected.
+  // Make cards darker when not turn. Also dim heavily if there is a selection but this card isn't selected.
   let opacity = isMyTurn ? 1 : 0.6;
   if (isMyTurn && hasSelection && !isSelected) {
-    opacity = 0.8;
+    opacity = 0.5;
   }
 
   // When actively dragging, we must force the highest possible zIndex and elevation
@@ -257,13 +267,18 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       ]}
     >
       <TouchableOpacity activeOpacity={0.8} accessibilityRole="button" onPress={() => onPress(index)}>
-        <View style={{ transform: [{ translateY: isSelected ? -45 : 0 }] }}>
+        <Animated.View style={{
+          transform: [
+            { translateY: selectAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -40] }) },
+            { scale: selectAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }
+          ]
+        }}>
           <View
             style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
           >
             {renderCardContent()}
           </View>
-        </View>
+        </Animated.View>
       </TouchableOpacity>
     </Animated.View>
   );

@@ -154,8 +154,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
     tableAnim.setValue(0);
     Animated.spring(tableAnim, {
       toValue: 1,
-      friction: 4,
-      tension: 80,
+      friction: 5,
+      tension: 120,
       useNativeDriver: true,
     }).start();
   }, [gameName === 'UnoLite' ? discardPile : currentTrick]);
@@ -374,15 +374,16 @@ const GameBoard: React.FC<GameBoardProps> = ({
             styles.opponentCard,
             layoutStyle,
             {
-              backgroundColor: isOpponentTurn ? 'rgba(0,0,0,0.9)' : 'rgba(0,0,0,0.7)',
+              backgroundColor: isOpponentTurn ? 'rgba(0,0,0,0.9)' : 'rgba(0,0,0,0.4)',
               borderColor: isOpponentTurn ? '#FFFFFF' : 'transparent',
               borderWidth: isOpponentTurn ? 2 : 2,
               transform: isOpponentTurn ? [{ scale: turnAnim }] : [],
               shadowColor: '#000000',
-              shadowOffset: isOpponentTurn ? { width: 0, height: 4 } : { width: 0, height: 2 },
-              shadowOpacity: isOpponentTurn ? 0.9 : 0.3,
-              shadowRadius: isOpponentTurn ? 6 : 3,
-              elevation: isOpponentTurn ? 10 : 3,
+              shadowOffset: isOpponentTurn ? { width: 0, height: 4 } : { width: 0, height: 0 },
+              shadowOpacity: isOpponentTurn ? 0.9 : 0,
+              shadowRadius: isOpponentTurn ? 6 : 0,
+              elevation: isOpponentTurn ? 10 : 0,
+              opacity: isOpponentTurn ? 1 : 0.4,
             }
           ]}>
             <Text style={[styles.opponentName, {
@@ -410,8 +411,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </View>
             <Animated.View style={[styles.tableContainer, {
               transform: [
-                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) },
-                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.2, 1] }) }
+                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-80, 0] }) },
+                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }
               ]
             }]}>
               {discardPile.length > 0 && (
@@ -456,8 +457,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </View>
             <Animated.View style={[styles.tableContainer, { flexWrap: 'nowrap',
               transform: [
-                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) },
-                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.2, 1] }) }
+                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-80, 0] }) },
+                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }
               ]
              }]}>
               {currentTrick.map((c: any, index: number) => {
@@ -781,6 +782,7 @@ const styles = StyleSheet.create({
   },
   turnBadgeInactive: {
     backgroundColor: 'rgba(0,0,0,0.5)',
+    opacity: 0.5,
   },
   turnBadgeText: {
     fontSize: 14,
@@ -946,9 +948,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
-    padding: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.8)',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
     flexWrap: 'wrap',
     maxWidth: '90%',
     shadowColor: '#000',
