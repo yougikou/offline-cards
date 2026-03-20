@@ -123,6 +123,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const multiPan = useRef(new Animated.ValueXY()).current;
   const multiScale = useRef(new Animated.Value(1)).current;
 
+  const tableAnim = useRef(new Animated.Value(0)).current;
+  const turnAnim = useRef(new Animated.Value(1)).current;
+
   if (!gameState || !gameState.G) return null;
 
   const { G, ctx } = gameState;
@@ -142,6 +145,28 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const currentPlayerIdString = G.players ? G.players[parseInt(ctx.currentPlayer, 10)] : null;
   const isMyTurn = currentPlayerIdString === myPlayerId;
   const gameOver = ctx.gameover;
+
+  useEffect(() => {
+    // Animate table on new cards
+    tableAnim.setValue(0);
+    Animated.spring(tableAnim, {
+      toValue: 1,
+      friction: 6,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, [gameName === 'UnoLite' ? discardPile : currentTrick]);
+
+  useEffect(() => {
+    // Bounce turn indicator on turn change
+    turnAnim.setValue(0.8);
+    Animated.spring(turnAnim, {
+      toValue: 1,
+      friction: 4,
+      tension: 100,
+      useNativeDriver: true,
+    }).start();
+  }, [ctx.currentPlayer]);
 
   useEffect(() => {
     // Reset scroll if hand becomes small again
@@ -291,14 +316,25 @@ const GameBoard: React.FC<GameBoardProps> = ({
         const layoutStyle = positions[index % positions.length];
 
         return (
-          <View key={opponentId} style={[styles.opponentCard, layoutStyle, { borderColor: isOpponentTurn ? '#FFD700' : 'transparent' }]}>
+          <Animated.View key={opponentId} style={[
+            styles.opponentCard,
+            layoutStyle,
+            {
+              borderColor: isOpponentTurn ? '#FFD700' : 'transparent',
+              transform: isOpponentTurn ? [{ scale: turnAnim }] : [],
+              shadowColor: isOpponentTurn ? '#FFD700' : '#000',
+              shadowOffset: isOpponentTurn ? { width: 0, height: 0 } : { width: 0, height: 2 },
+              shadowOpacity: isOpponentTurn ? 0.8 : 0.3,
+              shadowRadius: isOpponentTurn ? 10 : 3,
+            }
+          ]}>
             <Text style={[styles.opponentName, { color: isOpponentTurn ? '#FFD700' : 'white' }]}>
               {shortName} {isOpponentTurn ? '(Turn)' : ''}
             </Text>
             <View style={styles.opponentCardCount}>
               <Text style={styles.opponentCardCountText}>{opponentHand.length} 张</Text>
             </View>
-          </View>
+          </Animated.View>
         );
       })}
 
@@ -310,7 +346,12 @@ const GameBoard: React.FC<GameBoardProps> = ({
               <Text style={styles.sandboxTitle}>{t('game.discardPileTop')}</Text>
               <Text style={styles.sandboxTitle}>{t('game.deckCount', { count: deckCount })}</Text>
             </View>
-            <View style={styles.tableContainer}>
+            <Animated.View style={[styles.tableContainer, {
+              transform: [
+                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) },
+                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }
+              ]
+            }]}>
               {discardPile.length > 0 && (
                 (() => {
                   const topCard = discardPile[discardPile.length - 1];
@@ -324,14 +365,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   );
                 })()
               )}
-            </View>
+            </Animated.View>
           </>
         ) : (
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
               <Text style={styles.sandboxTitle}>{t('game.currentTrick')}</Text>
             </View>
-            <View style={[styles.tableContainer, { flexWrap: 'nowrap' }]}>
+            <Animated.View style={[styles.tableContainer, { flexWrap: 'nowrap',
+              transform: [
+                { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) },
+                { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }
+              ]
+             }]}>
               {currentTrick.map((c: any, index: number) => {
                 const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
                 const suitIcon = c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : c.suit === 'Spades' ? '♠' : '';
@@ -353,7 +399,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   </View>
                 );
               })}
-            </View>
+            </Animated.View>
           </>
         )}
       </View>
@@ -454,9 +500,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
             </>
           )}
         </View>
-        <Text style={[styles.sandboxTitle, { marginBottom: 10, textAlign: 'center' }]}>
+        <Animated.Text style={[
+          styles.sandboxTitle,
+          { marginBottom: 10, textAlign: 'center' },
+          isMyTurn ? {
+            color: '#FFD700',
+            textShadowColor: 'rgba(255, 215, 0, 0.7)',
+            textShadowOffset: { width: 0, height: 0 },
+            textShadowRadius: 10,
+            transform: [{ scale: turnAnim }]
+          } : null
+        ]}>
           P{(G.players || []).indexOf(myPlayerId) + 1} {t('game.me')} {isMyTurn ? t('game.yourTurn') : ''}
-        </Text>
+        </Animated.Text>
       </View>
 
       {/* My Hand Area (Absolutely Positioned at Bottom, Fixed Height, High Z-Index) */}
