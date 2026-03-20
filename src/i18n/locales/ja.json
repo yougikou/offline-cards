@@ -54,6 +54,7 @@
     "cancel": "キャンセル",
     "confirm": "確認",
     "tutorialHint": "タップして選択、上にドラッグしてプレイ！",
-    "dismiss": "了解"
+    "dismiss": "了解",
+    "waitingForRestart": "ホストの再開を待っています..."
   }
 }

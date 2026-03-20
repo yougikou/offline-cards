@@ -677,6 +677,11 @@ export default function App() {
           gameState={gameState}
           myPlayerId={playerId}
           onAction={handleGameAction}
+          onReset={role === 'HOST' ? () => {
+            if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
+            const allPlayers = ['host', ...Array.from(hostConnections.current.keys())];
+            startBoardGameHost(allPlayers);
+          } : undefined}
           onExit={() => {
             const isHost = role === 'HOST';
             const msg = isHost ? t('game.exitConfirmHost') : t('game.exitConfirmGuest');
@@ -723,6 +728,7 @@ export default function App() {
             }
           }}
           isSandbox={false}
+          isGuest={role === 'GUEST'}
         />
       </View>
     );
