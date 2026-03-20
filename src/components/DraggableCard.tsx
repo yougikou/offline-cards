@@ -239,7 +239,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         }
       ]}
     >
-      <TouchableWithoutFeedback onPress={() => onPress(index)}>
+      <TouchableWithoutFeedback accessibilityRole="button" onPress={() => onPress(index)}>
         <View style={{ transform: [{ translateY: isSelected ? -30 : 0 }] }}>
           <View
             style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
