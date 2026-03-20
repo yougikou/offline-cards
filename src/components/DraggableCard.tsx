@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Animated, PanResponder, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, Text, View, Animated, PanResponder, TouchableOpacity } from 'react-native';
 
 export interface DraggableCardProps {
   card: any;
@@ -168,8 +168,9 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
   // When actively dragging, we must force the highest possible zIndex and elevation
   // PanResponder updates `zIndex` state to 999 internally when drag starts.
-  let calculatedZIndex = Math.max(zIndex, isMultiDragging ? 999 : 1);
-  let calculatedElevation = calculatedZIndex === 999 ? 999 : 6;
+  let baseZIndex = isSelected ? 10 : 1;
+  let calculatedZIndex = Math.max(zIndex, isMultiDragging ? 999 : baseZIndex);
+  let calculatedElevation = calculatedZIndex === 999 ? 999 : (isSelected ? 10 : 6);
 
   const renderCardContent = () => {
     if (gameName === 'UnoLite') {
@@ -255,7 +256,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         }
       ]}
     >
-      <TouchableWithoutFeedback accessibilityRole="button" onPress={() => onPress(index)}>
+      <TouchableOpacity activeOpacity={0.8} accessibilityRole="button" onPress={() => onPress(index)}>
         <View style={{ transform: [{ translateY: isSelected ? -45 : 0 }] }}>
           <View
             style={[styles.card, { backgroundColor: cardColor }, borderStyle]}
@@ -263,7 +264,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
             {renderCardContent()}
           </View>
         </View>
-      </TouchableWithoutFeedback>
+      </TouchableOpacity>
     </Animated.View>
   );
 };
