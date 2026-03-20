@@ -321,15 +321,20 @@ const GameBoard: React.FC<GameBoardProps> = ({
             styles.opponentCard,
             layoutStyle,
             {
-              borderColor: isOpponentTurn ? '#FFD700' : 'transparent',
+              borderColor: isOpponentTurn ? '#FFFFFF' : 'transparent',
               transform: isOpponentTurn ? [{ scale: turnAnim }] : [],
-              shadowColor: isOpponentTurn ? '#FFD700' : '#000',
-              shadowOffset: isOpponentTurn ? { width: 0, height: 0 } : { width: 0, height: 2 },
+              shadowColor: '#000000',
+              shadowOffset: isOpponentTurn ? { width: 0, height: 2 } : { width: 0, height: 2 },
               shadowOpacity: isOpponentTurn ? 0.8 : 0.3,
-              shadowRadius: isOpponentTurn ? 10 : 3,
+              shadowRadius: isOpponentTurn ? 4 : 3,
             }
           ]}>
-            <Text style={[styles.opponentName, { color: isOpponentTurn ? '#FFD700' : 'white' }]}>
+            <Text style={[styles.opponentName, {
+              color: 'white',
+              textShadowColor: isOpponentTurn ? 'rgba(0, 0, 0, 0.8)' : 'transparent',
+              textShadowOffset: { width: 0, height: isOpponentTurn ? 2 : 0 },
+              textShadowRadius: isOpponentTurn ? 4 : 0,
+            }]}>
               {shortName} {isOpponentTurn ? '(Turn)' : ''}
             </Text>
             <View style={styles.opponentCardCount}>
@@ -505,10 +510,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
           styles.sandboxTitle,
           { marginBottom: 10, textAlign: 'center' },
           isMyTurn ? {
-            color: '#FFD700',
-            textShadowColor: 'rgba(255, 215, 0, 0.7)',
-            textShadowOffset: { width: 0, height: 0 },
-            textShadowRadius: 10,
+            color: '#FFFFFF',
+            textShadowColor: 'rgba(0, 0, 0, 0.8)',
+            textShadowOffset: { width: 0, height: 2 },
+            textShadowRadius: 4,
             transform: [{ scale: turnAnim }]
           } : null
         ]}>
@@ -654,12 +659,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
   },
   fabActiveGlow: {
-    borderColor: '#FFD700',
+    borderColor: '#FFFFFF',
     borderWidth: 2,
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
     elevation: 8,
   },
   fabText: {
@@ -677,7 +682,10 @@ const styles = StyleSheet.create({
     userSelect: 'none' as any,
   },
   activePlayerText: {
-    color: '#FFD700', // Gold for active player
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
     userSelect: 'none' as any,
   },
   handContainer: {
