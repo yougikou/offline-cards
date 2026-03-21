@@ -11,10 +11,10 @@ test.describe('Accessibility Semantics', () => {
     await expect(langSwitcher).toBeVisible();
 
     // Wait for game items
-    const gameItemUno = page.getByRole('button', { name: '基础 UNO' });
+    const gameItemUno = page.getByRole('button', { name: '🃏 基础 UNO 2-8P Family' });
     await expect(gameItemUno).toBeVisible();
 
-    const gameItemZheng = page.getByRole('button', { name: '争上游' });
+    const gameItemZheng = page.getByRole('button', { name: '♠️ 争上游 2-4P Strategy' });
     await expect(gameItemZheng).toBeVisible();
 
     // Wait for action buttons (Create Room, Sandbox)
