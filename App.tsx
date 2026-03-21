@@ -802,9 +802,11 @@ export default function App() {
     );
   };
 
+  const dynamicBgColor = (appState === 'CONNECTED' || appState === 'SANDBOX') ? '#2E7D32' : '#f5f5f5';
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: dynamicBgColor }]}>
+      <View style={[styles.container, { backgroundColor: dynamicBgColor }]}>
         <StatusBar hidden={true} />
         {appState === 'HOME' && renderHome()}
         {(appState === 'SIGNALING_HOST' || appState === 'SIGNALING_GUEST') && renderSignaling()}
@@ -818,12 +820,11 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingTop: Platform.OS === 'web' ? 20 : 0, // Ensure web PWA top area is respected
+    paddingTop: Platform.OS === 'web' ? 'env(safe-area-inset-top, 0px)' as any : 0,
+    paddingBottom: Platform.OS === 'web' ? 'env(safe-area-inset-bottom, 0px)' as any : 0,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   content: {
     flex: 1,
