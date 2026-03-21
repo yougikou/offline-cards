@@ -13,6 +13,8 @@ interface GameBoardProps {
   onReset?: () => void;
   isSandbox?: boolean;
   isGuest?: boolean;
+  selectedGameMode?: 'UnoLite' | 'ZhengShangYou';
+  onGameModeChange?: (mode: 'UnoLite' | 'ZhengShangYou') => void;
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -22,7 +24,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
   onExit,
   onReset,
   isSandbox = false,
-  isGuest = false
+  isGuest = false,
+  selectedGameMode,
+  onGameModeChange
 }) => {
   const { t } = useTranslation();
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
@@ -325,6 +329,44 @@ const GameBoard: React.FC<GameBoardProps> = ({
           <Text style={styles.gameOverText}>
             {t('game.winner', { winner: gameOver.winner })}
           </Text>
+          {onReset && !isGuest && (
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ color: 'white', marginBottom: 10, fontSize: 16 }}>
+                {t('game.chooseNextGame')}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  style={[styles.gameOverModeButton, selectedGameMode === 'UnoLite' && styles.gameOverModeButtonSelected]}
+                  onPress={() => onGameModeChange?.('UnoLite')}
+                >
+                  <Text style={[styles.gameOverModeButtonText, selectedGameMode === 'UnoLite' && styles.gameOverModeButtonTextSelected]}>
+                    {t('game.game_UnoLite')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  style={[styles.gameOverModeButton, selectedGameMode === 'ZhengShangYou' && styles.gameOverModeButtonSelected]}
+                  onPress={() => onGameModeChange?.('ZhengShangYou')}
+                >
+                  <Text style={[styles.gameOverModeButtonText, selectedGameMode === 'ZhengShangYou' && styles.gameOverModeButtonTextSelected]}>
+                    {t('game.game_ZhengShangYou')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          {isGuest && (
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ color: 'white', fontSize: 18, marginBottom: 5 }}>
+                {t('game.waitingForRestart', '等待房主重新开局...')}
+              </Text>
+              <Text style={{ color: '#FFEB3B', fontSize: 16, fontWeight: 'bold' }}>
+                {t('game.nextGame')} {selectedGameMode ? t(`game.game_${selectedGameMode}`) : ''}
+              </Text>
+            </View>
+          )}
+
           <View style={styles.gameOverButtons}>
             {onReset && (
               <Button
@@ -332,11 +374,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 onPress={() => onReset()}
                 color="#4CAF50"
               />
-            )}
-            {isGuest && (
-              <Text style={{ color: 'white', fontSize: 18, alignSelf: 'center' }}>
-                {t('game.waitingForRestart', '等待房主重新开局...')}
-              </Text>
             )}
             {onExit && (
               <Button
@@ -904,6 +941,26 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  gameOverModeButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  gameOverModeButtonSelected: {
+    borderColor: '#4CAF50',
+    backgroundColor: 'rgba(76, 175, 80, 0.3)',
+  },
+  gameOverModeButtonText: {
+    color: '#ccc',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  gameOverModeButtonTextSelected: {
+    color: '#fff',
   },
   colorPickerOverlay: {
     position: 'absolute',

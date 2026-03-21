@@ -55,6 +55,10 @@
     "confirm": "確認",
     "tutorialHint": "タップして選択、上にドラッグしてプレイ！",
     "dismiss": "了解",
-    "waitingForRestart": "ホストの再開を待っています..."
+    "waitingForRestart": "ホストの再開を待っています...",
+    "nextGame": "次のゲーム：",
+    "chooseNextGame": "次のゲームを選択：",
+    "game_UnoLite": "基礎 UNO",
+    "game_ZhengShangYou": "争上游"
   }
 }

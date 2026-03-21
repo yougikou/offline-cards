@@ -55,6 +55,10 @@
     "confirm": "确定",
     "tutorialHint": "点击选择卡牌，向上滑动出牌！",
     "dismiss": "知道了",
-    "waitingForRestart": "等待房主重新开局..."
+    "waitingForRestart": "等待房主重新开局...",
+    "nextGame": "下一局游戏：",
+    "chooseNextGame": "选择下一局游戏：",
+    "game_UnoLite": "基础 UNO",
+    "game_ZhengShangYou": "争上游"
   }
 }
