@@ -4,7 +4,10 @@ const ASSETS_TO_CACHE = [
   '/offline-cards/index.html',
   '/offline-cards/manifest.json',
   '/offline-cards/favicon.ico',
-  '/offline-cards/assets/icon.png'
+  '/offline-cards/assets/icon.png',
+  '/offline-cards/assets/icon-192.png',
+  '/offline-cards/assets/icon-512.png',
+  '/offline-cards/assets/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (event) => {
