@@ -10,6 +10,7 @@
     "sandboxTesting": "单机沙盒测试",
     "game_UnoLite": "基础 UNO",
     "game_ZhengShangYou": "争上游",
+    "game_SanGuoSha": "三国杀",
     "hostMode": "房主模式 (添加玩家)",
     "guestMode": "访客模式",
     "showMyQR": "显示我的二维码",
@@ -59,6 +60,7 @@
     "nextGame": "下一局游戏：",
     "chooseNextGame": "选择下一局游戏：",
     "game_UnoLite": "基础 UNO",
-    "game_ZhengShangYou": "争上游"
+    "game_ZhengShangYou": "争上游",
+    "game_SanGuoSha": "三国杀"
   }
 }
