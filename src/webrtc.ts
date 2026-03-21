@@ -26,6 +26,7 @@ const getRTCPeerConnection = (): typeof RTCPeerConnection => {
 
 const rtcConfig: RTCConfiguration = {
   iceServers: [], // Empty for pure LAN/Offline
+  iceCandidatePoolSize: 2,
 };
 
 export class WebRTCManager {
