@@ -61,6 +61,17 @@
     "chooseNextGame": "Choose Next Game:",
     "game_UnoLite": "UNO Lite",
     "game_ZhengShangYou": "Zheng Shang You",
-    "game_SanGuoSha": "SanGuoSha"
+    "game_SanGuoSha": "SanGuoSha",
+    "sgs_role_Lord": "Lord",
+    "sgs_role_Loyalist": "Loyalist",
+    "sgs_role_Rebel": "Rebel",
+    "sgs_role_Renegade": "Renegade",
+    "sgs_role_Unknown": "Unknown",
+    "sgs_card_Kill": "Kill",
+    "sgs_card_Dodge": "Dodge",
+    "sgs_card_Peach": "Peach",
+    "sgs_action_takeDamage": "Take Damage",
+    "sgs_action_endPlayPhase": "End Play Phase",
+    "sgs_selectTarget": "Select Target"
   }
 }

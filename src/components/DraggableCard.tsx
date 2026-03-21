@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { StyleSheet, Text, View, Animated, PanResponder, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 export interface DraggableCardProps {
   card: any;
@@ -38,6 +39,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   isMultiDragging = false,
   customMarginLeft,
 }) => {
+  const { t } = useTranslation();
   const pan = useRef(new Animated.ValueXY()).current;
   const scale = useRef(new Animated.Value(1)).current;
   const selectAnim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
@@ -236,10 +238,10 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
           </View>
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
              <Text style={{ color: sgTextColor, fontSize: 20, fontWeight: 'bold', userSelect: 'none' as any }}>
-               {card.name === 'Kill' ? '杀' : card.name === 'Dodge' ? '闪' : card.name === 'Peach' ? '桃' : card.name}
+               {t('game.sgs_card_' + card.name, { defaultValue: card.name })}
              </Text>
              <Text style={{ color: '#757575', fontSize: 10, userSelect: 'none' as any, marginTop: 4 }}>
-               {card.name}
+               {t('game.sgs_card_' + card.name, { defaultValue: card.name })}
              </Text>
           </View>
         </View>

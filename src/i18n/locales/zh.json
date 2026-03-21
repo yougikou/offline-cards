@@ -61,6 +61,17 @@
     "chooseNextGame": "选择下一局游戏：",
     "game_UnoLite": "基础 UNO",
     "game_ZhengShangYou": "争上游",
-    "game_SanGuoSha": "三国杀"
+    "game_SanGuoSha": "三国杀",
+    "sgs_role_Lord": "主公",
+    "sgs_role_Loyalist": "忠臣",
+    "sgs_role_Rebel": "反贼",
+    "sgs_role_Renegade": "内奸",
+    "sgs_role_Unknown": "未知",
+    "sgs_card_Kill": "杀",
+    "sgs_card_Dodge": "闪",
+    "sgs_card_Peach": "桃",
+    "sgs_action_takeDamage": "受到伤害",
+    "sgs_action_endPlayPhase": "结束出牌阶段",
+    "sgs_selectTarget": "选择目标"
   }
 }

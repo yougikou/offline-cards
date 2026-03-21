@@ -61,6 +61,17 @@
     "chooseNextGame": "次のゲームを選択：",
     "game_UnoLite": "基礎 UNO",
     "game_ZhengShangYou": "大富豪",
-    "game_SanGuoSha": "三国殺"
+    "game_SanGuoSha": "三国殺",
+    "sgs_role_Lord": "主君",
+    "sgs_role_Loyalist": "忠臣",
+    "sgs_role_Rebel": "反逆者",
+    "sgs_role_Renegade": "内通者",
+    "sgs_role_Unknown": "不明",
+    "sgs_card_Kill": "殺",
+    "sgs_card_Dodge": "閃",
+    "sgs_card_Peach": "桃",
+    "sgs_action_takeDamage": "ダメージを受ける",
+    "sgs_action_endPlayPhase": "プレイフェーズを終了",
+    "sgs_selectTarget": "ターゲットを選択"
   }
 }

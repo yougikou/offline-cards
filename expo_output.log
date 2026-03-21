@@ -5,42 +5,22 @@ Waiting on http://localhost:8081
 Logs for your project will appear below.
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
  WARN  Attempted to import the module "/app/node_modules/react-native-webrtc/node_modules/event-target-shim/index" which is not listed in the "exports" of "/app/node_modules/react-native-webrtc/node_modules/event-target-shim" under the requested subpath "./index". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
-Web Bundled 761ms index.js (499 modules)
+Web Bundled 807ms index.js (496 modules)
  LOG  [web] Logs will appear in the browser console
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 35ms index.js (1 module)
+Web Bundled 33ms index.js (1 module)
  LOG  [web] Logs will appear in the browser console
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
 Web Bundled 34ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 38ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 33ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 37ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 33ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 31ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 32ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
-Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
-Web Bundled 2143ms index.js (1 module)
-Web Bundled 2207ms index.js (1 module)
- LOG  [web] Logs will appear in the browser console
- LOG  [web] Logs will appear in the browser console
-Web Bundled 75ms index.js (1 module)
  LOG  [web] Logs will appear in the browser console
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
 Web Bundled 30ms index.js (1 module)
  LOG  [web] Logs will appear in the browser console
 Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 29ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web ./index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
 Web Bundled 34ms index.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web Bundled 27ms index.js (1 module)
  LOG  [web] Logs will appear in the browser console
