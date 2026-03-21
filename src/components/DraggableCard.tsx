@@ -165,7 +165,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   const isWildColor = card.color === 'Black';
   const cardColor = isWildColor ? '#2C2C2C' : (card.color ? card.color.toLowerCase() : 'white');
   const textColor = card.color ? 'white' : (card.suit === 'Hearts' || card.suit === 'Diamonds' || card.rank === 'Red Joker' ? '#D32F2F' : '#212121');
-  const borderStyle = isSelected ? { borderColor: '#007AFF', borderWidth: 2 } : { borderColor: '#E0E0E0', borderWidth: 1 };
+  const borderStyle = { borderColor: '#E0E0E0', borderWidth: 1 };
 
   // Calculate overlapping margin
   const marginLeft = customMarginLeft !== undefined ? customMarginLeft : (index > 0 ? -35 : 0);
@@ -270,8 +270,8 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       <TouchableOpacity activeOpacity={0.8} accessibilityRole="button" onPress={() => onPress(index)}>
         <Animated.View style={{
           transform: [
-            { translateY: selectAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -40] }) },
-            { scale: selectAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] }) }
+            { translateY: selectAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -15] }) },
+            { scale: selectAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] }) }
           ]
         }}>
           <View

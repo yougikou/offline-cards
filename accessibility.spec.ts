@@ -7,7 +7,7 @@ test.describe('Accessibility Semantics', () => {
     // Playwright locator `getByRole` automatically looks for semantic roles in the accessibility tree
 
     // Wait for language switcher
-    const langSwitcher = page.getByRole('button', { name: /🌐.*/ });
+    const langSwitcher = page.getByRole('button', { name: /🌐.*/ }).first();
     await expect(langSwitcher).toBeVisible();
 
     // Wait for game items
