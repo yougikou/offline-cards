@@ -156,16 +156,96 @@ export class WebRTCManager {
 
   private compressSDP(sdp: RTCSessionDescription | null): string {
     if (!sdp) return '';
-    const jsonStr = JSON.stringify(sdp);
+
+    // 1. Split into lines
+    const lines = sdp.sdp.split('\r\n');
+    const filteredLines: string[] = [];
+
+    let skipMode = false;
+    for (const line of lines) {
+      // We only care about the data channel application part, strip out video/audio
+      if (line.startsWith('m=video') || line.startsWith('m=audio')) {
+        skipMode = true;
+        continue;
+      }
+      if (line.startsWith('m=')) {
+        skipMode = false;
+      }
+      if (skipMode) continue;
+      if (line.trim() === '') continue;
+
+      // Use a dictionary for common SDP keys
+      let compressedLine = line;
+      if (compressedLine.startsWith('a=ice-ufrag:')) compressedLine = compressedLine.replace('a=ice-ufrag:', 'u:');
+      else if (compressedLine.startsWith('a=ice-pwd:')) compressedLine = compressedLine.replace('a=ice-pwd:', 'p:');
+      else if (compressedLine.startsWith('a=fingerprint:')) compressedLine = compressedLine.replace('a=fingerprint:', 'f:');
+      else if (compressedLine.startsWith('a=candidate:')) compressedLine = compressedLine.replace('a=candidate:', 'c:');
+
+      filteredLines.push(compressedLine);
+    }
+
+    const minifiedSDP = filteredLines.join('\n');
+
+    // 2. Create minimal payload
+    const payload = {
+      t: sdp.type === 'offer' ? 'o' : 'a',
+      s: minifiedSDP
+    };
+
+    const jsonStr = JSON.stringify(payload);
+    // 3. Compress using LZString
     return LZString.compressToEncodedURIComponent(jsonStr);
   }
 
   private decompressSDP(compressed: string): RTCSessionDescriptionInit | null {
     if (!compressed) return null;
-    const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
-    if (!decompressed) return null;
+
+    let decompressed: string | null = null;
     try {
-      return JSON.parse(decompressed);
+      // First try decompressing with LZString
+      decompressed = LZString.decompressFromEncodedURIComponent(compressed);
+      if (!decompressed) {
+         // Fallback for older non-minified version if it was pure JSON or unencoded
+         try {
+           JSON.parse(compressed);
+           decompressed = compressed;
+         } catch {
+           return null;
+         }
+      }
+    } catch (e) {
+      console.error("Failed to decompress SDP", e);
+      return null;
+    }
+
+    if (!decompressed) return null;
+
+    try {
+      const payload = JSON.parse(decompressed);
+
+      // Backward compatibility with old full JSON payloads
+      if (payload.type && payload.sdp) {
+        return payload as RTCSessionDescriptionInit;
+      }
+
+      const type = payload.t === 'o' ? 'offer' : 'answer';
+      const lines = (payload.s as string).split('\n');
+
+      const restoredLines = lines.map(line => {
+        if (line.startsWith('u:')) return line.replace('u:', 'a=ice-ufrag:');
+        if (line.startsWith('p:')) return line.replace('p:', 'a=ice-pwd:');
+        if (line.startsWith('f:')) return line.replace('f:', 'a=fingerprint:');
+        if (line.startsWith('c:')) return line.replace('c:', 'a=candidate:');
+        return line;
+      });
+
+      // SDP strictly requires \r\n endings
+      const restoredSDP = restoredLines.join('\r\n') + '\r\n';
+
+      return {
+        type: type as RTCSdpType,
+        sdp: restoredSDP
+      };
     } catch (e) {
       console.error("Failed to parse decompressed SDP", e);
       return null;
