@@ -385,6 +385,9 @@ export default function App() {
     setAppState('SIGNALING_GUEST');
     setRole('GUEST');
 
+    // Preload camera for faster scanning and to trigger permissions via user gesture on iOS PWA
+    preloadCamera();
+
     if (!resume) {
       const newPlayerId = 'guest_' + Math.random().toString(36).substring(2, 9);
       setPlayerId(newPlayerId);

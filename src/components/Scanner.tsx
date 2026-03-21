@@ -110,7 +110,7 @@ const WebScanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
           {
             fps: 10,
             qrbox: (videoWidth: number, videoHeight: number) => {
-              const minEdgePercentage = 0.7;
+              const minEdgePercentage = 1.0;
               const minEdgeSize = Math.min(videoWidth, videoHeight);
               return {
                 width: Math.floor(minEdgeSize * minEdgePercentage),
