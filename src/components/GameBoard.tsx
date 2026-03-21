@@ -333,7 +333,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
       {targetSelectionVisible && (
         <View style={styles.colorPickerOverlay}>
-          <Text style={styles.colorPickerTitle}>Select Target</Text>
+          <Text style={styles.colorPickerTitle}>{t('game.sgs_selectTarget')}</Text>
           <View style={{ flexDirection: 'column', gap: 10, marginBottom: 20, width: '100%' }}>
             {opponents.map((oppId: string) => {
               const oppState = G.playerStates?.[oppId];
@@ -516,7 +516,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
             {sgsState && (
               <View style={{ flexDirection: 'row', marginTop: 4 }}>
                 <Text style={{ color: 'red', fontSize: 12 }}>HP: {sgsState.hp}/{sgsState.maxHp}</Text>
-                <Text style={{ color: '#FFD700', fontSize: 12, marginLeft: 5 }}>[{sgsState.role === 'Unknown' ? '?' : sgsState.role}]</Text>
+                <Text style={{ color: '#FFD700', fontSize: 12, marginLeft: 5 }}>[{sgsState.role === 'Unknown' ? '?' : t('game.sgs_role_' + sgsState.role)}]</Text>
               </View>
             )}
           </Animated.View>
@@ -528,7 +528,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {gameName === 'SanGuoSha' && G.playerStates ? (
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
-              <Text style={styles.sandboxTitle}>SanGuoSha | HP: {G.playerStates[myPlayerId]?.hp}/{G.playerStates[myPlayerId]?.maxHp} | Role: {G.playerStates[myPlayerId]?.role}</Text>
+              <Text style={styles.sandboxTitle}>SanGuoSha | HP: {G.playerStates[myPlayerId]?.hp}/{G.playerStates[myPlayerId]?.maxHp} | Role: {G.playerStates[myPlayerId]?.role ? t('game.sgs_role_' + G.playerStates[myPlayerId]?.role) : ''}</Text>
             </View>
             {G.pendingCard && (
                <Animated.View style={[styles.tableContainer, {
@@ -538,7 +538,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   ]
                 }]}>
                   <View style={[styles.card, { backgroundColor: 'white', width: 60, height: 90 }]}>
-                    <Text style={{ color: 'black', fontSize: 16, fontWeight: 'bold' }}>{G.pendingCard.name}</Text>
+                    <Text style={{ color: 'black', fontSize: 16, fontWeight: 'bold' }}>{t('game.sgs_card_' + G.pendingCard.name)}</Text>
                   </View>
                </Animated.View>
             )}
@@ -672,7 +672,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   style={[styles.fab, { backgroundColor: '#F44336' }]}
                   onPress={() => onAction('takeDamage')}
                 >
-                  <Text style={styles.fabText}>Take Damage</Text>
+                  <Text style={styles.fabText}>{t('game.sgs_action_takeDamage')}</Text>
                 </TouchableOpacity>
               )}
               {gameName === 'SanGuoSha' && (!ctx.activePlayers || !ctx.activePlayers[myPlayerId]) && (
@@ -680,7 +680,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   style={[styles.fab, { backgroundColor: '#9E9E9E' }]}
                   onPress={() => onAction('endPlayPhase')}
                 >
-                  <Text style={styles.fabText}>End Play Phase</Text>
+                  <Text style={styles.fabText}>{t('game.sgs_action_endPlayPhase')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity accessibilityRole="button"
