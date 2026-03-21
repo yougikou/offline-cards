@@ -9,11 +9,12 @@ import QRCodeDisplay from './src/components/QRCodeDisplay';
 import GameBoard from './src/components/GameBoard';
 import { UnoLiteGame } from './src/game-modules/unoLite';
 import { ZhengShangYouGame } from './src/game-modules/ZhengShangYou';
+import { SanGuoShaGame } from './src/game-modules/sanguosha';
 import { Client } from 'boardgame.io/client';
 import { Storage } from './src/storage';
 
 type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
-type GameMode = 'UnoLite' | 'ZhengShangYou';
+type GameMode = 'UnoLite' | 'ZhengShangYou' | 'SanGuoSha';
 type Role = 'HOST' | 'GUEST' | null;
 
 // Replace GameAction with the boardgame.io specific action type
@@ -79,6 +80,8 @@ export default function App() {
     switch (mode) {
       case 'ZhengShangYou':
         return ZhengShangYouGame;
+      case 'SanGuoSha':
+        return SanGuoShaGame;
       case 'UnoLite':
       default:
         return UnoLiteGame;
@@ -522,6 +525,7 @@ export default function App() {
               {[
                 { id: 'UnoLite', name: t('lobby.game_UnoLite', 'UnoLite'), tags: ['2-8P', 'Family'], available: true, icon: '🃏' },
                 { id: 'ZhengShangYou', name: t('lobby.game_ZhengShangYou', 'ZhengShangYou'), tags: ['2-4P', 'Strategy'], available: true, icon: '♠️' },
+                { id: 'SanGuoSha', name: t('lobby.game_SanGuoSha', 'SanGuoSha'), tags: ['2-8P', 'Roleplay'], available: true, icon: '⚔️' },
                 { id: 'DouDiZhu', name: '斗地主 / Dou Di Zhu', tags: ['3P', 'Classic'], available: false, icon: '👨‍🌾' },
               ].map(game => (
                 <TouchableOpacity
@@ -563,7 +567,7 @@ export default function App() {
             </View>
             <View style={styles.joinGlobalTextContainer}>
               <Text style={styles.joinGlobalButtonText}>
-                {t('lobby.createRoom', 'Host Room')} - {selectedGameMode === 'UnoLite' ? t('lobby.game_UnoLite') : t('lobby.game_ZhengShangYou')}
+                {t('lobby.createRoom', 'Host Room')} - {selectedGameMode === 'UnoLite' ? t('lobby.game_UnoLite') : selectedGameMode === 'ZhengShangYou' ? t('lobby.game_ZhengShangYou') : t('lobby.game_SanGuoSha')}
               </Text>
               <Text style={styles.joinGlobalSubText}>{t('lobby.hostDesc', 'Play with friends via Wi-Fi/QR')}</Text>
             </View>

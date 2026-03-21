@@ -13,8 +13,8 @@ interface GameBoardProps {
   onReset?: () => void;
   isSandbox?: boolean;
   isGuest?: boolean;
-  selectedGameMode?: 'UnoLite' | 'ZhengShangYou';
-  onGameModeChange?: (mode: 'UnoLite' | 'ZhengShangYou') => void;
+  selectedGameMode?: 'UnoLite' | 'ZhengShangYou' | 'SanGuoSha';
+  onGameModeChange?: (mode: 'UnoLite' | 'ZhengShangYou' | 'SanGuoSha') => void;
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -36,6 +36,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const [layoutWidth, setLayoutWidth] = useState(() => Dimensions.get('window').width);
   const [colorPickerVisible, setColorPickerVisible] = useState(false);
   const [pendingWildCardIndex, setPendingWildCardIndex] = useState<number | null>(null);
+
+  // SanGuoSha specific state
+  const [targetSelectionVisible, setTargetSelectionVisible] = useState(false);
+  const [pendingActionCardIndex, setPendingActionCardIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const checkTutorial = async () => {
@@ -208,6 +212,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
           return [...prev, cardIndex];
         }
       });
+    } else if (gameName === 'SanGuoSha') {
+      // In SanGuoSha, you usually play 1 card at a time, except for specific moves.
+      setSelectedCards(prev => {
+        if (prev.includes(cardIndex)) {
+          return [];
+        } else {
+          return [cardIndex];
+        }
+      });
     } else {
       setSelectedCards(prev => {
         if (prev.includes(cardIndex)) {
@@ -231,6 +244,25 @@ const GameBoard: React.FC<GameBoardProps> = ({
         onAction('playCard', cardIndex);
         setSelectedCards([]);
       }
+    } else if (gameName === 'SanGuoSha') {
+      const card = myHand[cardIndex];
+      if (!card) return;
+      if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond') {
+        if (card.name === 'Dodge') {
+          onAction('playDodge', cardIndex);
+        }
+      } else {
+         if (card.name === 'Kill') {
+            setPendingActionCardIndex(cardIndex);
+            setTargetSelectionVisible(true);
+            return; // Do not clear selection yet
+         } else if (card.name === 'Peach') {
+            onAction('playPeach', cardIndex);
+         } else if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'discard') {
+            onAction('discardCards', [cardIndex]);
+         }
+      }
+      setSelectedCards([]);
     } else {
       if (selectedCards.includes(cardIndex)) {
         onAction('playCard', selectedCards);
@@ -299,6 +331,39 @@ const GameBoard: React.FC<GameBoardProps> = ({
         </View>
       </Modal>
 
+      {targetSelectionVisible && (
+        <View style={styles.colorPickerOverlay}>
+          <Text style={styles.colorPickerTitle}>Select Target</Text>
+          <View style={{ flexDirection: 'column', gap: 10, marginBottom: 20, width: '100%' }}>
+            {opponents.map((oppId: string) => {
+              const oppState = G.playerStates?.[oppId];
+              if (!oppState || oppState.dead) return null;
+              return (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  key={oppId}
+                  style={{ backgroundColor: '#2196F3', padding: 10, borderRadius: 8, alignItems: 'center' }}
+                  onPress={() => {
+                     if (pendingActionCardIndex !== null) {
+                        onAction('playKill', { cardIndex: pendingActionCardIndex, targetId: oppId });
+                        setSelectedCards([]);
+                     }
+                     setTargetSelectionVisible(false);
+                     setPendingActionCardIndex(null);
+                  }}
+                >
+                  <Text style={{ color: 'white', fontWeight: 'bold' }}>{oppId} (HP: {oppState.hp})</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Button title={t('lobby.cancel')} onPress={() => {
+            setTargetSelectionVisible(false);
+            setPendingActionCardIndex(null);
+          }} color="#9E9E9E" />
+        </View>
+      )}
+
       {colorPickerVisible && (
         <View style={styles.colorPickerOverlay}>
           <Text style={styles.colorPickerTitle}>{t('game.chooseColor', 'Choose Color')}</Text>
@@ -351,6 +416,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 >
                   <Text style={[styles.gameOverModeButtonText, selectedGameMode === 'ZhengShangYou' && styles.gameOverModeButtonTextSelected]}>
                     {t('game.game_ZhengShangYou')}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  style={[styles.gameOverModeButton, selectedGameMode === 'SanGuoSha' && styles.gameOverModeButtonSelected]}
+                  onPress={() => onGameModeChange?.('SanGuoSha')}
+                >
+                  <Text style={[styles.gameOverModeButtonText, selectedGameMode === 'SanGuoSha' && styles.gameOverModeButtonTextSelected]}>
+                    {t('game.game_SanGuoSha', 'SanGuoSha')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -406,6 +480,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
         ];
         const layoutStyle = positions[index % positions.length];
 
+        let sgsState = null;
+        if (gameName === 'SanGuoSha' && G.playerStates) {
+           sgsState = G.playerStates[opponentId];
+        }
+
         return (
           <Animated.View key={opponentId} style={[
             styles.opponentCard,
@@ -429,18 +508,42 @@ const GameBoard: React.FC<GameBoardProps> = ({
               textShadowOffset: { width: 0, height: isOpponentTurn ? 2 : 0 },
               textShadowRadius: isOpponentTurn ? 4 : 0,
             }]}>
-              {shortName} {isOpponentTurn ? '(Turn)' : ''}
+              {shortName} {isOpponentTurn ? '(Turn)' : ''} {sgsState && sgsState.dead ? '💀' : ''}
             </Text>
             <View style={styles.opponentCardCount}>
               <Text style={styles.opponentCardCountText}>{opponentHand.length} 张</Text>
             </View>
+            {sgsState && (
+              <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                <Text style={{ color: 'red', fontSize: 12 }}>HP: {sgsState.hp}/{sgsState.maxHp}</Text>
+                <Text style={{ color: '#FFD700', fontSize: 12, marginLeft: 5 }}>[{sgsState.role === 'Unknown' ? '?' : sgsState.role}]</Text>
+              </View>
+            )}
           </Animated.View>
         );
       })}
 
       {/* Table Area (Absolute Full Screen, zIndex 1) */}
       <View style={styles.tableArea}>
-        {gameName === 'UnoLite' ? (
+        {gameName === 'SanGuoSha' && G.playerStates ? (
+          <>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
+              <Text style={styles.sandboxTitle}>SanGuoSha | HP: {G.playerStates[myPlayerId]?.hp}/{G.playerStates[myPlayerId]?.maxHp} | Role: {G.playerStates[myPlayerId]?.role}</Text>
+            </View>
+            {G.pendingCard && (
+               <Animated.View style={[styles.tableContainer, {
+                  transform: [
+                    { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-80, 0] }) },
+                    { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }
+                  ]
+                }]}>
+                  <View style={[styles.card, { backgroundColor: 'white', width: 60, height: 90 }]}>
+                    <Text style={{ color: 'black', fontSize: 16, fontWeight: 'bold' }}>{G.pendingCard.name}</Text>
+                  </View>
+               </Animated.View>
+            )}
+          </>
+        ) : gameName === 'UnoLite' ? (
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
               <Text style={styles.sandboxTitle}>{t('game.discardPileTop')}</Text>
@@ -562,7 +665,58 @@ const GameBoard: React.FC<GameBoardProps> = ({
         )}
 
         <View style={styles.controlRow}>
-          {gameName === 'UnoLite' ? (
+          {gameName === 'SanGuoSha' ? (
+            <>
+              {gameName === 'SanGuoSha' && ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond' && (
+                <TouchableOpacity accessibilityRole="button"
+                  style={[styles.fab, { backgroundColor: '#F44336' }]}
+                  onPress={() => onAction('takeDamage')}
+                >
+                  <Text style={styles.fabText}>Take Damage</Text>
+                </TouchableOpacity>
+              )}
+              {gameName === 'SanGuoSha' && (!ctx.activePlayers || !ctx.activePlayers[myPlayerId]) && (
+                <TouchableOpacity accessibilityRole="button"
+                  style={[styles.fab, { backgroundColor: '#9E9E9E' }]}
+                  onPress={() => onAction('endPlayPhase')}
+                >
+                  <Text style={styles.fabText}>End Play Phase</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity accessibilityRole="button"
+                style={[
+                  styles.fab,
+                  (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 },
+                  (isMyTurn && !gameOver && selectedCards.length > 0) ? styles.fabActiveGlow : null
+                ]}
+                onPress={() => {
+                  if (selectedCards.length > 0) {
+                    const cardIndex = selectedCards[0];
+                    const card = myHand[cardIndex];
+                    if (card) {
+                      if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond') {
+                         if (card.name === 'Dodge') onAction('playDodge', cardIndex);
+                      } else {
+                         if (card.name === 'Kill') {
+                            setPendingActionCardIndex(cardIndex);
+                            setTargetSelectionVisible(true);
+                            return; // Do not clear selection yet
+                         } else if (card.name === 'Peach') {
+                            onAction('playPeach', cardIndex);
+                         } else if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'discard') {
+                            onAction('discardCards', [cardIndex]);
+                         }
+                      }
+                      setSelectedCards([]);
+                    }
+                  }
+                }}
+                disabled={!isMyTurn || gameOver || selectedCards.length === 0}
+              >
+                <Text style={styles.fabText}>{t('game.playSelected')}</Text>
+              </TouchableOpacity>
+            </>
+          ) : gameName === 'UnoLite' ? (
             <>
               <TouchableOpacity accessibilityRole="button"
                 style={[styles.fab, (!isMyTurn || gameOver) ? styles.fabDisabled : { backgroundColor: '#2196F3' }]}

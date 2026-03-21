@@ -156,7 +156,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   if (isOpponent || card.hidden) {
     return (
       <View style={[styles.card, styles.cardBack]}>
-        <Text style={styles.cardBackText}>{gameName === 'ZhengShangYou' ? 'POKER' : 'UNO'}</Text>
+        <Text style={styles.cardBackText}>{gameName === 'ZhengShangYou' ? 'POKER' : gameName === 'SanGuoSha' ? 'SGS' : 'UNO'}</Text>
       </View>
     );
   }
@@ -218,6 +218,29 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
             <Text style={[styles.cardText, { color: textColor, fontSize: isWild ? 20 : 28, fontWeight: '900' }, textShadowStyle]}>
               {displayValue !== undefined ? displayValue : ''}
             </Text>
+          </View>
+        </View>
+      );
+    } else if (gameName === 'SanGuoSha') {
+      const sgTextColor = card.suit === 'Hearts' || card.suit === 'Diamonds' ? '#D32F2F' : '#212121';
+      const suitIcon = card.suit === 'Hearts' ? '♥' : card.suit === 'Diamonds' ? '♦' : card.suit === 'Clubs' ? '♣' : card.suit === 'Spades' ? '♠' : '';
+      return (
+        <View style={{ flex: 1, width: '100%' }}>
+          <View style={{ position: 'absolute', top: 4, left: 4, alignItems: 'center' }}>
+            <Text style={{ color: sgTextColor, fontSize: 14, fontWeight: 'bold', userSelect: 'none' as any }}>{card.rank}</Text>
+            <Text style={{ color: sgTextColor, fontSize: 12, userSelect: 'none' as any }}>{suitIcon}</Text>
+          </View>
+          <View style={{ position: 'absolute', bottom: 4, right: 4, alignItems: 'center', transform: [{ rotate: '180deg' }] }}>
+            <Text style={{ color: sgTextColor, fontSize: 14, fontWeight: 'bold', userSelect: 'none' as any }}>{card.rank}</Text>
+            <Text style={{ color: sgTextColor, fontSize: 12, userSelect: 'none' as any }}>{suitIcon}</Text>
+          </View>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+             <Text style={{ color: sgTextColor, fontSize: 20, fontWeight: 'bold', userSelect: 'none' as any }}>
+               {card.name === 'Kill' ? '杀' : card.name === 'Dodge' ? '闪' : card.name === 'Peach' ? '桃' : card.name}
+             </Text>
+             <Text style={{ color: '#757575', fontSize: 10, userSelect: 'none' as any, marginTop: 4 }}>
+               {card.name}
+             </Text>
           </View>
         </View>
       );

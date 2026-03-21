@@ -10,6 +10,7 @@
     "sandboxTesting": "Enter Local Sandbox",
     "game_UnoLite": "UNO Lite",
     "game_ZhengShangYou": "Zheng Shang You",
+    "game_SanGuoSha": "SanGuoSha",
     "hostMode": "Host Mode (Add Player)",
     "guestMode": "Guest Mode",
     "showMyQR": "Show My QR",
@@ -59,6 +60,7 @@
     "nextGame": "Next Game:",
     "chooseNextGame": "Choose Next Game:",
     "game_UnoLite": "UNO Lite",
-    "game_ZhengShangYou": "Zheng Shang You"
+    "game_ZhengShangYou": "Zheng Shang You",
+    "game_SanGuoSha": "SanGuoSha"
   }
 }

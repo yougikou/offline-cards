@@ -10,6 +10,7 @@
     "sandboxTesting": "サンドボックステスト",
     "game_UnoLite": "基礎 UNO",
     "game_ZhengShangYou": "争上游",
+    "game_SanGuoSha": "三国殺",
     "hostMode": "ホストモード (プレイヤー追加)",
     "guestMode": "ゲストモード",
     "showMyQR": "マイQRを表示",
@@ -59,6 +60,7 @@
     "nextGame": "次のゲーム：",
     "chooseNextGame": "次のゲームを選択：",
     "game_UnoLite": "基礎 UNO",
-    "game_ZhengShangYou": "争上游"
+    "game_ZhengShangYou": "大富豪",
+    "game_SanGuoSha": "三国殺"
   }
 }
