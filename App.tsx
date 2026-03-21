@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, Button, TextInput, ScrollView, Platform, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import './src/i18n/index'; // Initialize i18n
@@ -655,9 +655,21 @@ export default function App() {
       </Text>
 
       {qrValue && isScanning && (
-        <View style={{ flexDirection: 'row', marginBottom: 10, gap: 10 }}>
-          <Button title={t('lobby.showMyQR')} onPress={() => setShowMode('qr')} color={showMode === 'qr' ? '#007AFF' : '#999'} />
-          <Button title={t('lobby.scanOtherQR')} onPress={() => setShowMode('scanner')} color={showMode === 'scanner' ? '#007AFF' : '#999'} />
+        <View style={styles.segmentControl}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={[styles.segmentButton, showMode === 'qr' && styles.segmentButtonActive]}
+            onPress={() => setShowMode('qr')}
+          >
+            <Text style={[styles.segmentButtonText, showMode === 'qr' && styles.segmentButtonTextActive]}>{t('lobby.showMyQR')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={[styles.segmentButton, showMode === 'scanner' && styles.segmentButtonActive]}
+            onPress={() => setShowMode('scanner')}
+          >
+            <Text style={[styles.segmentButtonText, showMode === 'scanner' && styles.segmentButtonTextActive]}>{t('lobby.scanOtherQR')}</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -677,35 +689,37 @@ export default function App() {
 
         {showMode === 'qr' && qrValue ? (
           <View style={[styles.section, { flex: 1 }]}>
-            <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.showQRToOther')}</Text>
+            <Text style={styles.instructionText}>{t('lobby.showQRToOther')}</Text>
             <QRCodeDisplay value={qrValue} />
           </View>
         ) : null}
 
         {showMode === 'scanner' && isScanning ? (
           <View style={[styles.section, { flex: 1 }]}>
-            <Text style={{ marginBottom: 10, textAlign: 'center' }}>{t('lobby.scanOtherDeviceQR')}</Text>
+            <Text style={styles.instructionText}>{t('lobby.scanOtherDeviceQR')}</Text>
             <Scanner onScan={handleScanSuccess} />
           </View>
         ) : null}
       </View>
 
-      <View style={{ marginTop: 20, width: '100%', maxWidth: 300 }}>
+      <View style={{ marginTop: 20, width: '100%', maxWidth: 300, gap: 12 }}>
         {appState === 'SIGNALING_HOST' && (
-          <View style={{ marginBottom: 10 }}>
-            <Button title={t('lobby.addAnotherPlayer')} onPress={startNewHostPendingConnection} color="blue" />
-          </View>
+          <TouchableOpacity accessibilityRole="button" style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={startNewHostPendingConnection}>
+            <Text style={styles.actionBtnSecondaryText}>➕ {t('lobby.addAnotherPlayer')}</Text>
+          </TouchableOpacity>
         )}
         {appState === 'SIGNALING_HOST' && (
-          <View style={{ marginBottom: 10 }}>
-            <Button title={t('lobby.startGame', { count: hostConnections.current.size + 1 })} onPress={startGameHost} color="green" />
-          </View>
+          <TouchableOpacity accessibilityRole="button" style={[styles.actionBtn, styles.actionBtnPrimary]} onPress={startGameHost}>
+            <Text style={styles.actionBtnText}>🚀 {t('lobby.startGame', { count: hostConnections.current.size + 1 })}</Text>
+          </TouchableOpacity>
         )}
-        <Button title={t('lobby.cancel')} onPress={() => {
+        <TouchableOpacity accessibilityRole="button" style={[styles.actionBtn, styles.actionBtnDestructive]} onPress={() => {
           if (appState === 'SIGNALING_HOST') pendingHostManager?.close();
           if (appState === 'SIGNALING_GUEST') guestWebrtcManager?.close();
           setAppState('HOME');
-        }} color="red" />
+        }}>
+          <Text style={styles.actionBtnText}>✕ {t('lobby.cancel')}</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -789,17 +803,24 @@ export default function App() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar hidden={true} />
-      {appState === 'HOME' && renderHome()}
-      {(appState === 'SIGNALING_HOST' || appState === 'SIGNALING_GUEST') && renderSignaling()}
-      {appState === 'CONNECTED' && renderConnected()}
-      {appState === 'SANDBOX' && renderSandbox()}
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <StatusBar hidden={true} />
+        {appState === 'HOME' && renderHome()}
+        {(appState === 'SIGNALING_HOST' || appState === 'SIGNALING_GUEST') && renderSignaling()}
+        {appState === 'CONNECTED' && renderConnected()}
+        {appState === 'SANDBOX' && renderSandbox()}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    paddingTop: Platform.OS === 'web' ? 20 : 0, // Ensure web PWA top area is respected
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -1171,5 +1192,73 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginHorizontal: 10,
     color: '#333',
+  },
+  segmentControl: {
+    flexDirection: 'row',
+    backgroundColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 15,
+    width: '100%',
+    maxWidth: 300,
+  },
+  segmentButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  segmentButtonActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  segmentButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  segmentButtonTextActive: {
+    color: '#007AFF',
+  },
+  instructionText: {
+    fontSize: 16,
+    color: '#444',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  actionBtn: {
+    width: '100%',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  actionBtnPrimary: {
+    backgroundColor: '#4CAF50',
+  },
+  actionBtnSecondary: {
+    backgroundColor: '#E3F2FD',
+  },
+  actionBtnDestructive: {
+    backgroundColor: '#F44336',
+  },
+  actionBtnText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  actionBtnSecondaryText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   }
 });
