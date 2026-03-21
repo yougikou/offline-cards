@@ -1,5 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Text, Platform, TextInput, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, Platform, TextInput, TouchableOpacity, Vibration } from 'react-native';
+
+export const preloadCamera = async () => {
+  if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    stream.getTracks().forEach(track => track.stop());
+  } catch (err) {
+    console.log('Preload camera failed or denied', err);
+  }
+};
 
 interface ScannerProps {
   onScan: (decodedText: string) => void;
@@ -51,6 +63,8 @@ const WebScanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
             try {
               const barcodes = await barcodeDetector.detect(videoRef.current);
               if (barcodes.length > 0) {
+                // Haptic feedback as soon as ANY barcode shape is detected
+                try { Vibration.vibrate(50); } catch (v) { }
                 isScanning = false;
                 onScan(barcodes[0].rawValue);
                 return;

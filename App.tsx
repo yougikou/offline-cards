@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import './src/i18n/index'; // Initialize i18n
 import { WebRTCManager } from './src/webrtc';
-import Scanner from './src/components/Scanner';
+import Scanner, { preloadCamera } from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
 import GameBoard from './src/components/GameBoard';
 import { UnoLiteGame } from './src/game-modules/unoLite';
@@ -349,6 +349,9 @@ export default function App() {
     setAppState('SIGNALING_HOST');
     setRole('HOST');
     setPlayerId('host'); // Fixed ID for the host player
+
+    // Preload camera for faster scanning later
+    preloadCamera();
 
     if (!resume) {
       const newRoomId = Math.random().toString(36).substring(2, 9);
