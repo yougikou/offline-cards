@@ -100,7 +100,7 @@ const WebScanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
 
   return (
     <View style={styles.container}>
-      <div id="reader" style={{ flex: 1, width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden' }}></div>
+      <div id="reader" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden' }}></div>
     </View>
   );
 };
@@ -194,8 +194,9 @@ const Scanner: React.FC<ScannerProps> = (props) => {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 320,
     aspectRatio: 1,
+    height: Platform.OS === 'web' ? 'auto' : undefined,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#000',
