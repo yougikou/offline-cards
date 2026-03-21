@@ -508,19 +508,6 @@ export default function App() {
 
         <View style={styles.homeContainer}>
 
-          {/* Global Join Action */}
-          <TouchableOpacity accessibilityRole="button" style={styles.joinGlobalButton} onPress={() => handleGuest(false)}>
-            <View style={styles.joinGlobalIconContainer}>
-              <Text style={styles.joinGlobalIcon}>📡</Text>
-            </View>
-            <View style={styles.joinGlobalTextContainer}>
-              <Text style={styles.joinGlobalButtonText}>{t('lobby.joinRoom', 'Join Existing Game')}</Text>
-              <Text style={styles.joinGlobalSubText}>{t('lobby.joinRoomSub', 'Scan QR or enter code (Mode set by Host)')}</Text>
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.sectionDivider} />
-
           {/* Game Library */}
           <View style={styles.librarySection}>
             <Text style={styles.sectionTitle}>{t('lobby.selectGame', 'Game Library')}</Text>
@@ -561,18 +548,29 @@ export default function App() {
             </ScrollView>
           </View>
 
-          {/* Action Modes for Selected Game */}
-          <View style={styles.actionModesPanel}>
-            <Text style={styles.actionModeTitle}>
-              {t('lobby.playModeTitle', 'Play')} {selectedGameMode === 'UnoLite' ? t('lobby.game_UnoLite') : t('lobby.game_ZhengShangYou')}
-            </Text>
+          <View style={styles.sectionDivider} />
 
+          {/* Primary Action: Host Room */}
+          <TouchableOpacity accessibilityRole="button" style={styles.joinGlobalButton} onPress={() => handleHost(false)}>
+            <View style={styles.joinGlobalIconContainer}>
+              <Text style={styles.joinGlobalIcon}>🌐</Text>
+            </View>
+            <View style={styles.joinGlobalTextContainer}>
+              <Text style={styles.joinGlobalButtonText}>
+                {t('lobby.createRoom', 'Host Room')} - {selectedGameMode === 'UnoLite' ? t('lobby.game_UnoLite') : t('lobby.game_ZhengShangYou')}
+              </Text>
+              <Text style={styles.joinGlobalSubText}>{t('lobby.hostDesc', 'Play with friends via Wi-Fi/QR')}</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Secondary Action Modes (Join / Sandbox) */}
+          <View style={[styles.actionModesPanel, { marginTop: 15 }]}>
             <View style={styles.actionCardsRow}>
-              {/* Host Room Card */}
-              <TouchableOpacity accessibilityRole="button" style={[styles.actionModeCard, { borderColor: '#007AFF' }]} onPress={() => handleHost(false)}>
-                <Text style={styles.actionModeIcon}>🌐</Text>
-                <Text style={styles.actionModeName}>{t('lobby.createRoom', 'Host Room')}</Text>
-                <Text style={styles.actionModeDesc}>{t('lobby.hostDesc', 'Play with friends via Wi-Fi/QR')}</Text>
+              {/* Join Room Card */}
+              <TouchableOpacity accessibilityRole="button" style={[styles.actionModeCard, { borderColor: '#4CAF50' }]} onPress={() => handleGuest(false)}>
+                <Text style={styles.actionModeIcon}>📡</Text>
+                <Text style={styles.actionModeName}>{t('lobby.joinRoom', 'Join Room')}</Text>
+                <Text style={styles.actionModeDesc}>{t('lobby.joinRoomSub', 'Scan QR or enter code')}</Text>
               </TouchableOpacity>
 
               {/* Practice Locally Card */}
@@ -884,7 +882,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 40,
+    marginBottom: 15,
     textAlign: 'center',
   },
   buttonContainer: {
@@ -966,14 +964,14 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     alignItems: 'center',
-    marginBottom: 30,
-    marginTop: 20,
+    marginBottom: 15,
+    marginTop: 10,
   },
   joinGlobalButton: {
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 20,
+    padding: 15,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -983,15 +981,15 @@ const styles = StyleSheet.create({
   },
   joinGlobalIconContainer: {
     backgroundColor: '#E8F5E9',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 15,
   },
   joinGlobalIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   joinGlobalTextContainer: {
     flex: 1,
@@ -1009,7 +1007,7 @@ const styles = StyleSheet.create({
   sectionDivider: {
     height: 1,
     backgroundColor: '#E0E0E0',
-    marginVertical: 25,
+    marginVertical: 15,
   },
   librarySection: {
     marginBottom: 20,
@@ -1027,11 +1025,11 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   gameCard: {
-    width: 140,
-    height: 180,
+    width: 120,
+    height: 140,
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 15,
+    padding: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -1052,7 +1050,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
   gameCardIcon: {
-    fontSize: 40,
+    fontSize: 30,
     marginBottom: 10,
   },
   gameCardTitle: {
@@ -1099,7 +1097,7 @@ const styles = StyleSheet.create({
   actionModesPanel: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 20,
+    padding: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -1122,7 +1120,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#eee',
     borderRadius: 12,
-    padding: 15,
+    padding: 10,
     alignItems: 'center',
     backgroundColor: '#FAFAFA',
   },
