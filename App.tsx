@@ -500,65 +500,100 @@ export default function App() {
         <View style={styles.topRightControls}>
           {renderLanguageSwitcher()}
         </View>
-        <Text style={styles.title}>{t('lobby.title')}</Text>
-        <Text style={styles.subtitle}>{t('lobby.subtitle')}</Text>
-        <View style={styles.buttonContainer}>
 
-          <View style={styles.gameConfigSection}>
-            <Text style={{ textAlign: 'center', marginBottom: 10, fontWeight: 'bold' }}>{t('lobby.selectGame')}</Text>
+        <View style={styles.heroSection}>
+          <Text style={styles.title}>{t('lobby.title', 'Offline Cards')}</Text>
+          <Text style={styles.subtitle}>{t('lobby.subtitle', 'Serverless peer-to-peer local multiplayer')}</Text>
+        </View>
 
-            <View style={styles.gameListContainer}>
-              <TouchableOpacity
-                accessibilityRole="button"
-                style={[styles.gameListItem, selectedGameMode === 'UnoLite' && styles.gameListItemSelected]}
-                onPress={() => setSelectedGameMode('UnoLite')}
-              >
-                <Text style={[styles.gameListItemText, selectedGameMode === 'UnoLite' && styles.gameListItemTextSelected]}>
-                  {t('lobby.game_UnoLite')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                accessibilityRole="button"
-                style={[styles.gameListItem, selectedGameMode === 'ZhengShangYou' && styles.gameListItemSelected]}
-                onPress={() => setSelectedGameMode('ZhengShangYou')}
-              >
-                <Text style={[styles.gameListItemText, selectedGameMode === 'ZhengShangYou' && styles.gameListItemTextSelected]}>
-                  {t('lobby.game_ZhengShangYou')}
-                </Text>
-              </TouchableOpacity>
+        <View style={styles.homeContainer}>
+
+          {/* Global Join Action */}
+          <TouchableOpacity accessibilityRole="button" style={styles.joinGlobalButton} onPress={() => handleGuest(false)}>
+            <View style={styles.joinGlobalIconContainer}>
+              <Text style={styles.joinGlobalIcon}>📡</Text>
             </View>
-
-            <View style={{ marginVertical: 15 }}>
-              <TouchableOpacity accessibilityRole="button" style={[styles.actionButton, { backgroundColor: '#007AFF' }]} onPress={() => handleHost(false)}>
-                <Text style={styles.actionButtonText}>{t('lobby.createRoom')}</Text>
-              </TouchableOpacity>
+            <View style={styles.joinGlobalTextContainer}>
+              <Text style={styles.joinGlobalButtonText}>{t('lobby.joinRoom', 'Join Existing Game')}</Text>
+              <Text style={styles.joinGlobalSubText}>{t('lobby.joinRoomSub', 'Scan QR or enter code (Mode set by Host)')}</Text>
             </View>
+          </TouchableOpacity>
 
-            <View style={{ marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#e0e0e0', alignItems: 'center' }}>
-              <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray' }}>{t('lobby.localTesting')}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                <Button title="-" onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} />
-                <Text style={{ marginHorizontal: 15, fontSize: 16 }}>
-                  {sandboxPlayerCount} Players
-                </Text>
-                <Button title="+" onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} />
-              </View>
-              <TouchableOpacity accessibilityRole="button" style={[styles.actionButton, { backgroundColor: '#9C27B0', width: '100%' }]} onPress={() => {
-                setAppState('SANDBOX');
-                setPlayerId('player_1');
-                const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
-                startBoardGameHost(players);
-              }}>
-                <Text style={styles.actionButtonText}>{t('lobby.sandboxTesting')}</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.sectionDivider} />
+
+          {/* Game Library */}
+          <View style={styles.librarySection}>
+            <Text style={styles.sectionTitle}>{t('lobby.selectGame', 'Game Library')}</Text>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gameCarousel}>
+              {[
+                { id: 'UnoLite', name: t('lobby.game_UnoLite', 'UnoLite'), tags: ['2-8P', 'Family'], available: true, icon: '🃏' },
+                { id: 'ZhengShangYou', name: t('lobby.game_ZhengShangYou', 'ZhengShangYou'), tags: ['2-4P', 'Strategy'], available: true, icon: '♠️' },
+                { id: 'DouDiZhu', name: '斗地主 / Dou Di Zhu', tags: ['3P', 'Classic'], available: false, icon: '👨‍🌾' },
+              ].map(game => (
+                <TouchableOpacity
+                  key={game.id}
+                  accessibilityRole="button"
+                  style={[
+                    styles.gameCard,
+                    selectedGameMode === game.id && styles.gameCardSelected,
+                    !game.available && styles.gameCardDisabled
+                  ]}
+                  onPress={() => game.available && setSelectedGameMode(game.id as GameMode)}
+                  disabled={!game.available}
+                >
+                  <Text style={styles.gameCardIcon}>{game.icon}</Text>
+                  <Text style={[styles.gameCardTitle, selectedGameMode === game.id && styles.gameCardTitleSelected]}>{game.name}</Text>
+                  <View style={styles.tagContainer}>
+                    {game.tags.map(tag => (
+                      <View key={tag} style={styles.tagBadge}>
+                        <Text style={styles.tagText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  {!game.available && (
+                    <View style={styles.comingSoonBadge}>
+                      <Text style={styles.comingSoonText}>Coming Soon</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
-          <View style={styles.joinRoomSection}>
-            <Text style={{ textAlign: 'center', marginBottom: 10, color: 'gray', fontSize: 12 }}>Join an existing game (Mode is set by Host)</Text>
-              <TouchableOpacity accessibilityRole="button" style={[styles.actionButton, { backgroundColor: '#4CAF50' }]} onPress={() => handleGuest(false)}>
-              <Text style={styles.actionButtonText}>{t('lobby.joinRoom')}</Text>
-            </TouchableOpacity>
+          {/* Action Modes for Selected Game */}
+          <View style={styles.actionModesPanel}>
+            <Text style={styles.actionModeTitle}>
+              {t('lobby.playModeTitle', 'Play')} {selectedGameMode === 'UnoLite' ? t('lobby.game_UnoLite') : t('lobby.game_ZhengShangYou')}
+            </Text>
+
+            <View style={styles.actionCardsRow}>
+              {/* Host Room Card */}
+              <TouchableOpacity accessibilityRole="button" style={[styles.actionModeCard, { borderColor: '#007AFF' }]} onPress={() => handleHost(false)}>
+                <Text style={styles.actionModeIcon}>🌐</Text>
+                <Text style={styles.actionModeName}>{t('lobby.createRoom', 'Host Room')}</Text>
+                <Text style={styles.actionModeDesc}>{t('lobby.hostDesc', 'Play with friends via Wi-Fi/QR')}</Text>
+              </TouchableOpacity>
+
+              {/* Practice Locally Card */}
+              <View style={[styles.actionModeCard, { borderColor: '#9C27B0' }]}>
+                <TouchableOpacity accessibilityRole="button" style={{ alignItems: 'center', flex: 1, width: '100%' }} onPress={() => {
+                  setAppState('SANDBOX');
+                  setPlayerId('player_1');
+                  const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
+                  startBoardGameHost(players);
+                }}>
+                  <Text style={styles.actionModeIcon}>🤖</Text>
+                  <Text style={styles.actionModeName}>{t('lobby.sandboxTesting', 'Practice Locally')}</Text>
+                  <Text style={styles.actionModeDesc}>{t('lobby.sandboxDesc', 'Play against yourself')}</Text>
+                </TouchableOpacity>
+                <View style={styles.playerCountControl}>
+                  <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} style={styles.countBtn}><Text style={styles.countBtnText}>-</Text></TouchableOpacity>
+                  <Text style={styles.countText}>{sandboxPlayerCount}P</Text>
+                  <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} style={styles.countBtn}><Text style={styles.countBtnText}>+</Text></TouchableOpacity>
+                </View>
+              </View>
+            </View>
           </View>
 
         </View>
@@ -923,5 +958,220 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'column',
     overflow: 'visible',
+  },
+  homeContainer: {
+    width: '100%',
+    maxWidth: 600,
+    alignItems: 'stretch',
+  },
+  heroSection: {
+    alignItems: 'center',
+    marginBottom: 30,
+    marginTop: 20,
+  },
+  joinGlobalButton: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  joinGlobalIconContainer: {
+    backgroundColor: '#E8F5E9',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+  },
+  joinGlobalIcon: {
+    fontSize: 24,
+  },
+  joinGlobalTextContainer: {
+    flex: 1,
+  },
+  joinGlobalButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+    marginBottom: 4,
+  },
+  joinGlobalSubText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 25,
+  },
+  librarySection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+    paddingHorizontal: 5,
+  },
+  gameCarousel: {
+    paddingBottom: 10,
+    paddingHorizontal: 5,
+    gap: 15,
+  },
+  gameCard: {
+    width: 140,
+    height: 180,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#eee',
+    marginRight: 15,
+  },
+  gameCardSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#F0F8FF',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  gameCardDisabled: {
+    opacity: 0.6,
+    backgroundColor: '#FAFAFA',
+  },
+  gameCardIcon: {
+    fontSize: 40,
+    marginBottom: 10,
+  },
+  gameCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  gameCardTitleSelected: {
+    color: '#007AFF',
+  },
+  tagContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  tagBadge: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  tagText: {
+    fontSize: 10,
+    color: '#666',
+    fontWeight: '600',
+  },
+  comingSoonBadge: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  comingSoonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  actionModesPanel: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  actionModeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  actionCardsRow: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  actionModeCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 12,
+    padding: 15,
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+  },
+  actionModeIcon: {
+    fontSize: 30,
+    marginBottom: 8,
+  },
+  actionModeName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  actionModeDesc: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  playerCountControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#eee',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    marginTop: 'auto',
+  },
+  countBtn: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+  },
+  countBtnText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    lineHeight: 20,
+  },
+  countText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginHorizontal: 10,
+    color: '#333',
   }
 });
