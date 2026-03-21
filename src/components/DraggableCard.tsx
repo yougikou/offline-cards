@@ -165,7 +165,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   const isWildColor = card.color === 'Black';
   const cardColor = isWildColor ? '#2C2C2C' : (card.color ? card.color.toLowerCase() : 'white');
   const textColor = card.color ? 'white' : (card.suit === 'Hearts' || card.suit === 'Diamonds' || card.rank === 'Red Joker' ? '#D32F2F' : '#212121');
-  const borderStyle = { borderColor: '#E0E0E0' };
+  const borderStyle = isSelected ? { borderColor: '#007AFF', borderWidth: 2 } : { borderColor: '#E0E0E0', borderWidth: 1 };
 
   // Calculate overlapping margin
   const marginLeft = customMarginLeft !== undefined ? customMarginLeft : (index > 0 ? -35 : 0);
@@ -178,9 +178,10 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
   // When actively dragging, we must force the highest possible zIndex and elevation
   // PanResponder updates `zIndex` state to 999 internally when drag starts.
-  let baseZIndex = isSelected ? 10 : 1;
+  // Selected cards retain base zIndex to preserve natural overlapping order and scanning flow.
+  let baseZIndex = 1;
   let calculatedZIndex = Math.max(zIndex, isMultiDragging ? 999 : baseZIndex);
-  let calculatedElevation = calculatedZIndex === 999 ? 999 : (isSelected ? 10 : 6);
+  let calculatedElevation = calculatedZIndex === 999 ? 999 : 6;
 
   const renderCardContent = () => {
     if (gameName === 'UnoLite') {
