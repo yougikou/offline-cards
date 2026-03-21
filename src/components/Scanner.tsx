@@ -6,66 +6,134 @@ interface ScannerProps {
   onError?: (error: string) => void;
 }
 
-// Web-only scanner component using html5-qrcode
+// Web-only scanner component using native BarcodeDetector API with html5-qrcode fallback
 const WebScanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
   const scannerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const requestRef = useRef<number | undefined>(undefined);
+  const streamRef = useRef<MediaStream | null>(null);
+
   const [hasError, setHasError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [useFallback, setUseFallback] = useState(false);
   const [manualCode, setManualCode] = useState('');
 
+  // 1. Native BarcodeDetector API approach
   useEffect(() => {
-    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-      const initScanner = async () => {
-        try {
-          const { Html5Qrcode } = await import('html5-qrcode');
-          const html5Qrcode = new Html5Qrcode("reader");
-          scannerRef.current = html5Qrcode;
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-          await html5Qrcode.start(
-            { facingMode: "environment" },
-            {
-              fps: 10,
-              qrbox: (videoWidth: number, videoHeight: number) => {
-                const minEdgePercentage = 0.7;
-                const minEdgeSize = Math.min(videoWidth, videoHeight);
-                return {
-                  width: Math.floor(minEdgeSize * minEdgePercentage),
-                  height: Math.floor(minEdgeSize * minEdgePercentage)
-                };
-              }
-            },
-            (decodedText: string) => {
-              if (scannerRef.current?.isScanning) {
-                scannerRef.current.stop().then(() => {
-                  onScan(decodedText);
-                }).catch((err: any) => {
-                  console.error("Failed to stop scanner after scan", err);
-                  onScan(decodedText);
-                });
-              }
-            },
-            () => {
-              // Ignore frequent scan errors when no QR is found
-            }
-          );
-        } catch (err) {
-          console.error("Error starting scanner", err);
-          setHasError(true);
-          const msg = err instanceof Error ? err.message : String(err);
-          setErrorMessage(msg);
-          onError?.(msg);
-        }
-      };
-
-      initScanner();
-
-      return () => {
-        if (scannerRef.current?.isScanning) {
-          scannerRef.current.stop().catch((err: any) => console.error("Error stopping scanner on unmount", err));
-        }
-      };
+    // Check if the native API is available
+    if (!('BarcodeDetector' in window)) {
+      console.log('BarcodeDetector API not supported, using fallback.');
+      setUseFallback(true);
+      return;
     }
-  }, [onScan, onError]);
+
+    let isScanning = true;
+
+    const startNativeScanner = async () => {
+      try {
+        // @ts-ignore - BarcodeDetector is not fully typed in standard lib yet
+        const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+
+          const detectFrame = async () => {
+            if (!isScanning || !videoRef.current) return;
+
+            try {
+              const barcodes = await barcodeDetector.detect(videoRef.current);
+              if (barcodes.length > 0) {
+                isScanning = false;
+                onScan(barcodes[0].rawValue);
+                return;
+              }
+            } catch (e) {
+              // Ignore detection errors (e.g., if video isn't ready)
+            }
+
+            requestRef.current = requestAnimationFrame(detectFrame);
+          };
+
+          requestRef.current = requestAnimationFrame(detectFrame);
+        }
+      } catch (err) {
+        console.error("Native scanner failed, using fallback", err);
+        setUseFallback(true);
+      }
+    };
+
+    startNativeScanner();
+
+    return () => {
+      isScanning = false;
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [onScan, useFallback]);
+
+  // 2. Fallback approach using html5-qrcode
+  useEffect(() => {
+    if (!useFallback || typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    const initFallbackScanner = async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode');
+        const html5Qrcode = new Html5Qrcode("reader");
+        scannerRef.current = html5Qrcode;
+
+        await html5Qrcode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: (videoWidth: number, videoHeight: number) => {
+              const minEdgePercentage = 0.7;
+              const minEdgeSize = Math.min(videoWidth, videoHeight);
+              return {
+                width: Math.floor(minEdgeSize * minEdgePercentage),
+                height: Math.floor(minEdgeSize * minEdgePercentage)
+              };
+            }
+          },
+          (decodedText: string) => {
+            if (scannerRef.current?.isScanning) {
+              scannerRef.current.stop().then(() => {
+                onScan(decodedText);
+              }).catch((err: any) => {
+                console.error("Failed to stop scanner after scan", err);
+                onScan(decodedText);
+              });
+            }
+          },
+          () => {
+            // Ignore frequent scan errors
+          }
+        );
+      } catch (err) {
+        console.error("Fallback scanner also failed", err);
+        setHasError(true);
+        const msg = err instanceof Error ? err.message : String(err);
+        onError?.(msg);
+      }
+    };
+
+    initFallbackScanner();
+
+    return () => {
+      if (scannerRef.current?.isScanning) {
+        scannerRef.current.stop().catch((err: any) => console.error("Error stopping scanner on unmount", err));
+      }
+    };
+  }, [useFallback, onScan, onError]);
 
   if (typeof window === 'undefined') {
     return <Text>Scanner requires web environment</Text>;
@@ -98,9 +166,22 @@ const WebScanner: React.FC<ScannerProps> = ({ onScan, onError }) => {
     );
   }
 
+  if (useFallback) {
+    return (
+      <View style={styles.container}>
+        <div id="reader" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden' }}></div>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <div id="reader" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden' }}></div>
+      <video
+        ref={videoRef}
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }}
+        playsInline
+        muted
+      />
     </View>
   );
 };
