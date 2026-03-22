@@ -36,12 +36,15 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
     setSelectedTargetId(null);
   }, [selectedCards, isMyTurn]);
 
+  const myPlayerIndex = (G.players || []).indexOf(myPlayerId).toString();
+  const myActiveStage = ctx.activePlayers ? ctx.activePlayers[myPlayerIndex] : undefined;
+
   // Determine if we are in targeting mode
   let isTargetingMode = false;
   if (selectedCards.length > 0) {
     const cardIndex = selectedCards[0];
     const card = myHand[cardIndex];
-    if (card && card.name === 'Kill' && (!ctx.activePlayers || !ctx.activePlayers[myPlayerId])) {
+    if (card && card.name === 'Kill' && !myActiveStage) {
       isTargetingMode = true;
     }
   }
@@ -93,14 +96,14 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
         </View>
       )}
 
-      {isWaitingForResponse && (!ctx.activePlayers || !ctx.activePlayers[myPlayerId]) && (
+      {isWaitingForResponse && !myActiveStage && (
         <View style={styles.waitingContainer}>
            <Text style={styles.waitingText}>{t('game.waitingForOpponent')}</Text>
         </View>
       )}
 
       <View style={styles.buttonsContainer}>
-        {ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond' && (
+        {myActiveStage === 'respond' && (
           <TouchableOpacity accessibilityRole="button"
             style={[styles.fab, { backgroundColor: '#F44336', marginRight: 10 }]}
             onPress={() => onAction('takeDamage')}
@@ -108,7 +111,7 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
             <Text style={styles.fabText}>{t('game.sgs_action_takeDamage', 'Take Damage')}</Text>
           </TouchableOpacity>
         )}
-        {ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'dying' && (
+        {myActiveStage === 'dying' && (
           <TouchableOpacity accessibilityRole="button"
             style={[styles.fab, { backgroundColor: '#9E9E9E', marginRight: 10 }]}
             onPress={() => onAction('passPeach')}
@@ -116,7 +119,7 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
             <Text style={styles.fabText}>{t('game.sgs_action_passPeach', 'Pass')}</Text>
           </TouchableOpacity>
         )}
-        {(!ctx.activePlayers || !ctx.activePlayers[myPlayerId]) && !isWaitingForResponse && (
+        {!myActiveStage && !isWaitingForResponse && (
           <TouchableOpacity accessibilityRole="button"
             style={[styles.fab, { backgroundColor: '#9E9E9E' }]}
             onPress={() => onAction('endPlayPhase')}
@@ -135,16 +138,16 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
               const cardIndex = selectedCards[0];
               const card = myHand[cardIndex];
               if (card) {
-                if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond') {
+                if (myActiveStage === 'respond') {
                    if (card.name === 'Dodge') onAction('playDodge', cardIndex);
-                } else if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'dying') {
+                } else if (myActiveStage === 'dying') {
                    if (card.name === 'Peach') onAction('playPeachOnDying', cardIndex);
                 } else {
                    if (card.name === 'Kill' && selectedTargetId) {
                       onAction('playKill', { cardIndex, targetId: selectedTargetId });
                    } else if (card.name === 'Peach') {
                       onAction('playPeach', cardIndex);
-                   } else if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'discard') {
+                   } else if (myActiveStage === 'discard') {
                       onAction('discardCards', [cardIndex]);
                    }
                 }

@@ -155,10 +155,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   // Determine if it's the current player's turn
   const currentPlayerIdString = G.players ? G.players[parseInt(ctx.currentPlayer, 10)] : null;
+  const myPlayerIndex = G.players ? G.players.indexOf(myPlayerId).toString() : null;
 
   // In games like SanGuoSha, activePlayers dict defines who has a response window
-  const isMyTurn = (currentPlayerIdString === myPlayerId && (!ctx.activePlayers || ctx.activePlayers[myPlayerId] !== undefined)) ||
-                   (ctx.activePlayers && ctx.activePlayers[myPlayerId] !== undefined);
+  const isMyTurn = (currentPlayerIdString === myPlayerId && (!ctx.activePlayers || (myPlayerIndex !== null && ctx.activePlayers[myPlayerIndex] !== undefined))) ||
+                   (ctx.activePlayers && myPlayerIndex !== null && ctx.activePlayers[myPlayerIndex] !== undefined);
   const gameOver = ctx.gameover;
 
   useEffect(() => {
@@ -441,30 +442,34 @@ const GameBoard: React.FC<GameBoardProps> = ({
            sgsState = G.playerStates[opponentId];
         }
 
+        const opponentIndex = G.players ? G.players.indexOf(opponentId).toString() : null;
+        const isOpponentTurnState = (currentPlayerIdString === opponentId && (!ctx.activePlayers || (opponentIndex !== null && ctx.activePlayers[opponentIndex] !== undefined))) ||
+                                    (ctx.activePlayers && opponentIndex !== null && ctx.activePlayers[opponentIndex] !== undefined);
+
         return (
           <Animated.View key={opponentId} style={[
             styles.opponentCard,
             layoutStyle,
             {
-              backgroundColor: isOpponentTurn ? 'rgba(0,0,0,0.9)' : 'rgba(0,0,0,0.4)',
-              borderColor: isOpponentTurn ? '#FFFFFF' : 'transparent',
-              borderWidth: isOpponentTurn ? 2 : 2,
-              transform: isOpponentTurn ? [{ scale: turnAnim }] : [],
+              backgroundColor: isOpponentTurnState ? 'rgba(0,0,0,0.9)' : 'rgba(0,0,0,0.4)',
+              borderColor: isOpponentTurnState ? '#FFFFFF' : 'transparent',
+              borderWidth: isOpponentTurnState ? 2 : 2,
+              transform: isOpponentTurnState ? [{ scale: turnAnim }] : [],
               shadowColor: '#000000',
-              shadowOffset: isOpponentTurn ? { width: 0, height: 4 } : { width: 0, height: 0 },
-              shadowOpacity: isOpponentTurn ? 0.9 : 0,
-              shadowRadius: isOpponentTurn ? 6 : 0,
-              elevation: isOpponentTurn ? 10 : 0,
-              opacity: isOpponentTurn ? 1 : 0.4,
+              shadowOffset: isOpponentTurnState ? { width: 0, height: 4 } : { width: 0, height: 0 },
+              shadowOpacity: isOpponentTurnState ? 0.9 : 0,
+              shadowRadius: isOpponentTurnState ? 6 : 0,
+              elevation: isOpponentTurnState ? 10 : 0,
+              opacity: isOpponentTurnState ? 1 : 0.4,
             }
           ]}>
             <Text style={[styles.opponentName, {
               color: 'white',
-              textShadowColor: isOpponentTurn ? 'rgba(0, 0, 0, 0.8)' : 'transparent',
-              textShadowOffset: { width: 0, height: isOpponentTurn ? 2 : 0 },
-              textShadowRadius: isOpponentTurn ? 4 : 0,
+              textShadowColor: isOpponentTurnState ? 'rgba(0, 0, 0, 0.8)' : 'transparent',
+              textShadowOffset: { width: 0, height: isOpponentTurnState ? 2 : 0 },
+              textShadowRadius: isOpponentTurnState ? 4 : 0,
             }]}>
-              {shortName} {isOpponentTurn ? '(Turn)' : ''} {sgsState && sgsState.dead ? '💀' : ''}
+              {shortName} {isOpponentTurnState ? '(Turn)' : ''} {sgsState && sgsState.dead ? '💀' : ''}
             </Text>
             <View style={styles.opponentCardCount}>
               <Text style={styles.opponentCardCountText}>{opponentHand.length} 张</Text>
