@@ -5,6 +5,7 @@ import DraggableCard from './DraggableCard';
 import { Storage } from '../storage';
 import { SanGuoShaTable } from './sanguosha/SanGuoShaTable';
 import { SanGuoShaControls } from './sanguosha/SanGuoShaControls';
+import { JiangsuTaopaiControls } from './jiangsutaopai/JiangsuTaopaiControls';
 
 interface GameBoardProps {
   // gameState now contains the boardgame.io state object structure { G, ctx, plugins }
@@ -15,8 +16,8 @@ interface GameBoardProps {
   onReset?: () => void;
   isSandbox?: boolean;
   isGuest?: boolean;
-  selectedGameMode?: 'UnoLite' | 'ZhengShangYou' | 'SanGuoSha';
-  onGameModeChange?: (mode: 'UnoLite' | 'ZhengShangYou' | 'SanGuoSha') => void;
+  selectedGameMode?: 'UnoLite' | 'ZhengShangYou' | 'SanGuoSha' | 'JiangsuTaopai';
+  onGameModeChange?: (mode: 'UnoLite' | 'ZhengShangYou' | 'SanGuoSha' | 'JiangsuTaopai') => void;
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -209,7 +210,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const handleCardPress = (cardIndex: number) => {
     if (!isMyTurn || gameOver) return;
 
-    if (gameName === 'ZhengShangYou') {
+    if (gameName === 'ZhengShangYou' || gameName === 'JiangsuTaopai') {
       setSelectedCards(prev => {
         if (prev.includes(cardIndex)) {
           return prev.filter(idx => idx !== cardIndex);
@@ -384,6 +385,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
                     {t('game.game_SanGuoSha', 'SanGuoSha')}
                   </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  style={[styles.gameOverModeButton, selectedGameMode === 'JiangsuTaopai' && styles.gameOverModeButtonSelected]}
+                  onPress={() => onGameModeChange?.('JiangsuTaopai')}
+                >
+                  <Text style={[styles.gameOverModeButtonText, selectedGameMode === 'JiangsuTaopai' && styles.gameOverModeButtonTextSelected]}>
+                    {t('game.game_JiangsuTaopai', 'JiangsuTaopai')}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -446,14 +456,16 @@ const GameBoard: React.FC<GameBoardProps> = ({
         const isOpponentTurnState = (currentPlayerIdString === opponentId && (!ctx.activePlayers || (opponentIndex !== null && ctx.activePlayers[opponentIndex] !== undefined))) ||
                                     (ctx.activePlayers && opponentIndex !== null && ctx.activePlayers[opponentIndex] !== undefined);
 
+        const isLowCards = gameName === 'JiangsuTaopai' && opponentHand.length > 0 && opponentHand.length <= 2;
+
         return (
           <Animated.View key={opponentId} style={[
             styles.opponentCard,
             layoutStyle,
             {
-              backgroundColor: isOpponentTurnState ? 'rgba(0,0,0,0.9)' : 'rgba(0,0,0,0.4)',
-              borderColor: isOpponentTurnState ? '#FFFFFF' : 'transparent',
-              borderWidth: isOpponentTurnState ? 2 : 2,
+              backgroundColor: isOpponentTurnState ? 'rgba(0,0,0,0.9)' : (isLowCards ? 'rgba(244, 67, 54, 0.8)' : 'rgba(0,0,0,0.4)'),
+              borderColor: isOpponentTurnState ? '#FFFFFF' : (isLowCards ? '#FFCDD2' : 'transparent'),
+              borderWidth: isOpponentTurnState ? 2 : (isLowCards ? 2 : 2),
               transform: isOpponentTurnState ? [{ scale: turnAnim }] : [],
               shadowColor: '#000000',
               shadowOffset: isOpponentTurnState ? { width: 0, height: 4 } : { width: 0, height: 0 },
@@ -471,8 +483,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
             }]}>
               {shortName} {isOpponentTurnState ? '(Turn)' : ''} {sgsState && sgsState.dead ? '💀' : ''}
             </Text>
-            <View style={styles.opponentCardCount}>
-              <Text style={styles.opponentCardCountText}>{opponentHand.length} 张</Text>
+            <View style={[styles.opponentCardCount, isLowCards ? { backgroundColor: '#FFEB3B' } : null]}>
+              <Text style={[styles.opponentCardCountText, isLowCards ? { color: '#D32F2F' } : null]}>{opponentHand.length} 张</Text>
             </View>
             {sgsState && (
               <View style={{ flexDirection: 'row', marginTop: 6, gap: 6, alignItems: 'center' }}>
@@ -614,7 +626,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
         )}
 
         <View style={styles.controlRow}>
-          {gameName === 'SanGuoSha' ? (
+          {gameName === 'JiangsuTaopai' ? (
+            <JiangsuTaopaiControls
+              G={G}
+              ctx={ctx}
+              myPlayerId={myPlayerId}
+              isMyTurn={isMyTurn}
+              gameOver={gameOver}
+              selectedCards={selectedCards}
+              myHand={myHand}
+              onAction={onAction}
+              setSelectedCards={setSelectedCards}
+            />
+          ) : gameName === 'SanGuoSha' ? (
             <SanGuoShaControls
               G={G}
               ctx={ctx}
@@ -708,6 +732,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
       {/* My Hand Area (Absolutely Positioned at Bottom, Fixed Height, High Z-Index) */}
       <View style={styles.myHandArea} pointerEvents="box-none">
+        {gameName === 'JiangsuTaopai' && myHand.length > 0 && myHand.length <= 2 && (
+          <View style={{ position: 'absolute', top: -30, alignSelf: 'center', backgroundColor: '#FFEB3B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, zIndex: 10 }}>
+            <Text style={{ color: '#D32F2F', fontWeight: 'bold', fontSize: 12 }}>{t('game.lowCardsWarning', 'Warning: Only {{count}} cards left!', { count: myHand.length })}</Text>
+          </View>
+        )}
         {(() => {
           const paddingHorizontal = 20;
           const estimatedContentWidth = myHand.length > 0 ? 70 + (myHand.length - 1) * 35 + 40 + paddingHorizontal * 2 : 0;
