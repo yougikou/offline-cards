@@ -61,6 +61,9 @@ export default function App() {
   // Language Dropdown state
   const [languageMenuVisible, setLanguageMenuVisible] = useState<boolean>(false);
 
+  // Update Available state
+  const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
+
   // Persistence helpers
   const saveHostState = async (id: string, msgs: string[]) => {
     await Storage.setItem('hostRoomId', id);
@@ -127,6 +130,45 @@ export default function App() {
     gameStateRef.current = gameState;
     appStateRef.current = appState;
   }, [selectedGameMode, role, roomId, playerId, messages, gameState, appState]);
+
+  // Handle PWA update events
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const handleUpdate = () => {
+      setUpdateAvailable(true);
+    };
+
+    const handleFocus = () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.update();
+        });
+      }
+    };
+
+    window.addEventListener('pwa-update-available', handleUpdate);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('pwa-update-available', handleUpdate);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  const handleApplyUpdate = () => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg && reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        } else {
+          window.location.reload();
+        }
+      });
+    } else {
+      window.location.reload();
+    }
+  };
 
   // Broadcast game mode changes from Host to connected Guests during active game (e.g. at Game Over screen)
   useEffect(() => {
@@ -510,6 +552,15 @@ export default function App() {
           {renderLanguageSwitcher()}
         </View>
 
+        {updateAvailable && (
+          <View style={styles.updateBanner}>
+            <Text style={styles.updateText}>{t('lobby.updateAvailable', 'New version available!')}</Text>
+            <TouchableOpacity accessibilityRole="button" style={styles.updateButton} onPress={handleApplyUpdate}>
+              <Text style={styles.updateButtonText}>{t('lobby.refreshToUpdate', 'Refresh')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.heroSection}>
           <Text style={styles.title}>{t('lobby.title', 'Offline Cards')}</Text>
           <Text style={styles.subtitle}>{t('lobby.subtitle', 'Serverless peer-to-peer local multiplayer')}</Text>
@@ -836,6 +887,42 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  updateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    marginTop: 15,
+    width: '100%',
+    maxWidth: 600,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  updateText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginRight: 10,
+  },
+  updateButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'white',
+  },
+  updateButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
