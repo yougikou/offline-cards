@@ -518,7 +518,7 @@ export default function App() {
           <View style={styles.librarySection}>
             <Text style={styles.sectionTitle}>{t('lobby.selectGame', 'Game Library')}</Text>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gameCarousel}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={styles.gameCarousel}>
               {[
                 { id: 'UnoLite', name: t('lobby.game_UnoLite', 'UnoLite'), tags: ['2-8P', 'Family'], available: true, icon: '🃏' },
                 { id: 'ZhengShangYou', name: t('lobby.game_ZhengShangYou', 'ZhengShangYou'), tags: ['2-4P', 'Strategy'], available: true, icon: '♠️' },
@@ -570,32 +570,33 @@ export default function App() {
           </TouchableOpacity>
 
           {/* Secondary Action Modes (Join / Sandbox) */}
-          <View style={[styles.actionModesPanel, { marginTop: 15 }]}>
-            <View style={styles.actionCardsRow}>
-              {/* Join Room Card */}
-              <TouchableOpacity accessibilityRole="button" style={[styles.actionModeCard, { borderColor: '#4CAF50' }]} onPress={() => handleGuest(false)}>
-                <Text style={styles.actionModeIcon}>📡</Text>
-                <Text style={styles.actionModeName}>{t('lobby.joinRoom', 'Join Room')}</Text>
-                <Text style={styles.actionModeDesc}>{t('lobby.joinRoomSub', 'Scan QR or enter code')}</Text>
-              </TouchableOpacity>
+          <View style={{ marginTop: 15, gap: 10 }}>
+            {/* Secondary Action: Join Room */}
+            <TouchableOpacity accessibilityRole="button" style={styles.joinSecondaryButton} onPress={() => handleGuest(false)}>
+              <View style={styles.joinSecondaryIconContainer}>
+                <Text style={styles.joinSecondaryIcon}>📡</Text>
+              </View>
+              <View style={styles.joinGlobalTextContainer}>
+                <Text style={styles.joinSecondaryButtonText}>{t('lobby.joinRoom', 'Join Room')}</Text>
+                <Text style={styles.joinGlobalSubText}>{t('lobby.joinRoomSub', 'Scan QR or enter code')}</Text>
+              </View>
+            </TouchableOpacity>
 
-              {/* Practice Locally Card */}
-              <View style={[styles.actionModeCard, { borderColor: '#9C27B0' }]}>
-                <TouchableOpacity accessibilityRole="button" style={{ alignItems: 'center', flex: 1, width: '100%' }} onPress={() => {
-                  setAppState('SANDBOX');
-                  setPlayerId('player_1');
-                  const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
-                  startBoardGameHost(players);
-                }}>
-                  <Text style={styles.actionModeIcon}>🤖</Text>
-                  <Text style={styles.actionModeName}>{t('lobby.sandboxTesting', 'Practice Locally')}</Text>
-                  <Text style={styles.actionModeDesc}>{t('lobby.sandboxDesc', 'Play against yourself')}</Text>
-                </TouchableOpacity>
-                <View style={styles.playerCountControl}>
-                  <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} style={styles.countBtn}><Text style={styles.countBtnText}>-</Text></TouchableOpacity>
-                  <Text style={styles.countText}>{sandboxPlayerCount}P</Text>
-                  <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} style={styles.countBtn}><Text style={styles.countBtnText}>+</Text></TouchableOpacity>
-                </View>
+            {/* Tertiary Action: Sandbox */}
+            <View style={styles.sandboxUtilityRow}>
+              <TouchableOpacity accessibilityRole="button" style={styles.sandboxUtilityButton} onPress={() => {
+                setAppState('SANDBOX');
+                setPlayerId('player_1');
+                const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
+                startBoardGameHost(players);
+              }}>
+                <Text style={styles.sandboxUtilityIcon}>🤖</Text>
+                <Text style={styles.sandboxUtilityText}>{t('lobby.sandboxTesting', 'Practice Locally')}</Text>
+              </TouchableOpacity>
+              <View style={styles.compactPlayerCount}>
+                <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} style={styles.compactCountBtn}><Text style={styles.compactCountBtnText}>-</Text></TouchableOpacity>
+                <Text style={styles.compactCountText}>{sandboxPlayerCount}P</Text>
+                <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} style={styles.compactCountBtn}><Text style={styles.compactCountBtnText}>+</Text></TouchableOpacity>
               </View>
             </View>
           </View>
@@ -1049,7 +1050,7 @@ const styles = StyleSheet.create({
   },
   gameCarousel: {
     paddingBottom: 10,
-    paddingHorizontal: 5,
+    paddingHorizontal: 20,
     gap: 15,
   },
   gameCard: {
@@ -1065,11 +1066,11 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   gameCardSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#F0F8FF',
-    shadowColor: '#007AFF',
+    borderColor: '#333',
+    backgroundColor: '#fafafa',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
   },
@@ -1089,7 +1090,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   gameCardTitleSelected: {
-    color: '#007AFF',
+    color: '#333',
   },
   tagContainer: {
     flexDirection: 'row',
@@ -1122,84 +1123,90 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  actionModesPanel: {
+
+  joinSecondaryButton: {
+    flexDirection: 'row',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+  },
+  joinSecondaryIconContainer: {
+    backgroundColor: '#F5F5F5',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  joinSecondaryIcon: {
+    fontSize: 18,
+  },
+  joinSecondaryButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+  },
+  sandboxUtilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    padding: 8,
+    paddingHorizontal: 12,
+  },
+  sandboxUtilityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  sandboxUtilityIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  sandboxUtilityText: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '600',
+  },
+  compactPlayerCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  actionModeTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  actionCardsRow: {
-    flexDirection: 'row',
-    gap: 15,
-  },
-  actionModeCard: {
-    flex: 1,
     borderWidth: 1,
     borderColor: '#eee',
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-    backgroundColor: '#FAFAFA',
-  },
-  actionModeIcon: {
-    fontSize: 30,
-    marginBottom: 8,
-  },
-  actionModeName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-    textAlign: 'center',
-  },
-  actionModeDesc: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  playerCountControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#eee',
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     paddingVertical: 2,
-    marginTop: 'auto',
   },
-  countBtn: {
-    width: 24,
-    height: 24,
+  compactCountBtn: {
+    width: 20,
+    height: 20,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+    borderRadius: 10,
   },
-  countBtnText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    lineHeight: 20,
-  },
-  countText: {
+  compactCountBtnText: {
     fontSize: 14,
     fontWeight: 'bold',
-    marginHorizontal: 10,
+    color: '#333',
+    lineHeight: 18,
+  },
+  compactCountText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginHorizontal: 8,
     color: '#333',
   },
+
   segmentControl: {
     flexDirection: 'row',
     backgroundColor: '#e0e0e0',
