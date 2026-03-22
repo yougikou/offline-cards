@@ -3,6 +3,8 @@ import { StyleSheet, Text, View, Button, TouchableOpacity, Modal, Animated, Dime
 import { useTranslation } from 'react-i18next';
 import DraggableCard from './DraggableCard';
 import { Storage } from '../storage';
+import { SanGuoShaTable } from './sanguosha/SanGuoShaTable';
+import { SanGuoShaControls } from './sanguosha/SanGuoShaControls';
 
 interface GameBoardProps {
   // gameState now contains the boardgame.io state object structure { G, ctx, plugins }
@@ -332,17 +334,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
       </Modal>
 
       {targetSelectionVisible && (
-        <View style={styles.colorPickerOverlay}>
+        <View style={styles.targetSelectionOverlay}>
           <Text style={styles.colorPickerTitle}>{t('game.sgs_selectTarget')}</Text>
-          <View style={{ flexDirection: 'column', gap: 10, marginBottom: 20, width: '100%' }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20, justifyContent: 'center' }}>
             {opponents.map((oppId: string) => {
               const oppState = G.playerStates?.[oppId];
               if (!oppState || oppState.dead) return null;
+              const pIndex = (G.players || []).indexOf(oppId) + 1;
               return (
                 <TouchableOpacity
                   accessibilityRole="button"
                   key={oppId}
-                  style={{ backgroundColor: '#2196F3', padding: 10, borderRadius: 8, alignItems: 'center' }}
+                  style={{ backgroundColor: '#D32F2F', padding: 12, borderRadius: 12, alignItems: 'center', minWidth: 80, elevation: 4 }}
                   onPress={() => {
                      if (pendingActionCardIndex !== null) {
                         onAction('playKill', { cardIndex: pendingActionCardIndex, targetId: oppId });
@@ -352,7 +355,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
                      setPendingActionCardIndex(null);
                   }}
                 >
-                  <Text style={{ color: 'white', fontWeight: 'bold' }}>{oppId} (HP: {oppState.hp})</Text>
+                  <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>P{pIndex}</Text>
+                  <Text style={{ color: '#FFEB3B', fontWeight: 'bold', fontSize: 12, marginTop: 4 }}>HP: {oppState.hp}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -514,9 +518,13 @@ const GameBoard: React.FC<GameBoardProps> = ({
               <Text style={styles.opponentCardCountText}>{opponentHand.length} 张</Text>
             </View>
             {sgsState && (
-              <View style={{ flexDirection: 'row', marginTop: 4 }}>
-                <Text style={{ color: 'red', fontSize: 12 }}>HP: {sgsState.hp}/{sgsState.maxHp}</Text>
-                <Text style={{ color: '#FFD700', fontSize: 12, marginLeft: 5 }}>[{sgsState.role === 'Unknown' ? '?' : t('game.sgs_role_' + sgsState.role)}]</Text>
+              <View style={{ flexDirection: 'row', marginTop: 6, gap: 6, alignItems: 'center' }}>
+                <View style={{ backgroundColor: '#D32F2F', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                  <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>HP {sgsState.hp}/{sgsState.maxHp}</Text>
+                </View>
+                <View style={{ backgroundColor: '#FFB300', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                  <Text style={{ color: 'black', fontSize: 10, fontWeight: 'bold' }}>{sgsState.role === 'Unknown' ? '?' : t('game.sgs_role_' + sgsState.role)}</Text>
+                </View>
               </View>
             )}
           </Animated.View>
@@ -526,23 +534,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
       {/* Table Area (Absolute Full Screen, zIndex 1) */}
       <View style={styles.tableArea}>
         {gameName === 'SanGuoSha' && G.playerStates ? (
-          <>
-            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
-              <Text style={styles.sandboxTitle}>SanGuoSha | HP: {G.playerStates[myPlayerId]?.hp}/{G.playerStates[myPlayerId]?.maxHp} | Role: {G.playerStates[myPlayerId]?.role ? t('game.sgs_role_' + G.playerStates[myPlayerId]?.role) : ''}</Text>
-            </View>
-            {G.pendingCard && (
-               <Animated.View style={[styles.tableContainer, {
-                  transform: [
-                    { translateY: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [-80, 0] }) },
-                    { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }
-                  ]
-                }]}>
-                  <View style={[styles.card, { backgroundColor: 'white', width: 60, height: 90 }]}>
-                    <Text style={{ color: 'black', fontSize: 16, fontWeight: 'bold' }}>{t('game.sgs_card_' + G.pendingCard.name)}</Text>
-                  </View>
-               </Animated.View>
-            )}
-          </>
+          <SanGuoShaTable G={G} myPlayerId={myPlayerId} tableAnim={tableAnim} />
         ) : gameName === 'UnoLite' ? (
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
@@ -666,56 +658,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
         <View style={styles.controlRow}>
           {gameName === 'SanGuoSha' ? (
-            <>
-              {gameName === 'SanGuoSha' && ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond' && (
-                <TouchableOpacity accessibilityRole="button"
-                  style={[styles.fab, { backgroundColor: '#F44336' }]}
-                  onPress={() => onAction('takeDamage')}
-                >
-                  <Text style={styles.fabText}>{t('game.sgs_action_takeDamage')}</Text>
-                </TouchableOpacity>
-              )}
-              {gameName === 'SanGuoSha' && (!ctx.activePlayers || !ctx.activePlayers[myPlayerId]) && (
-                <TouchableOpacity accessibilityRole="button"
-                  style={[styles.fab, { backgroundColor: '#9E9E9E' }]}
-                  onPress={() => onAction('endPlayPhase')}
-                >
-                  <Text style={styles.fabText}>{t('game.sgs_action_endPlayPhase')}</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity accessibilityRole="button"
-                style={[
-                  styles.fab,
-                  (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 },
-                  (isMyTurn && !gameOver && selectedCards.length > 0) ? styles.fabActiveGlow : null
-                ]}
-                onPress={() => {
-                  if (selectedCards.length > 0) {
-                    const cardIndex = selectedCards[0];
-                    const card = myHand[cardIndex];
-                    if (card) {
-                      if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond') {
-                         if (card.name === 'Dodge') onAction('playDodge', cardIndex);
-                      } else {
-                         if (card.name === 'Kill') {
-                            setPendingActionCardIndex(cardIndex);
-                            setTargetSelectionVisible(true);
-                            return; // Do not clear selection yet
-                         } else if (card.name === 'Peach') {
-                            onAction('playPeach', cardIndex);
-                         } else if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'discard') {
-                            onAction('discardCards', [cardIndex]);
-                         }
-                      }
-                      setSelectedCards([]);
-                    }
-                  }
-                }}
-                disabled={!isMyTurn || gameOver || selectedCards.length === 0}
-              >
-                <Text style={styles.fabText}>{t('game.playSelected')}</Text>
-              </TouchableOpacity>
-            </>
+            <SanGuoShaControls
+              ctx={ctx}
+              myPlayerId={myPlayerId}
+              isMyTurn={isMyTurn}
+              gameOver={gameOver}
+              selectedCards={selectedCards}
+              myHand={myHand}
+              onAction={onAction}
+              setPendingActionCardIndex={setPendingActionCardIndex}
+              setTargetSelectionVisible={setTargetSelectionVisible}
+              setSelectedCards={setSelectedCards}
+            />
           ) : gameName === 'UnoLite' ? (
             <>
               <TouchableOpacity accessibilityRole="button"
@@ -1130,6 +1084,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 5,
     elevation: 10,
+  },
+  targetSelectionOverlay: {
+    position: 'absolute',
+    top: 150,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    padding: 20,
+    borderRadius: 16,
+    zIndex: 200,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 10,
+    width: '90%',
+    maxWidth: 400,
   },
   colorPickerTitle: {
     color: 'white',
