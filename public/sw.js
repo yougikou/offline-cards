@@ -1,4 +1,4 @@
-const CACHE_NAME = 'offline-cards-v1';
+const CACHE_NAME = 'offline-cards-v2';
 const ASSETS_TO_CACHE = [
   '/offline-cards/',
   '/offline-cards/index.html',
@@ -35,31 +35,65 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Try to use cache first, then fall back to network.
-  // For dynamic js chunks, we will intercept and cache them as they are fetched.
+  const request = event.request;
+
+  // Network-First for HTML navigation requests (ensure fresh app shell)
+  if (request.mode === 'navigate' || (request.headers.get('accept') && request.headers.get('accept').includes('text/html'))) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // If network fails (offline), fall back to cached shell
+          return caches.match(request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // Optional: return a fallback offline page here if available
+          });
+        })
+    );
+    return;
+  }
+
+  // Cache-First, then fallback to network for other assets (e.g. hashed JS/CSS chunks, images)
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).then((networkResponse) => {
+      return fetch(request).then((networkResponse) => {
         // Cache valid responses for later offline use
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
         }
 
         // Don't cache API requests or non-GET requests
-        if (event.request.method !== 'GET') {
+        if (request.method !== 'GET') {
            return networkResponse;
         }
 
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+          cache.put(request, responseToCache);
         });
 
         return networkResponse;
       });
     })
   );
+});
+
+// Allow app to proactively tell the SW to skip waiting when user clicks "Refresh"
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
