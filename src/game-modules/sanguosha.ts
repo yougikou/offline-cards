@@ -33,6 +33,10 @@ export interface SanGuoShaState {
   pendingCard: SanGuoShaCard | null; // e.g. The Kill card played
   cardsPlayedThisTurn: number; // To limit Kill to 1 per turn
   attackOrigin: string | null; // Who played the Kill
+
+  // Dying State variables
+  dyingPlayer: string | null;
+  peachResponders: string[];
 }
 
 const SUITS: ('Hearts' | 'Diamonds' | 'Clubs' | 'Spades')[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
@@ -86,36 +90,102 @@ function drawCards(G: SanGuoShaState, playerId: string, count: number) {
   }
 }
 
+function processDeath(G: SanGuoShaState, playerId: string, events: any) {
+  G.playerStates[playerId].dead = true;
+  G.discardPile.push(...G.hands[playerId]);
+  G.hands[playerId] = [];
+
+  // Remove equipment and delayed tricks (when implemented)
+  checkGameOver(G, events);
+}
+
 function checkDeath(G: SanGuoShaState, playerId: string, events: any) {
   if (G.playerStates[playerId].hp <= 0) {
-    // Basic death logic without dying phase for MVP
-    G.playerStates[playerId].dead = true;
+    // Initiate Dying State
+    G.dyingPlayer = playerId;
 
-    // Discard hand
-    G.discardPile.push(...G.hands[playerId]);
-    G.hands[playerId] = [];
+    // Create an array of players to ask for Peach, starting from the current player
+    const allAlive = G.players.filter(p => !G.playerStates[p].dead);
 
-    // Check if the game is over
-    checkGameOver(G, events);
+    // We want to ask starting from current player.
+    // However, if we're not in a turn (e.g. edge case), just start from dying player
+    // For simplicity, let's just ask everyone in order starting from dying player
+    const dyingIdx = allAlive.indexOf(playerId);
+    let responders = [];
+    if (dyingIdx !== -1) {
+      responders = [...allAlive.slice(dyingIdx), ...allAlive.slice(0, dyingIdx)];
+    } else {
+      responders = [...allAlive];
+    }
+
+    G.peachResponders = responders;
+
+    // Set stage to dying
+    if (G.peachResponders.length > 0) {
+       const firstResponder = G.peachResponders[0];
+       events.setActivePlayers({
+          value: {
+             [G.players.indexOf(firstResponder).toString()]: 'dying',
+          }
+       });
+    } else {
+       // Edge case: no one alive to ask?
+       processDeath(G, playerId, events);
+       G.dyingPlayer = null;
+       events.endStage();
+    }
+  } else {
+    // Not dying, just end response stage
+    G.activeTarget = null;
+    G.attackOrigin = null;
+    events.endStage();
   }
 }
 
 function checkGameOver(G: SanGuoShaState, events: any) {
     const lord = G.players.find(p => G.playerStates[p].role === 'Lord');
+
+    // Condition 1: Lord is dead
     if (!lord || G.playerStates[lord].dead) {
-      // Lord is dead -> Rebels or Renegade win
-      events.endGame({ winner: 'Rebels/Renegade' }); // Simplified winner declaration
+      // Check if Renegade is the ONLY one alive
+      const alivePlayers = G.players.filter(p => !G.playerStates[p].dead);
+      if (alivePlayers.length === 1 && G.playerStates[alivePlayers[0]].role === 'Renegade') {
+        events.endGame({ winner: 'Renegade' });
+      } else {
+        events.endGame({ winner: 'Rebels' });
+      }
       return;
     }
 
+    // Condition 2: All Rebels and Renegades are dead -> Lord wins
     const aliveRebelsOrRenegades = G.players.some(p =>
       !G.playerStates[p].dead &&
       (G.playerStates[p].role === 'Rebel' || G.playerStates[p].role === 'Renegade')
     );
     if (!aliveRebelsOrRenegades) {
-      // All Rebels and Renegades are dead -> Lord wins
       events.endGame({ winner: 'Lord' });
     }
+}
+
+export function getDistance(G: SanGuoShaState, fromId: string, toId: string): number {
+  if (fromId === toId) return 0;
+
+  // Only consider alive players
+  const alivePlayers = G.players.filter(p => !G.playerStates[p].dead);
+
+  const fromIdx = alivePlayers.indexOf(fromId);
+  const toIdx = alivePlayers.indexOf(toId);
+
+  if (fromIdx === -1 || toIdx === -1) return 999; // Dead players distance
+
+  const n = alivePlayers.length;
+  // Circular distance
+  const diff = Math.abs(fromIdx - toIdx);
+  const dist = Math.min(diff, n - diff);
+
+  // Future: apply mounts (-1 / +1 horses)
+  // Let dist = dist + target_+1_horse - self_-1_horse
+  return dist;
 }
 
 export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
@@ -176,7 +246,9 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
       activeTarget: null,
       pendingCard: null,
       cardsPlayedThisTurn: 0,
-      attackOrigin: null
+      attackOrigin: null,
+      dyingPlayer: null,
+      peachResponders: []
     };
   },
 
@@ -199,6 +271,66 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
           drawCards(G, currentPlayerId, 2);
         },
         stages: {
+          dying: {
+            moves: {
+              playPeachOnDying: ({ G, ctx, events, playerID }, cardIndex: number) => {
+                const dyingId = G.dyingPlayer;
+                if (!dyingId) return INVALID_MOVE;
+
+                // Active player must be the one responding
+                const currentResponder = G.peachResponders[0];
+                if (parseInt(ctx.currentPlayer) !== G.players.indexOf(currentResponder) && playerID !== currentResponder) return INVALID_MOVE;
+
+                const card = G.hands[currentResponder][cardIndex];
+                if (!card || card.name !== 'Peach') return INVALID_MOVE;
+
+                // Discard Peach
+                G.hands[currentResponder].splice(cardIndex, 1);
+                G.discardPile.push(card);
+
+                // Heal target
+                G.playerStates[dyingId].hp += 1;
+
+                if (G.playerStates[dyingId].hp > 0) {
+                  // Saved!
+                  G.dyingPlayer = null;
+                  G.peachResponders = [];
+                  G.activeTarget = null;
+                  G.attackOrigin = null;
+                  events.endStage(); // End dying stage, back to main turn
+                } else {
+                  // Still dying (e.g. was at -1 HP, played one peach, now at 0, need more peaches)
+                  // Keep asking the SAME person if they have more peaches, or they can pass
+                }
+              },
+              passPeach: ({ G, ctx, events, playerID }) => {
+                const dyingId = G.dyingPlayer;
+                if (!dyingId) return INVALID_MOVE;
+
+                const currentResponder = G.peachResponders[0];
+                if (parseInt(ctx.currentPlayer) !== G.players.indexOf(currentResponder) && playerID !== currentResponder) return INVALID_MOVE;
+
+                // Move to next responder
+                G.peachResponders.shift();
+
+                if (G.peachResponders.length > 0) {
+                  const nextResponder = G.peachResponders[0];
+                  events.setActivePlayers({
+                    value: {
+                      [G.players.indexOf(nextResponder).toString()]: 'dying',
+                    }
+                  });
+                } else {
+                  // Nobody saved them
+                  processDeath(G, dyingId, events);
+                  G.dyingPlayer = null;
+                  G.activeTarget = null;
+                  G.attackOrigin = null;
+                  events.endStage();
+                }
+              }
+            }
+          },
           respond: {
             moves: {
               playDodge: ({ G, ctx, events, playerID }, cardIndex: number) => {
@@ -231,10 +363,7 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
                 }
 
                 checkDeath(G, playerId, events);
-
-                G.activeTarget = null;
-                G.attackOrigin = null;
-                events.endStage();
+                // Note: checkDeath will call events.endStage() if not dying, or set new active players if dying.
               }
             }
           },
@@ -277,6 +406,10 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
       if (G.cardsPlayedThisTurn >= 1) return INVALID_MOVE;
       if (G.playerStates[targetId].dead) return INVALID_MOVE;
       if (playerId === targetId) return INVALID_MOVE;
+
+      // Check distance for Kill
+      const distance = getDistance(G, playerId, targetId);
+      if (distance > 1) return INVALID_MOVE;
 
       const card = G.hands[playerId][cardIndex];
       if (!card || card.name !== 'Kill') return INVALID_MOVE;
@@ -338,7 +471,12 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
     // Also handled dynamically in checkGameOver
     const lord = G.players.find(p => G.playerStates[p].role === 'Lord');
     if (!lord || G.playerStates[lord].dead) {
-      return { winner: 'Rebels/Renegade' };
+      const alivePlayers = G.players.filter(p => !G.playerStates[p].dead);
+      if (alivePlayers.length === 1 && G.playerStates[alivePlayers[0]].role === 'Renegade') {
+        return { winner: 'Renegade' };
+      } else {
+        return { winner: 'Rebels' };
+      }
     }
     const aliveRebelsOrRenegades = G.players.some(p =>
       !G.playerStates[p].dead &&

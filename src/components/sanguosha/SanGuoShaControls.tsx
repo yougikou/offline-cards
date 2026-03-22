@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Button } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { getDistance } from '../../game-modules/sanguosha';
 
 interface SanGuoShaControlsProps {
   G: any;
@@ -59,13 +60,30 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
               if (!oppState || oppState.dead) return null;
               const pIndex = (G.players || []).indexOf(oppId) + 1;
               const isSelected = selectedTargetId === oppId;
+              const distance = getDistance(G, myPlayerId, oppId);
+              const card = myHand[selectedCards[0]];
+
+              // Only limit distance for Kill
+              let outOfRange = false;
+              if (card && card.name === 'Kill') {
+                if (distance > 1) {
+                  outOfRange = true;
+                }
+              }
+
               return (
                 <TouchableOpacity
                   accessibilityRole="button"
                   key={oppId}
-                  style={[styles.targetButton, isSelected && styles.targetButtonSelected]}
-                  onPress={() => setSelectedTargetId(oppId)}
+                  style={[styles.targetButton, isSelected && styles.targetButtonSelected, outOfRange && { opacity: 0.4, backgroundColor: 'gray' }]}
+                  onPress={() => {
+                    if (!outOfRange) {
+                      setSelectedTargetId(oppId);
+                    }
+                  }}
+                  disabled={outOfRange}
                 >
+                  {outOfRange && <Text style={{position: 'absolute', top: -5, right: -5, fontSize: 10, backgroundColor: 'red', color: 'white', padding: 2, borderRadius: 5, zIndex: 10, overflow: 'hidden'}}>Dist &gt; 1</Text>}
                   <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>P{pIndex}</Text>
                   <Text style={{ color: '#FFEB3B', fontWeight: 'bold', fontSize: 12, marginTop: 4 }}>HP: {oppState.hp}</Text>
                 </TouchableOpacity>
@@ -84,10 +102,18 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
       <View style={styles.buttonsContainer}>
         {ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond' && (
           <TouchableOpacity accessibilityRole="button"
-            style={[styles.fab, { backgroundColor: '#F44336' }]}
+            style={[styles.fab, { backgroundColor: '#F44336', marginRight: 10 }]}
             onPress={() => onAction('takeDamage')}
           >
-            <Text style={styles.fabText}>{t('game.sgs_action_takeDamage')}</Text>
+            <Text style={styles.fabText}>{t('game.sgs_action_takeDamage', 'Take Damage')}</Text>
+          </TouchableOpacity>
+        )}
+        {ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'dying' && (
+          <TouchableOpacity accessibilityRole="button"
+            style={[styles.fab, { backgroundColor: '#9E9E9E', marginRight: 10 }]}
+            onPress={() => onAction('passPeach')}
+          >
+            <Text style={styles.fabText}>{t('game.sgs_action_passPeach', 'Pass')}</Text>
           </TouchableOpacity>
         )}
         {(!ctx.activePlayers || !ctx.activePlayers[myPlayerId]) && !isWaitingForResponse && (
@@ -111,6 +137,8 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
               if (card) {
                 if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond') {
                    if (card.name === 'Dodge') onAction('playDodge', cardIndex);
+                } else if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'dying') {
+                   if (card.name === 'Peach') onAction('playPeachOnDying', cardIndex);
                 } else {
                    if (card.name === 'Kill' && selectedTargetId) {
                       onAction('playKill', { cardIndex, targetId: selectedTargetId });
@@ -130,6 +158,18 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
           <Text style={styles.fabText}>{t('game.playSelected')}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Dying alert visually */}
+      {G.dyingPlayer && (
+        <View style={styles.dyingOverlay}>
+           <Text style={styles.dyingText}>
+             {G.dyingPlayer === myPlayerId ? t('game.sgs_dying_self', 'You are dying!') : t('game.sgs_dying_other', `P${(G.players || []).indexOf(G.dyingPlayer) + 1} is dying!`)}
+           </Text>
+           <Text style={{color: 'white', marginTop: 5}}>
+             {t('game.sgs_dying_prompt', 'Need a Peach to save them.')}
+           </Text>
+        </View>
+      )}
     </>
   );
 };
@@ -222,5 +262,21 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  dyingOverlay: {
+    position: 'absolute',
+    top: -60,
+    backgroundColor: 'rgba(211, 47, 47, 0.9)', // Red alert
+    padding: 10,
+    borderRadius: 8,
+    alignSelf: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  dyingText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   }
 });
