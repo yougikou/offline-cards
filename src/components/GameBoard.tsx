@@ -40,8 +40,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const [pendingWildCardIndex, setPendingWildCardIndex] = useState<number | null>(null);
 
   // SanGuoSha specific state
-  const [targetSelectionVisible, setTargetSelectionVisible] = useState(false);
-  const [pendingActionCardIndex, setPendingActionCardIndex] = useState<number | null>(null);
+  // We manage target selection in SanGuoShaControls now
 
   useEffect(() => {
     const checkTutorial = async () => {
@@ -156,7 +155,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   // Determine if it's the current player's turn
   const currentPlayerIdString = G.players ? G.players[parseInt(ctx.currentPlayer, 10)] : null;
-  const isMyTurn = currentPlayerIdString === myPlayerId;
+
+  // In games like SanGuoSha, activePlayers dict defines who has a response window
+  const isMyTurn = (currentPlayerIdString === myPlayerId && (!ctx.activePlayers || ctx.activePlayers[myPlayerId] !== undefined)) ||
+                   (ctx.activePlayers && ctx.activePlayers[myPlayerId] !== undefined);
   const gameOver = ctx.gameover;
 
   useEffect(() => {
@@ -247,24 +249,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
         setSelectedCards([]);
       }
     } else if (gameName === 'SanGuoSha') {
-      const card = myHand[cardIndex];
-      if (!card) return;
-      if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'respond') {
-        if (card.name === 'Dodge') {
-          onAction('playDodge', cardIndex);
-        }
-      } else {
-         if (card.name === 'Kill') {
-            setPendingActionCardIndex(cardIndex);
-            setTargetSelectionVisible(true);
-            return; // Do not clear selection yet
-         } else if (card.name === 'Peach') {
-            onAction('playPeach', cardIndex);
-         } else if (ctx.activePlayers && ctx.activePlayers[myPlayerId] === 'discard') {
-            onAction('discardCards', [cardIndex]);
-         }
-      }
-      setSelectedCards([]);
+      // For quick plays. Let's just defer SanGuoSha to use the Play Selected button for targeting
+      // If we drag up, just select it
+      setSelectedCards([cardIndex]);
     } else {
       if (selectedCards.includes(cardIndex)) {
         onAction('playCard', selectedCards);
@@ -332,41 +319,6 @@ const GameBoard: React.FC<GameBoardProps> = ({
           </View>
         </View>
       </Modal>
-
-      {targetSelectionVisible && (
-        <View style={styles.targetSelectionOverlay}>
-          <Text style={styles.colorPickerTitle}>{t('game.sgs_selectTarget')}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20, justifyContent: 'center' }}>
-            {opponents.map((oppId: string) => {
-              const oppState = G.playerStates?.[oppId];
-              if (!oppState || oppState.dead) return null;
-              const pIndex = (G.players || []).indexOf(oppId) + 1;
-              return (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  key={oppId}
-                  style={{ backgroundColor: '#D32F2F', padding: 12, borderRadius: 12, alignItems: 'center', minWidth: 80, elevation: 4 }}
-                  onPress={() => {
-                     if (pendingActionCardIndex !== null) {
-                        onAction('playKill', { cardIndex: pendingActionCardIndex, targetId: oppId });
-                        setSelectedCards([]);
-                     }
-                     setTargetSelectionVisible(false);
-                     setPendingActionCardIndex(null);
-                  }}
-                >
-                  <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>P{pIndex}</Text>
-                  <Text style={{ color: '#FFEB3B', fontWeight: 'bold', fontSize: 12, marginTop: 4 }}>HP: {oppState.hp}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          <Button title={t('lobby.cancel')} onPress={() => {
-            setTargetSelectionVisible(false);
-            setPendingActionCardIndex(null);
-          }} color="#9E9E9E" />
-        </View>
-      )}
 
       {colorPickerVisible && (
         <View style={styles.colorPickerOverlay}>
@@ -659,15 +611,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
         <View style={styles.controlRow}>
           {gameName === 'SanGuoSha' ? (
             <SanGuoShaControls
+              G={G}
               ctx={ctx}
               myPlayerId={myPlayerId}
               isMyTurn={isMyTurn}
               gameOver={gameOver}
               selectedCards={selectedCards}
               myHand={myHand}
+              opponents={opponents}
               onAction={onAction}
-              setPendingActionCardIndex={setPendingActionCardIndex}
-              setTargetSelectionVisible={setTargetSelectionVisible}
               setSelectedCards={setSelectedCards}
             />
           ) : gameName === 'UnoLite' ? (
