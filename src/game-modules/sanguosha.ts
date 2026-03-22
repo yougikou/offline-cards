@@ -279,7 +279,8 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
 
                 // Active player must be the one responding
                 const currentResponder = G.peachResponders[0];
-                if (parseInt(ctx.currentPlayer) !== G.players.indexOf(currentResponder) && playerID !== currentResponder) return INVALID_MOVE;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== currentResponder) return INVALID_MOVE;
 
                 const card = G.hands[currentResponder][cardIndex];
                 if (!card || card.name !== 'Peach') return INVALID_MOVE;
@@ -308,7 +309,8 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
                 if (!dyingId) return INVALID_MOVE;
 
                 const currentResponder = G.peachResponders[0];
-                if (parseInt(ctx.currentPlayer) !== G.players.indexOf(currentResponder) && playerID !== currentResponder) return INVALID_MOVE;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== currentResponder) return INVALID_MOVE;
 
                 // Move to next responder
                 G.peachResponders.shift();
@@ -335,7 +337,8 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
             moves: {
               playDodge: ({ G, ctx, events, playerID }, cardIndex: number) => {
                 const playerId = G.activeTarget!;
-                if (parseInt(ctx.currentPlayer) !== G.players.indexOf(playerId) && playerID !== playerId) return INVALID_MOVE;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== playerId) return INVALID_MOVE;
 
                 const card = G.hands[playerId][cardIndex];
                 if (!card || card.name !== 'Dodge') return INVALID_MOVE;
@@ -354,7 +357,8 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
               },
               takeDamage: ({ G, ctx, events, playerID }) => {
                 const playerId = G.activeTarget!;
-                if (parseInt(ctx.currentPlayer) !== G.players.indexOf(playerId) && playerID !== playerId) return INVALID_MOVE;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== playerId) return INVALID_MOVE;
 
                 G.playerStates[playerId].hp -= 1;
                 if (G.pendingCard) {
