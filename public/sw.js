@@ -1,4 +1,4 @@
-const CACHE_NAME = 'offline-cards-v2';
+const CACHE_NAME = 'offline-cards-v3';
 const ASSETS_TO_CACHE = [
   '/offline-cards/',
   '/offline-cards/index.html',

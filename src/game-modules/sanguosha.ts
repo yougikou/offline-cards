@@ -272,6 +272,7 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
 
   moves: {
     playKill: ({ G, ctx, events }, { cardIndex, targetId }: { cardIndex: number, targetId: string }) => {
+      if (ctx.activePlayers) return INVALID_MOVE;
       const playerId = G.players[parseInt(ctx.currentPlayer)];
       if (G.cardsPlayedThisTurn >= 1) return INVALID_MOVE;
       if (G.playerStates[targetId].dead) return INVALID_MOVE;
@@ -294,6 +295,7 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
       });
     },
     playPeach: ({ G, ctx }, cardIndex: number) => {
+      if (ctx.activePlayers) return INVALID_MOVE;
       const playerId = G.players[parseInt(ctx.currentPlayer)];
       const playerState = G.playerStates[playerId];
 
@@ -308,6 +310,7 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
       playerState.hp += 1;
     },
     endPlayPhase: ({ G, ctx, events }) => {
+      if (ctx.activePlayers) return INVALID_MOVE;
       const playerId = G.players[parseInt(ctx.currentPlayer)];
       const currentHp = G.playerStates[playerId].hp;
       const handSize = G.hands[playerId].length;
