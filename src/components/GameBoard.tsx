@@ -562,7 +562,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 { scale: tableAnim.interpolate({ inputRange: [0, 1], outputRange: [1.5, 1] }) }
               ]
              }]}>
-              {currentTrick.map((c: any, index: number) => {
+              {(gameName === 'JiangsuTaopai'
+                ? (currentTrick.length > 0 ? currentTrick[currentTrick.length - 1].cards : [])
+                : currentTrick).map((c: any, index: number) => {
                 const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
                 const suitIcon = c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : c.suit === 'Spades' ? '♠' : '';
                 return (
