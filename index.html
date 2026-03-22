@@ -48,12 +48,38 @@
         window.addEventListener('load', function() {
           navigator.serviceWorker.register('/offline-cards/sw.js').then(function(registration) {
             console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          }, function(err) {
+
+            registration.onupdatefound = () => {
+              const installingWorker = registration.installing;
+              if (installingWorker == null) {
+                return;
+              }
+              installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed') {
+                  if (navigator.serviceWorker.controller) {
+                    // New content is available; please refresh.
+                    console.log('New content is available; please refresh.');
+                    window.dispatchEvent(new Event('pwa-update-available'));
+                  } else {
+                    // Content is cached for offline use.
+                    console.log('Content is cached for offline use.');
+                  }
+                }
+              };
+            };
+          }).catch(function(err) {
             console.log('ServiceWorker registration failed: ', err);
+          });
+
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', function() {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
           });
         });
       }
     </script>
-  <script src="/offline-cards/_expo/static/js/web/index-5fdbf6a2eb93d8a2b0d26b32e4dbb609.js" defer></script>
+  <script src="/offline-cards/_expo/static/js/web/index-47c66f504fdfa642e4aa4fc78ad85525.js" defer></script>
 </body>
 </html>
