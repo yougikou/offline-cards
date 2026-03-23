@@ -473,10 +473,17 @@ export default function App() {
   const handleGameAction = (moveName: string, ...args: any[]) => {
     if (appState === 'SANDBOX') {
       if (hostClientRef.current) {
-        // In sandbox hotseat mode, we must impersonate the active player before calling the move
-        const currentPlayerIndex = gameStateRef.current?.ctx?.currentPlayer;
-        if (currentPlayerIndex !== undefined) {
-          hostClientRef.current.updatePlayerID(currentPlayerIndex);
+        // In sandbox hotseat mode, we must impersonate the active player before calling the move.
+        // If there's an active response window, we impersonate that player.
+        let activePlayerIndexStr = gameStateRef.current?.ctx?.currentPlayer;
+        if (gameStateRef.current?.ctx?.activePlayers) {
+          const activeKeys = Object.keys(gameStateRef.current.ctx.activePlayers);
+          if (activeKeys.length > 0) {
+            activePlayerIndexStr = activeKeys[0];
+          }
+        }
+        if (activePlayerIndexStr !== undefined) {
+          hostClientRef.current.updatePlayerID(activePlayerIndexStr);
         }
         hostClientRef.current.moves[moveName](...args);
       }
@@ -667,7 +674,17 @@ export default function App() {
 
   const renderSandbox = () => {
     if (!gameState) return null;
-    const activePlayerId = gameState.G.players[parseInt(gameState.ctx.currentPlayer, 10)];
+
+    // In Sandbox, if there's an active response window (e.g. someone needs to play a Dodge),
+    // switch the view to that player so the user can interact. Otherwise, show the current turn player.
+    let activePlayerId = gameState.G.players[parseInt(gameState.ctx.currentPlayer, 10)];
+    if (gameState.ctx.activePlayers) {
+      const activePlayerIndices = Object.keys(gameState.ctx.activePlayers);
+      if (activePlayerIndices.length > 0) {
+        activePlayerId = gameState.G.players[parseInt(activePlayerIndices[0], 10)];
+      }
+    }
+
     return (
       <View style={{ flex: 1 }}>
         <View style={{ backgroundColor: '#FFD700', padding: 5, alignItems: 'center', zIndex: 1000, elevation: 1000 }}>

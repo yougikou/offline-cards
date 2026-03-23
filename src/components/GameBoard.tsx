@@ -209,6 +209,16 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   const handleCardPress = (cardIndex: number) => {
     if (!isMyTurn || gameOver) return;
+    if (myHand[cardIndex]?.locked) return;
+
+    const card = myHand[cardIndex];
+    if (gameName === 'SanGuoSha' && card) {
+       const myActiveStage = ctx.activePlayers ? ctx.activePlayers[myPlayerIndex || ''] : undefined;
+       if (!myActiveStage && card.name === 'Kill' && G.cardsPlayedThisTurn >= 1) {
+          // Locked card, cannot select
+          return;
+       }
+    }
 
     if (gameName === 'ZhengShangYou' || gameName === 'JiangsuTaopai') {
       setSelectedCards(prev => {
@@ -240,6 +250,16 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   const handleDragUp = (cardIndex: number) => {
     if (!isMyTurn || gameOver) return;
+    if (myHand[cardIndex]?.locked) return;
+
+    const card = myHand[cardIndex];
+    if (gameName === 'SanGuoSha' && card) {
+       const myActiveStage = ctx.activePlayers ? ctx.activePlayers[myPlayerIndex || ''] : undefined;
+       if (!myActiveStage && card.name === 'Kill' && G.cardsPlayedThisTurn >= 1) {
+          // Locked card, cannot interact
+          return;
+       }
+    }
 
     if (gameName === 'UnoLite') {
       const card = myHand[cardIndex];
@@ -277,9 +297,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const renderCard = (card: any, player: string, cardIndex: number, isOpponent: boolean = false, customMarginLeft?: number) => {
     const isSelected = selectedCards.includes(cardIndex);
     const hasSelection = selectedCards.length > 0;
+
+    let isLocked = false;
+    if (gameName === 'SanGuoSha' && isMyTurn && !isOpponent && player === myPlayerId) {
+       const myActiveStage = ctx.activePlayers ? ctx.activePlayers[myPlayerIndex || ''] : undefined;
+       if (!myActiveStage && card.name === 'Kill' && G.cardsPlayedThisTurn >= 1) {
+          isLocked = true;
+       }
+    }
+
     return (
       <DraggableCard
         key={card.id || `${player}-${cardIndex}-${Math.random()}`}
+        isLocked={isLocked}
         card={card}
         index={cardIndex}
         totalCards={G.hands && G.hands[player] ? G.hands[player].length : 0}
