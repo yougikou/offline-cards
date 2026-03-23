@@ -96,6 +96,23 @@ function processDeath(G: SanGuoShaState, playerId: string, events: any) {
   G.hands[playerId] = [];
 
   // Remove equipment and delayed tricks (when implemented)
+
+  // Standard Rules: Reward and Punishment
+  if (G.attackOrigin) {
+    const deadRole = G.playerStates[playerId].role;
+    const killerRole = G.playerStates[G.attackOrigin].role;
+
+    if (deadRole === 'Rebel') {
+      // Reward: Anyone killing a Rebel draws 3 cards
+      drawCards(G, G.attackOrigin, 3);
+    } else if (deadRole === 'Loyalist' && killerRole === 'Lord') {
+      // Punishment: Lord killing a Loyalist discards all hand cards and equipment
+      G.discardPile.push(...G.hands[G.attackOrigin]);
+      G.hands[G.attackOrigin] = [];
+      // (Equipment discard will go here when implemented)
+    }
+  }
+
   checkGameOver(G, events);
 }
 
@@ -502,7 +519,19 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
     if (G.hands) {
       for (const [pId, handArray] of Object.entries(G.hands)) {
         if (pId === playerID) {
-          safeG.hands[pId] = [...handArray];
+          // If the player is the turn player, and there's no active stage, lock Kill if limit reached
+          let isActiveStage = false;
+          let playerIndex = G.players.indexOf(playerID).toString();
+          if (ctx.activePlayers && ctx.activePlayers[playerIndex]) {
+            isActiveStage = true;
+          }
+
+          safeG.hands[pId] = handArray.map(c => {
+            if (!isActiveStage && c.name === 'Kill' && G.cardsPlayedThisTurn >= 1) {
+              return { ...c, locked: true };
+            }
+            return c;
+          });
         } else {
           safeG.hands[pId] = handArray.map(() => ({
             id: Math.random().toString(),

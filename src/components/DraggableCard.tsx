@@ -20,6 +20,7 @@ export interface DraggableCardProps {
   onDragEnd?: () => void;
   isMultiDragging?: boolean;
   customMarginLeft?: number;
+  isLocked?: boolean;
 }
 
 const DraggableCard: React.FC<DraggableCardProps> = ({
@@ -39,6 +40,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
   onDragEnd,
   isMultiDragging = false,
   customMarginLeft,
+  isLocked = false,
 }) => {
   const { t } = useTranslation();
   const pan = useRef(new Animated.ValueXY()).current;
@@ -68,13 +70,13 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
       onStartShouldSetPanResponder: () => false,
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (evt, gestureState) => {
-        if (!propsRef.current.isSelected) return false;
+        if (!propsRef.current.isSelected || isLocked) return false;
         // Only take over if dragged more than 5 pixels
         return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
       },
       onMoveShouldSetPanResponderCapture: () => false,
       onPanResponderGrant: () => {
-        if (!propsRef.current.isMyTurn || propsRef.current.isOpponent) return;
+        if (!propsRef.current.isMyTurn || propsRef.current.isOpponent || isLocked) return;
         const { currentPan, currentScale, onDragStart } = propsRef.current;
 
         if (onDragStart) onDragStart();
@@ -95,7 +97,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         currentPan.setValue({ x: 0, y: 0 });
       },
       onPanResponderMove: (e, gestureState) => {
-        if (!propsRef.current.isMyTurn || propsRef.current.isOpponent) return;
+        if (!propsRef.current.isMyTurn || propsRef.current.isOpponent || isLocked) return;
         const { currentPan } = propsRef.current;
         Animated.event(
           [
@@ -175,6 +177,10 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
   // Make cards darker when not turn. Also dim heavily if there is a selection but this card isn't selected.
   let opacity = isMyTurn ? 1 : 0.6;
+  if (isLocked) opacity = 0.4;
+  if (isLocked) {
+    opacity = 0.4;
+  }
 
   // When actively dragging, we must force the highest possible zIndex and elevation
   // PanResponder updates `zIndex` state to 999 internally when drag starts.
@@ -269,14 +275,19 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         }
       ]}
     >
-      <TouchableOpacity activeOpacity={0.8} accessibilityRole="button" onPress={() => onPress(index)}>
+      <TouchableOpacity activeOpacity={0.8} accessibilityRole="button" onPress={() => onPress(index)} disabled={isLocked}>
         <Animated.View style={{
           transform: [
             { translateY: selectAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -8] }) }
           ]
         }}>
           <View
-            style={[styles.card, { backgroundColor: cardColor }, borderStyle, isSelected ? { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 } : {}]}
+            style={[
+               styles.card,
+               { backgroundColor: isLocked ? '#e0e0e0' : cardColor },
+               borderStyle,
+               isSelected ? { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 8 } : {}
+            ]}
           >
             {renderCardContent()}
           </View>
