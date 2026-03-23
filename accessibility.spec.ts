@@ -11,7 +11,7 @@ test.describe('Accessibility Semantics', () => {
     await expect(langSwitcher).toBeVisible();
 
     // Wait for game items
-    const gameItemUno = page.getByRole('button', { name: '🃏 基础 UNO 2-8P Family' });
+    const gameItemUno = page.getByRole('button', { name: 'UNO 基础 UNO 2-8P Family' });
     await expect(gameItemUno).toBeVisible();
 
     const gameItemZheng = page.getByRole('button', { name: '♠️ 争上游 2-4P Strategy' });
