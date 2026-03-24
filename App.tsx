@@ -584,7 +584,21 @@ export default function App() {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={styles.gameCarousel}>
               {[
-                { id: 'UnoLite', name: t('lobby.game_UnoLite', 'UnoLite'), tags: ['2-8P', 'Family'], available: true, icon: '🃏' },
+                {
+                  id: 'UnoLite',
+                  name: t('lobby.game_UnoLite', 'UnoLite'),
+                  tags: ['2-8P', 'Family'],
+                  available: true,
+                  icon: (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 10, width: 40, height: 40, backgroundColor: '#000', borderRadius: 8, transform: [{ rotate: '-10deg' }] }}>
+                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>UNO</Text>
+                      <View style={{ position: 'absolute', top: 2, left: 2, width: 8, height: 8, backgroundColor: '#FF3B30', borderRadius: 4 }} />
+                      <View style={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, backgroundColor: '#FFCC00', borderRadius: 4 }} />
+                      <View style={{ position: 'absolute', bottom: 2, left: 2, width: 8, height: 8, backgroundColor: '#4CD964', borderRadius: 4 }} />
+                      <View style={{ position: 'absolute', bottom: 2, right: 2, width: 8, height: 8, backgroundColor: '#007AFF', borderRadius: 4 }} />
+                    </View>
+                  )
+                },
                 { id: 'ZhengShangYou', name: t('lobby.game_ZhengShangYou', 'ZhengShangYou'), tags: ['2-4P', 'Strategy'], available: true, icon: '♠️' },
                 { id: 'JiangsuTaopai', name: t('lobby.game_JiangsuTaopai', 'JiangsuTaopai'), tags: ['2-3P', 'Classic'], available: true, icon: '🃏' },
                 { id: 'SanGuoSha', name: t('lobby.game_SanGuoSha', 'SanGuoSha'), tags: ['2-8P', 'Roleplay'], available: true, icon: '⚔️' },
@@ -601,7 +615,11 @@ export default function App() {
                   onPress={() => game.available && setSelectedGameMode(game.id as GameMode)}
                   disabled={!game.available}
                 >
-                  <Text style={styles.gameCardIcon}>{game.icon}</Text>
+                  {typeof game.icon === 'string' ? (
+                    <Text style={styles.gameCardIcon}>{game.icon}</Text>
+                  ) : (
+                    game.icon
+                  )}
                   <Text style={[styles.gameCardTitle, selectedGameMode === game.id && styles.gameCardTitleSelected]}>{game.name}</Text>
                   <View style={styles.tagContainer}>
                     {game.tags.map(tag => (
