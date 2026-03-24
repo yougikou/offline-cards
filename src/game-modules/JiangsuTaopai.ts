@@ -101,6 +101,29 @@ export function evaluatePattern(cards: Card[]): { pattern: string; value: number
     return true;
   };
 
+  // Triple
+  if (len === 3 && values[0] === values[1] && values[1] === values[2]) {
+    return { pattern: 'Triple', value: values[0] };
+  }
+
+  // Consecutive Triples (exactly 6 cards)
+  if (len === 6) {
+    let isTriples = true;
+    const tripleValues: number[] = [];
+    for (let i = 0; i < len; i += 3) {
+      if (values[i] !== values[i + 1] || values[i + 1] !== values[i + 2]) {
+        isTriples = false;
+        break;
+      }
+      tripleValues.push(values[i]);
+    }
+    if (isTriples) {
+      if (isStraightValues(tripleValues)) {
+        return { pattern: 'ConsecutiveTriples', value: tripleValues[tripleValues.length - 1] };
+      }
+    }
+  }
+
   // 6. Straight (5+ cards)
   if (len >= 5) {
     // Check if it's all distinct
