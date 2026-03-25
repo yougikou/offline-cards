@@ -106,8 +106,8 @@ export function evaluatePattern(cards: Card[]): { pattern: string; value: number
     return { pattern: 'Triple', value: values[0] };
   }
 
-  // Consecutive Triples (exactly 6 cards)
-  if (len === 6) {
+  // Consecutive Triples (6+ cards, multiple of 3)
+  if (len >= 6 && len % 3 === 0) {
     let isTriples = true;
     const tripleValues: number[] = [];
     for (let i = 0; i < len; i += 3) {
@@ -118,8 +118,15 @@ export function evaluatePattern(cards: Card[]): { pattern: string; value: number
       tripleValues.push(values[i]);
     }
     if (isTriples) {
-      if (isStraightValues(tripleValues)) {
-        return { pattern: 'ConsecutiveTriples', value: tripleValues[tripleValues.length - 1] };
+      let adjustedTriples = [...tripleValues];
+      if (adjustedTriples.includes(14) && adjustedTriples.includes(15) && adjustedTriples.includes(3)) {
+         adjustedTriples = adjustedTriples.map(v => v === 14 ? 1 : v === 15 ? 2 : v).sort((a,b) => a-b);
+      } else if (adjustedTriples.includes(14) && adjustedTriples.includes(2) === false && adjustedTriples.includes(3)) {
+         adjustedTriples = adjustedTriples.map(v => v === 14 ? 1 : v).sort((a,b) => a-b);
+      }
+
+      if (isStraightValues(adjustedTriples)) {
+        return { pattern: 'ConsecutiveTriples', value: adjustedTriples[adjustedTriples.length - 1] };
       }
     }
   }
