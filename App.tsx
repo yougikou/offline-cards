@@ -7,6 +7,13 @@ import { WebRTCManager } from './src/webrtc';
 import Scanner, { preloadCamera } from './src/components/Scanner';
 import QRCodeDisplay from './src/components/QRCodeDisplay';
 import GameBoard from './src/components/GameBoard';
+
+import LanguageSwitcher from './src/components/home/LanguageSwitcher';
+import UpdateBanner from './src/components/home/UpdateBanner';
+import HeroSection from './src/components/home/HeroSection';
+import GameLibrary from './src/components/home/GameLibrary';
+import HomeActions from './src/components/home/HomeActions';
+
 import { UnoLiteGame } from './src/game-modules/unoLite';
 import { ZhengShangYouGame } from './src/game-modules/ZhengShangYou';
 import { SanGuoShaGame } from './src/game-modules/sanguosha';
@@ -14,8 +21,8 @@ import { JiangsuTaopaiGame } from './src/game-modules/JiangsuTaopai';
 import { Client } from 'boardgame.io/client';
 import { Storage } from './src/storage';
 
-type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
-type GameMode = 'UnoLite' | 'ZhengShangYou' | 'SanGuoSha' | 'JiangsuTaopai';
+export type AppState = 'HOME' | 'SIGNALING_HOST' | 'SIGNALING_GUEST' | 'CONNECTED' | 'SANDBOX';
+export type GameMode = 'UnoLite' | 'ZhengShangYou' | 'SanGuoSha' | 'JiangsuTaopai';
 type Role = 'HOST' | 'GUEST' | null;
 
 // Replace GameAction with the boardgame.io specific action type
@@ -26,7 +33,7 @@ export interface BgioAction {
 }
 
 export default function App() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [appState, setAppState] = useState<AppState>('HOME');
   const [role, setRole] = useState<Role>(null);
   const [roomId, setRoomId] = useState<string>('');
@@ -514,177 +521,39 @@ export default function App() {
     setAppState('CONNECTED');
   };
 
-  const renderLanguageSwitcher = () => {
-    const currentLangLabel = i18n.language === 'zh' ? '中文' : i18n.language === 'ja' ? '日本語' : 'English';
-    return (
-      <View style={styles.languageSwitcher}>
-        <TouchableOpacity
-          accessibilityRole="button"
-          style={styles.languageDropdownButton}
-          onPress={() => setLanguageMenuVisible(!languageMenuVisible)}
-        >
-          <Text style={styles.languageDropdownText}>🌐 {currentLangLabel} ▼</Text>
-        </TouchableOpacity>
-
-        {languageMenuVisible && (
-          <View style={styles.languageDropdownMenu}>
-            <TouchableOpacity
-              accessibilityRole="button"
-              style={[styles.languageDropdownItem, i18n.language === 'zh' && styles.languageDropdownItemSelected]}
-              onPress={() => { i18n.changeLanguage('zh'); setLanguageMenuVisible(false); }}
-            >
-              <Text style={[styles.languageDropdownItemText, i18n.language === 'zh' && styles.languageDropdownItemTextSelected]}>中文</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              accessibilityRole="button"
-              style={[styles.languageDropdownItem, i18n.language === 'en' && styles.languageDropdownItemSelected]}
-              onPress={() => { i18n.changeLanguage('en'); setLanguageMenuVisible(false); }}
-            >
-              <Text style={[styles.languageDropdownItemText, i18n.language === 'en' && styles.languageDropdownItemTextSelected]}>English</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              accessibilityRole="button"
-              style={[styles.languageDropdownItem, i18n.language === 'ja' && styles.languageDropdownItemSelected]}
-              onPress={() => { i18n.changeLanguage('ja'); setLanguageMenuVisible(false); }}
-            >
-              <Text style={[styles.languageDropdownItemText, i18n.language === 'ja' && styles.languageDropdownItemTextSelected]}>日本語</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    );
-  };
-
   const renderHome = () => {
     return (
       <View style={styles.content}>
         <View style={styles.topRightControls}>
-          {renderLanguageSwitcher()}
+          <LanguageSwitcher
+            languageMenuVisible={languageMenuVisible}
+            setLanguageMenuVisible={setLanguageMenuVisible}
+          />
         </View>
 
-        {updateAvailable && (
-          <View style={styles.updateBanner}>
-            <Text style={styles.updateText}>{t('lobby.updateAvailable', 'New version available!')}</Text>
-            <TouchableOpacity accessibilityRole="button" style={styles.updateButton} onPress={handleApplyUpdate}>
-              <Text style={styles.updateButtonText}>{t('lobby.refreshToUpdate', 'Refresh')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <UpdateBanner
+          updateAvailable={updateAvailable}
+          handleApplyUpdate={handleApplyUpdate}
+        />
 
-        <View style={styles.heroSection}>
-          <Text style={styles.title}>{t('lobby.title', 'Offline Cards')}</Text>
-          <Text style={styles.subtitle}>{t('lobby.subtitle', 'Serverless peer-to-peer local multiplayer')}</Text>
-        </View>
+        <HeroSection />
 
         <View style={styles.homeContainer}>
+          <GameLibrary
+            selectedGameMode={selectedGameMode}
+            setSelectedGameMode={setSelectedGameMode}
+          />
 
-          {/* Game Library */}
-          <View style={styles.librarySection}>
-            <Text style={styles.sectionTitle}>{t('lobby.selectGame', 'Game Library')}</Text>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={styles.gameCarousel}>
-              {[
-                {
-                  id: 'UnoLite',
-                  name: t('lobby.game_UnoLite', 'UnoLite'),
-                  tags: ['2-8P', 'Family'],
-                  available: true,
-                  icon: (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 10, width: 40, height: 40, backgroundColor: '#000', borderRadius: 8, transform: [{ rotate: '-10deg' }] }}>
-                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>UNO</Text>
-                      <View style={{ position: 'absolute', top: 2, left: 2, width: 8, height: 8, backgroundColor: '#FF3B30', borderRadius: 4 }} />
-                      <View style={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, backgroundColor: '#FFCC00', borderRadius: 4 }} />
-                      <View style={{ position: 'absolute', bottom: 2, left: 2, width: 8, height: 8, backgroundColor: '#4CD964', borderRadius: 4 }} />
-                      <View style={{ position: 'absolute', bottom: 2, right: 2, width: 8, height: 8, backgroundColor: '#007AFF', borderRadius: 4 }} />
-                    </View>
-                  )
-                },
-                { id: 'ZhengShangYou', name: t('lobby.game_ZhengShangYou', 'ZhengShangYou'), tags: ['2-4P', 'Strategy'], available: true, icon: '♠️' },
-                { id: 'JiangsuTaopai', name: t('lobby.game_JiangsuTaopai', 'JiangsuTaopai'), tags: ['2-3P', 'Classic'], available: true, icon: '🃏' },
-                { id: 'SanGuoSha', name: t('lobby.game_SanGuoSha', 'SanGuoSha'), tags: ['2-8P', 'Roleplay'], available: true, icon: '⚔️' },
-                { id: 'DouDiZhu', name: '斗地主 / Dou Di Zhu', tags: ['3P', 'Classic'], available: false, icon: '👨‍🌾' },
-              ].map(game => (
-                <TouchableOpacity
-                  key={game.id}
-                  accessibilityRole="button"
-                  style={[
-                    styles.gameCard,
-                    selectedGameMode === game.id && styles.gameCardSelected,
-                    !game.available && styles.gameCardDisabled
-                  ]}
-                  onPress={() => game.available && setSelectedGameMode(game.id as GameMode)}
-                  disabled={!game.available}
-                >
-                  {typeof game.icon === 'string' ? (
-                    <Text style={styles.gameCardIcon}>{game.icon}</Text>
-                  ) : (
-                    game.icon
-                  )}
-                  <Text style={[styles.gameCardTitle, selectedGameMode === game.id && styles.gameCardTitleSelected]}>{game.name}</Text>
-                  <View style={styles.tagContainer}>
-                    {game.tags.map(tag => (
-                      <View key={tag} style={styles.tagBadge}>
-                        <Text style={styles.tagText}>{tag}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  {!game.available && (
-                    <View style={styles.comingSoonBadge}>
-                      <Text style={styles.comingSoonText}>Coming Soon</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          <View style={styles.sectionDivider} />
-
-          {/* Primary Action: Host Room */}
-          <TouchableOpacity accessibilityRole="button" style={styles.joinGlobalButton} onPress={() => handleHost(false)}>
-            <View style={styles.joinGlobalIconContainer}>
-              <Text style={styles.joinGlobalIcon}>🌐</Text>
-            </View>
-            <View style={styles.joinGlobalTextContainer}>
-              <Text style={styles.joinGlobalButtonText}>
-                {t('lobby.createRoom', 'Host Room')} - {selectedGameMode === 'UnoLite' ? t('lobby.game_UnoLite') : selectedGameMode === 'ZhengShangYou' ? t('lobby.game_ZhengShangYou') : selectedGameMode === 'JiangsuTaopai' ? t('lobby.game_JiangsuTaopai') : t('lobby.game_SanGuoSha')}
-              </Text>
-              <Text style={styles.joinGlobalSubText}>{t('lobby.hostDesc', 'Play with friends via Wi-Fi/QR')}</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Secondary Action Modes (Join / Sandbox) */}
-          <View style={{ marginTop: 15, gap: 10 }}>
-            {/* Secondary Action: Join Room */}
-            <TouchableOpacity accessibilityRole="button" style={styles.joinSecondaryButton} onPress={() => handleGuest(false)}>
-              <View style={styles.joinSecondaryIconContainer}>
-                <Text style={styles.joinSecondaryIcon}>📡</Text>
-              </View>
-              <View style={styles.joinGlobalTextContainer}>
-                <Text style={styles.joinSecondaryButtonText}>{t('lobby.joinRoom', 'Join Room')}</Text>
-                <Text style={styles.joinGlobalSubText}>{t('lobby.joinRoomSub', 'Scan QR or enter code')}</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Tertiary Action: Sandbox */}
-            <View style={styles.sandboxUtilityRow}>
-              <TouchableOpacity accessibilityRole="button" style={styles.sandboxUtilityButton} onPress={() => {
-                setAppState('SANDBOX');
-                setPlayerId('player_1');
-                const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
-                startBoardGameHost(players);
-              }}>
-                <Text style={styles.sandboxUtilityIcon}>🤖</Text>
-                <Text style={styles.sandboxUtilityText}>{t('lobby.sandboxTesting', 'Practice Locally')}</Text>
-              </TouchableOpacity>
-              <View style={styles.compactPlayerCount}>
-                <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} style={styles.compactCountBtn}><Text style={styles.compactCountBtnText}>-</Text></TouchableOpacity>
-                <Text style={styles.compactCountText}>{sandboxPlayerCount}P</Text>
-                <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} style={styles.compactCountBtn}><Text style={styles.compactCountBtnText}>+</Text></TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
+          <HomeActions
+            selectedGameMode={selectedGameMode}
+            handleHost={handleHost}
+            handleGuest={handleGuest}
+            setAppState={setAppState}
+            setPlayerId={setPlayerId}
+            sandboxPlayerCount={sandboxPlayerCount}
+            setSandboxPlayerCount={setSandboxPlayerCount}
+            startBoardGameHost={startBoardGameHost}
+          />
         </View>
       </View>
     );
@@ -927,42 +796,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  updateBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 15,
-    marginTop: 15,
-    width: '100%',
-    maxWidth: 600,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  updateText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginRight: 10,
-  },
-  updateButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'white',
-  },
-  updateButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
   content: {
     flex: 1,
     padding: 20,
@@ -975,74 +808,6 @@ const styles = StyleSheet.create({
     right: 20,
     alignItems: 'flex-end',
     zIndex: 10,
-  },
-  languageSwitcher: {
-    alignItems: 'flex-end',
-    position: 'relative',
-  },
-  languageLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 5,
-  },
-  languageDropdownButton: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  languageDropdownText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: 'bold',
-  },
-  languageDropdownMenu: {
-    position: 'absolute',
-    top: 45,
-    right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 12,
-    width: 120,
-    zIndex: 1000,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  languageDropdownItem: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  languageDropdownItemSelected: {
-    backgroundColor: '#e3f2fd',
-  },
-  languageDropdownItemText: {
-    fontSize: 14,
-    color: '#333',
-    textAlign: 'center',
-  },
-  languageDropdownItemTextSelected: {
-    color: '#007AFF',
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 15,
-    textAlign: 'center',
   },
   buttonContainer: {
     width: '100%',
@@ -1120,221 +885,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 600,
     alignItems: 'stretch',
-  },
-  heroSection: {
-    alignItems: 'center',
-    marginBottom: 15,
-    marginTop: 10,
-  },
-  joinGlobalButton: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 15,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  joinGlobalIconContainer: {
-    backgroundColor: '#E8F5E9',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 15,
-  },
-  joinGlobalIcon: {
-    fontSize: 20,
-  },
-  joinGlobalTextContainer: {
-    flex: 1,
-  },
-  joinGlobalButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2E7D32',
-    marginBottom: 4,
-  },
-  joinGlobalSubText: {
-    fontSize: 13,
-    color: '#666',
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 15,
-  },
-  librarySection: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
-    paddingHorizontal: 5,
-  },
-  gameCarousel: {
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    gap: 15,
-  },
-  gameCard: {
-    width: 120,
-    height: 140,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#eee',
-    marginRight: 15,
-  },
-  gameCardSelected: {
-    borderColor: '#333',
-    backgroundColor: '#fafafa',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  gameCardDisabled: {
-    opacity: 0.6,
-    backgroundColor: '#FAFAFA',
-  },
-  gameCardIcon: {
-    fontSize: 30,
-    marginBottom: 10,
-  },
-  gameCardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  gameCardTitleSelected: {
-    color: '#333',
-  },
-  tagContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  tagBadge: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  tagText: {
-    fontSize: 10,
-    color: '#666',
-    fontWeight: '600',
-  },
-  comingSoonBadge: {
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    backgroundColor: '#FF9800',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  comingSoonText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-
-  joinSecondaryButton: {
-    flexDirection: 'row',
-    backgroundColor: '#FAFAFA',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-  },
-  joinSecondaryIconContainer: {
-    backgroundColor: '#F5F5F5',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  joinSecondaryIcon: {
-    fontSize: 18,
-  },
-  joinSecondaryButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 2,
-  },
-  sandboxUtilityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FAFAFA',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    padding: 8,
-    paddingHorizontal: 12,
-  },
-  sandboxUtilityButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  sandboxUtilityIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  sandboxUtilityText: {
-    fontSize: 14,
-    color: '#555',
-    fontWeight: '600',
-  },
-  compactPlayerCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#eee',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  compactCountBtn: {
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-  },
-  compactCountBtnText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    lineHeight: 18,
-  },
-  compactCountText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginHorizontal: 8,
-    color: '#333',
   },
 
   segmentControl: {
