@@ -14,7 +14,11 @@ export const SanGuoShaTable: React.FC<SanGuoShaTableProps> = ({ G, myPlayerId, t
   return (
     <>
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', maxWidth: 400, marginBottom: 10 }}>
-        <Text style={styles.sandboxTitle}>SanGuoSha | HP: {G.playerStates[myPlayerId]?.hp}/{G.playerStates[myPlayerId]?.maxHp} | Role: {G.playerStates[myPlayerId]?.role ? t('game.sgs_role_' + G.playerStates[myPlayerId]?.role) : ''}</Text>
+        <Text style={styles.sandboxTitle}>
+          {G.playerStates[myPlayerId]?.hero ? t('game.sgs_hero_' + G.playerStates[myPlayerId].hero) + ' | ' : ''}
+          HP: {G.playerStates[myPlayerId]?.hp}/{G.playerStates[myPlayerId]?.maxHp} |
+          Role: {G.playerStates[myPlayerId]?.role ? t('game.sgs_role_' + G.playerStates[myPlayerId]?.role) : ''}
+        </Text>
       </View>
       {G.pendingCard && (
          <Animated.View style={[styles.tableContainer, {

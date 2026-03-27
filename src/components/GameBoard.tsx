@@ -6,6 +6,7 @@ import { Storage } from '../storage';
 import { SanGuoShaTable } from './sanguosha/SanGuoShaTable';
 import { SanGuoShaControls } from './sanguosha/SanGuoShaControls';
 import { JiangsuTaopaiControls } from './jiangsutaopai/JiangsuTaopaiControls';
+import { SanGuoShaHeroSelection } from './sanguosha/SanGuoShaHeroSelection';
 
 interface GameBoardProps {
   // gameState now contains the boardgame.io state object structure { G, ctx, plugins }
@@ -338,6 +339,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   return (
     <View style={styles.sandboxContainer}>
+      {gameName === 'SanGuoSha' && ctx.phase === 'heroSelection' && (
+        <SanGuoShaHeroSelection G={G} ctx={ctx} myPlayerId={myPlayerId} onAction={onAction} />
+      )}
+
       <TouchableOpacity accessibilityRole="button" style={{ position: 'absolute', top: 20, right: 20, zIndex: 100 }} onPress={() => setModalVisible(true)}>
         <Text style={{ fontSize: 24, color: 'white' }}>⚙️</Text>
       </TouchableOpacity>
@@ -517,13 +522,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
               <Text style={[styles.opponentCardCountText, isLowCards ? { color: '#D32F2F' } : null]}>{opponentHand.length} 张</Text>
             </View>
             {sgsState && (
-              <View style={{ flexDirection: 'row', marginTop: 6, gap: 6, alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', marginTop: 6, gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <View style={{ backgroundColor: '#D32F2F', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
                   <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>HP {sgsState.hp}/{sgsState.maxHp}</Text>
                 </View>
                 <View style={{ backgroundColor: '#FFB300', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
                   <Text style={{ color: 'black', fontSize: 10, fontWeight: 'bold' }}>{sgsState.role === 'Unknown' ? '?' : t('game.sgs_role_' + sgsState.role)}</Text>
                 </View>
+                {sgsState.hero && (
+                  <View style={{ backgroundColor: '#4CAF50', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                    <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{sgsState.hero === 'Unknown' ? '?' : t('game.sgs_hero_' + sgsState.hero)}</Text>
+                  </View>
+                )}
               </View>
             )}
           </Animated.View>
