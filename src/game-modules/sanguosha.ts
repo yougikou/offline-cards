@@ -17,6 +17,7 @@ export interface PlayerState {
   hp: number;
   maxHp: number;
   dead: boolean;
+  hero?: string;
 }
 
 export interface SanGuoShaState {
@@ -27,6 +28,7 @@ export interface SanGuoShaState {
   discardPile: SanGuoShaCard[];
   exitedPlayers: string[];
   gameName: string;
+  heroChoices: Record<string, string[]>;
 
   // Turn state variables
   activeTarget: string | null; // e.g. Who needs to play a Dodge
@@ -41,6 +43,34 @@ export interface SanGuoShaState {
 
 const SUITS: ('Hearts' | 'Diamonds' | 'Clubs' | 'Spades')[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+export const STANDARD_HEROES = [
+  { id: 'caocao', hp: 4, kingdom: 'Wei' },
+  { id: 'simayi', hp: 3, kingdom: 'Wei' },
+  { id: 'xiahoudun', hp: 4, kingdom: 'Wei' },
+  { id: 'zhangliao', hp: 4, kingdom: 'Wei' },
+  { id: 'xuchu', hp: 4, kingdom: 'Wei' },
+  { id: 'guojia', hp: 3, kingdom: 'Wei' },
+  { id: 'zhenji', hp: 3, kingdom: 'Wei' },
+  { id: 'liubei', hp: 4, kingdom: 'Shu' },
+  { id: 'guanyu', hp: 4, kingdom: 'Shu' },
+  { id: 'zhangfei', hp: 4, kingdom: 'Shu' },
+  { id: 'zhugeliang', hp: 3, kingdom: 'Shu' },
+  { id: 'zhaoyun', hp: 4, kingdom: 'Shu' },
+  { id: 'machao', hp: 4, kingdom: 'Shu' },
+  { id: 'huangyueying', hp: 3, kingdom: 'Shu' },
+  { id: 'sunquan', hp: 4, kingdom: 'Wu' },
+  { id: 'ganning', hp: 4, kingdom: 'Wu' },
+  { id: 'lumeng', hp: 4, kingdom: 'Wu' },
+  { id: 'huanggai', hp: 4, kingdom: 'Wu' },
+  { id: 'zhouyu', hp: 3, kingdom: 'Wu' },
+  { id: 'daqiao', hp: 3, kingdom: 'Wu' },
+  { id: 'luxun', hp: 3, kingdom: 'Wu' },
+  { id: 'sunshangxiang', hp: 3, kingdom: 'Wu' },
+  { id: 'huatuo', hp: 3, kingdom: 'Qun' },
+  { id: 'lubu', hp: 4, kingdom: 'Qun' },
+  { id: 'diaochan', hp: 3, kingdom: 'Qun' }
+];
 
 function createSanGuoShaDeck(): SanGuoShaCard[] {
   const deck: SanGuoShaCard[] = [];
@@ -215,6 +245,7 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
     const roles = shuffle(getRoles(playerIds.length));
     const playerStates: Record<string, PlayerState> = {};
     const hands: Record<string, SanGuoShaCard[]> = {};
+    const heroChoices: Record<string, string[]> = {};
 
     let lordId = playerIds[0];
     for (let i = 0; i < playerIds.length; i++) {
@@ -230,21 +261,29 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
       ...playerIds.slice(0, lordIndex)
     ];
 
+    // Deal heroes
+    let availableHeroes = shuffle([...STANDARD_HEROES]);
+
     for (let i = 0; i < orderedPlayerIds.length; i++) {
       const id = orderedPlayerIds[i];
       const role = roles[playerIds.indexOf(id)];
-      // Lord gets maxHp + 1
-      const isLord = role === 'Lord';
-      const baseHp = orderedPlayerIds.length <= 2 ? 4 : (isLord ? 5 : 4);
-      const maxHp = isLord && orderedPlayerIds.length > 2 ? baseHp : 4;
 
+      // HP is set later during heroSelection phase
       playerStates[id] = {
         id,
         role,
-        hp: maxHp,
-        maxHp: maxHp,
+        hp: 0,
+        maxHp: 0,
         dead: false
       };
+
+      // Assign 3 random unique hero choices
+      heroChoices[id] = [];
+      for (let k = 0; k < 3; k++) {
+         if (availableHeroes.length > 0) {
+            heroChoices[id].push(availableHeroes.pop()!.id);
+         }
+      }
 
       hands[id] = [];
       for (let j = 0; j < 4; j++) {
@@ -260,6 +299,7 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
       discardPile: [],
       exitedPlayers: [],
       gameName: 'SanGuoSha',
+      heroChoices,
       activeTarget: null,
       pendingCard: null,
       cardsPlayedThisTurn: 0,
@@ -270,9 +310,50 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
   },
 
   phases: {
-    play: {
+    heroSelection: {
       start: true,
+      moves: {
+        selectHero: ({ G, ctx, events }, heroId: string) => {
+          const playerId = G.players[parseInt(ctx.currentPlayer)];
+          if (G.playerStates[playerId].hero) return INVALID_MOVE; // Already selected
+
+          const choices = G.heroChoices[playerId] || [];
+          if (!choices.includes(heroId)) return INVALID_MOVE; // Must be one of the dealt choices
+
+          const heroData = STANDARD_HEROES.find(h => h.id === heroId);
+          if (!heroData) return INVALID_MOVE;
+
+          G.playerStates[playerId].hero = heroId;
+
+          // Set HP
+          const isLord = G.playerStates[playerId].role === 'Lord';
+          // Lord gets maxHp + 1 (if more than 2 players)
+          const bonusHp = (isLord && G.players.length > 2) ? 1 : 0;
+          const maxHp = heroData.hp + bonusHp;
+
+          G.playerStates[playerId].maxHp = maxHp;
+          G.playerStates[playerId].hp = maxHp;
+
+          // Check if all players have selected
+          const allSelected = G.players.every(pId => G.playerStates[pId].hero !== undefined);
+          if (allSelected) {
+            events.endPhase(); // Transitions to the next phase (which is 'play')
+          } else {
+            events.endTurn(); // Next player's turn to select
+          }
+        }
+      },
+      next: 'play',
+    },
+    play: {
       turn: {
+        order: {
+          first: ({ G }) => {
+            // Lord always goes first. Ordered players array has Lord at index 0.
+            return 0;
+          },
+          next: ({ ctx }) => (parseInt(ctx.currentPlayer) + 1) % ctx.numPlayers,
+        },
         onBegin: ({ G, ctx, events }) => {
           const currentPlayerId = G.players[parseInt(ctx.currentPlayer)];
           if (G.playerStates[currentPlayerId].dead) {
