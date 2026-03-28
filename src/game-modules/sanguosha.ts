@@ -18,6 +18,13 @@ export interface PlayerState {
   maxHp: number;
   dead: boolean;
   hero?: string;
+  equipment: {
+    weapon: SanGuoShaCard | null;
+    armor: SanGuoShaCard | null;
+    defensiveHorse: SanGuoShaCard | null;
+    offensiveHorse: SanGuoShaCard | null;
+  };
+  judgments: SanGuoShaCard[];
 }
 
 export interface SanGuoShaState {
@@ -274,7 +281,14 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
         role,
         hp: 0,
         maxHp: 0,
-        dead: false
+        dead: false,
+        equipment: {
+          weapon: null,
+          armor: null,
+          defensiveHorse: null,
+          offensiveHorse: null
+        },
+        judgments: []
       };
 
       // Assign 3 random unique hero choices

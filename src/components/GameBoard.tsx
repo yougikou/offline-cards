@@ -643,6 +643,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
         {selectedCards.length > 0 && (
           <View style={styles.selectedSummaryContainer}>
+            {gameName === 'SanGuoSha' && selectedCards.length === 1 && myHand[selectedCards[0]] && (
+              <Text style={{ color: '#E0E0E0', fontSize: 12, marginBottom: 5, textAlign: 'center' }}>
+                {t('game.sgs_desc_' + myHand[selectedCards[0]].name, { defaultValue: '' })}
+              </Text>
+            )}
             {[...selectedCards].sort((a, b) => a - b).map(idx => {
               const c = myHand[idx];
               if (!c) return null;
