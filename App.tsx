@@ -366,8 +366,8 @@ export default function App() {
     };
   };
 
-  const startBoardGameHost = (playerIds: string[]) => {
-    const gameModule = getGameModule(selectedGameModeRef.current);
+  const startBoardGameHost = (playerIds: string[], gameMode: GameMode) => {
+    const gameModule = getGameModule(gameMode);
     const gameDef = gameModule(playerIds);
     // Remove playerView from the local host engine client so it holds the unstripped authoritative state
     const engineGameDef = { ...gameDef };
@@ -517,7 +517,7 @@ export default function App() {
 
   const startGameHost = () => {
     const allPlayers = ['host', ...Array.from(hostConnections.current.keys())];
-    startBoardGameHost(allPlayers);
+    startBoardGameHost(allPlayers, selectedGameMode);
     setAppState('CONNECTED');
   };
 
@@ -608,7 +608,7 @@ export default function App() {
           onReset={() => {
             if (hostClientRef.current) hostClientRef.current.stop();
             const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
-            startBoardGameHost(players);
+            startBoardGameHost(players, selectedGameMode);
           }}
           isSandbox={true}
           selectedGameMode={selectedGameMode}
@@ -716,7 +716,7 @@ export default function App() {
           onReset={role === 'HOST' ? () => {
             if (hostClientRef.current) { hostClientRef.current.stop(); hostClientRef.current = null; }
             const allPlayers = ['host', ...Array.from(hostConnections.current.keys())];
-            startBoardGameHost(allPlayers);
+            startBoardGameHost(allPlayers, selectedGameMode);
           } : undefined}
           selectedGameMode={selectedGameMode}
           onGameModeChange={setSelectedGameMode}

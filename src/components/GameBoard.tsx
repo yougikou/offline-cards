@@ -42,7 +42,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const [pendingWildCardIndex, setPendingWildCardIndex] = useState<number | null>(null);
 
   // SanGuoSha specific state
-  // We manage target selection in SanGuoShaControls now
+  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkTutorial = async () => {
@@ -163,6 +163,22 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const isMyTurn = (currentPlayerIdString === myPlayerId && (!ctx.activePlayers || (myPlayerIndex !== null && ctx.activePlayers[myPlayerIndex] !== undefined))) ||
                    (ctx.activePlayers && myPlayerIndex !== null && ctx.activePlayers[myPlayerIndex] !== undefined);
   const gameOver = ctx.gameover;
+
+  // Clear target when selection changes
+  useEffect(() => {
+    setSelectedTargetId(null);
+  }, [selectedCards, isMyTurn]);
+
+  const myActiveStage = ctx.activePlayers ? ctx.activePlayers[myPlayerIndex || ''] : undefined;
+
+  let isTargetingMode = false;
+  if (gameName === 'SanGuoSha' && selectedCards.length > 0 && isMyTurn && !gameOver && !myActiveStage) {
+    const cardIndex = selectedCards[0];
+    const card = myHand[cardIndex];
+    if (card && ['Kill', 'GuoHeChaiQiao', 'ShunShouQianYang', 'JueDou', 'JieDaoShaRen', 'LeBuSiShu', 'ShanDian'].includes(card.name)) {
+      isTargetingMode = true;
+    }
+  }
 
   useEffect(() => {
     // Animate table on new cards
@@ -493,23 +509,72 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
         const isLowCards = gameName === 'JiangsuTaopai' && opponentHand.length > 0 && opponentHand.length <= 2;
 
+        // Target Validation for SanGuoSha
+        let isTargetable = false;
+        let outOfRange = false;
+        if (isTargetingMode && sgsState && !sgsState.dead) {
+          isTargetable = true;
+          const card = myHand[selectedCards[0]];
+          if (card) {
+            // Self-targeting exceptions (usually none for opponents)
+            const alivePlayers = G.players.filter((p: string) => !G.playerStates[p].dead);
+            const fromIdx = alivePlayers.indexOf(myPlayerId);
+            const toIdx = alivePlayers.indexOf(opponentId);
+            const n = alivePlayers.length;
+            const diff = Math.abs(fromIdx - toIdx);
+            const distance = Math.min(diff, n - diff);
+
+            if (card.name === 'Kill' && distance > 1) {
+              let attackRange = 1;
+              const weapon = G.playerStates[myPlayerId]?.equipment?.weapon;
+              if (weapon && weapon.distance) {
+                attackRange = weapon.distance;
+              }
+              if (distance > attackRange) {
+                outOfRange = true;
+              }
+            }
+            if (card.name === 'ShunShouQianYang' && distance > 1) {
+              outOfRange = true;
+            }
+          }
+        }
+        const isTargetSelected = isTargetingMode && selectedTargetId === opponentId;
+
         return (
-          <Animated.View key={opponentId} style={[
+          <TouchableOpacity
+            accessibilityRole="button"
+            activeOpacity={isTargetingMode && !outOfRange ? 0.7 : 1}
+            onPress={() => {
+              if (isTargetingMode && !outOfRange) {
+                setSelectedTargetId(opponentId);
+              }
+            }}
+            disabled={!isTargetingMode || outOfRange}
+            key={opponentId}
+            style={[
+              { position: 'absolute', zIndex: 10, minWidth: 60 },
+              layoutStyle,
+              isTargetingMode ? { zIndex: 110, elevation: 110 } : {}
+            ]}
+          >
+          <Animated.View style={[
             styles.opponentCard,
-            layoutStyle,
+            { position: 'relative' },
             {
-              backgroundColor: isOpponentTurnState ? 'rgba(0,0,0,0.9)' : (isLowCards ? 'rgba(244, 67, 54, 0.8)' : 'rgba(0,0,0,0.4)'),
-              borderColor: isOpponentTurnState ? '#FFFFFF' : (isLowCards ? '#FFCDD2' : 'transparent'),
-              borderWidth: isOpponentTurnState ? 2 : (isLowCards ? 2 : 2),
-              transform: isOpponentTurnState ? [{ scale: turnAnim }] : [],
+              backgroundColor: isTargetSelected ? 'rgba(211,47,47,0.9)' : (isOpponentTurnState ? 'rgba(0,0,0,0.9)' : (isLowCards ? 'rgba(244, 67, 54, 0.8)' : 'rgba(0,0,0,0.4)')),
+              borderColor: isTargetSelected ? '#FFFFFF' : (isOpponentTurnState ? '#FFFFFF' : (isLowCards ? '#FFCDD2' : 'transparent')),
+              borderWidth: isTargetSelected ? 2 : (isOpponentTurnState ? 2 : (isLowCards ? 2 : 2)),
+              transform: isOpponentTurnState ? [{ scale: turnAnim }] : (isTargetSelected ? [{ scale: 1.1 }] : []),
               shadowColor: '#000000',
-              shadowOffset: isOpponentTurnState ? { width: 0, height: 4 } : { width: 0, height: 0 },
-              shadowOpacity: isOpponentTurnState ? 0.9 : 0,
-              shadowRadius: isOpponentTurnState ? 6 : 0,
-              elevation: isOpponentTurnState ? 10 : 0,
-              opacity: isOpponentTurnState ? 1 : 0.4,
+              shadowOffset: isOpponentTurnState || isTargetSelected ? { width: 0, height: 4 } : { width: 0, height: 0 },
+              shadowOpacity: isOpponentTurnState || isTargetSelected ? 0.9 : 0,
+              shadowRadius: isOpponentTurnState || isTargetSelected ? 6 : 0,
+              elevation: isOpponentTurnState || isTargetSelected ? 10 : 0,
+              opacity: (isTargetingMode && outOfRange) ? 0.3 : (isOpponentTurnState || isTargetingMode ? 1 : 0.4),
             }
           ]}>
+            {isTargetingMode && outOfRange && <Text style={{position: 'absolute', top: -5, right: -5, fontSize: 10, backgroundColor: 'red', color: 'white', padding: 2, borderRadius: 5, zIndex: 10, overflow: 'hidden'}}>Dist &gt; 1</Text>}
             <Text style={[styles.opponentName, {
               color: 'white',
               textShadowColor: isOpponentTurnState ? 'rgba(0, 0, 0, 0.8)' : 'transparent',
@@ -537,6 +602,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
               </View>
             )}
           </Animated.View>
+          </TouchableOpacity>
         );
       })}
 
@@ -697,6 +763,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
               opponents={opponents}
               onAction={onAction}
               setSelectedCards={setSelectedCards}
+              selectedTargetId={selectedTargetId}
+              setSelectedTargetId={setSelectedTargetId}
             />
           ) : gameName === 'UnoLite' ? (
             <>

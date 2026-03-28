@@ -11,7 +11,7 @@ interface HomeActionsProps {
   setPlayerId: (id: string) => void;
   sandboxPlayerCount: number;
   setSandboxPlayerCount: (count: React.SetStateAction<number>) => void;
-  startBoardGameHost: (playerIds: string[]) => void;
+  startBoardGameHost: (playerIds: string[], gameMode: GameMode) => void;
 }
 
 const HomeActions: React.FC<HomeActionsProps> = ({
@@ -62,7 +62,7 @@ const HomeActions: React.FC<HomeActionsProps> = ({
             setAppState('SANDBOX');
             setPlayerId('player_1');
             const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
-            startBoardGameHost(players);
+            startBoardGameHost(players, selectedGameMode);
           }}>
             <Text style={styles.sandboxUtilityIcon}>🤖</Text>
             <Text style={styles.sandboxUtilityText}>{t('lobby.sandboxTesting', 'Practice Locally')}</Text>
