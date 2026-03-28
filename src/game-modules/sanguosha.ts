@@ -3,10 +3,14 @@ import { INVALID_MOVE } from 'boardgame.io/core';
 
 export interface SanGuoShaCard {
   id: string;
-  name: 'Kill' | 'Dodge' | 'Peach';
+  name: string;
   suit: 'Hearts' | 'Diamonds' | 'Clubs' | 'Spades';
   rank: string;
   hidden?: boolean;
+  cardType?: 'Basic' | 'Stratagem' | 'DelayedStratagem' | 'Equipment';
+  subType?: 'Weapon' | 'Armor' | 'DefensiveHorse' | 'OffensiveHorse';
+  distance?: number;
+  locked?: boolean;
 }
 
 export type Role = 'Lord' | 'Loyalist' | 'Rebel' | 'Renegade';
@@ -46,6 +50,11 @@ export interface SanGuoShaState {
   // Dying State variables
   dyingPlayer: string | null;
   peachResponders: string[];
+
+  // AoE and Duel variables
+  targetsQueue: string[];
+  currentAoeName: string | null;
+  duelTarget: string | null;
 }
 
 const SUITS: ('Hearts' | 'Diamonds' | 'Clubs' | 'Spades')[] = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
@@ -79,26 +88,110 @@ export const STANDARD_HEROES = [
   { id: 'diaochan', hp: 3, kingdom: 'Qun' }
 ];
 
-function createSanGuoShaDeck(): SanGuoShaCard[] {
+function createSanGuoShaDeck(random?: any): SanGuoShaCard[] {
   const deck: SanGuoShaCard[] = [];
   let idCounter = 0;
 
-  // 30 Kills, 15 Dodges, 8 Peaches (simplified ratios)
-  for (let i = 0; i < 30; i++) {
-    deck.push({ id: `sgs-${idCounter++}`, name: 'Kill', suit: SUITS[i % 4], rank: RANKS[i % 13] });
-  }
-  for (let i = 0; i < 15; i++) {
-    deck.push({ id: `sgs-${idCounter++}`, name: 'Dodge', suit: SUITS[i % 4], rank: RANKS[i % 13] });
-  }
-  for (let i = 0; i < 8; i++) {
-    deck.push({ id: `sgs-${idCounter++}`, name: 'Peach', suit: 'Hearts', rank: RANKS[i % 13] });
-  }
+  const addCard = (
+    name: string,
+    suit: 'Hearts' | 'Diamonds' | 'Clubs' | 'Spades',
+    rank: string,
+    cardType: 'Basic' | 'Stratagem' | 'DelayedStratagem' | 'Equipment',
+    subType?: 'Weapon' | 'Armor' | 'DefensiveHorse' | 'OffensiveHorse',
+    distance?: number
+  ) => {
+    deck.push({
+      id: `sgs-${idCounter++}`,
+      name, suit, rank, cardType, subType, distance
+    });
+  };
+
+  // 1. Basic Cards
+  // Kill (30)
+  ['7','8','8','9','9','10','10'].forEach(r => addCard('Kill', 'Spades', r, 'Basic'));
+  ['10','10','J'].forEach(r => addCard('Kill', 'Hearts', r, 'Basic'));
+  ['2','3','4','5','6','7','8','8','9','9','10','10','J','J'].forEach(r => addCard('Kill', 'Clubs', r, 'Basic'));
+  ['6','7','8','9','10','K'].forEach(r => addCard('Kill', 'Diamonds', r, 'Basic'));
+
+  // Dodge (15)
+  ['2','2','K'].forEach(r => addCard('Dodge', 'Hearts', r, 'Basic'));
+  ['2','2','3','4','5','6','7','8','9','10','J','J'].forEach(r => addCard('Dodge', 'Diamonds', r, 'Basic'));
+
+  // Peach (8)
+  ['3','4','6','7','8','9','Q'].forEach(r => addCard('Peach', 'Hearts', r, 'Basic'));
+  ['Q'].forEach(r => addCard('Peach', 'Diamonds', r, 'Basic'));
+
+  // 2. Stratagem Cards (Non-delayed)
+  // WuZhongShengYou (4)
+  ['7','8','9','J'].forEach(r => addCard('WuZhongShengYou', 'Hearts', r, 'Stratagem'));
+  // GuoHeChaiQiao (6)
+  ['3','4','Q'].forEach(r => addCard('GuoHeChaiQiao', 'Spades', r, 'Stratagem'));
+  addCard('GuoHeChaiQiao', 'Hearts', 'Q', 'Stratagem');
+  ['3','4'].forEach(r => addCard('GuoHeChaiQiao', 'Clubs', r, 'Stratagem'));
+  // ShunShouQianYang (5)
+  ['3','4','J'].forEach(r => addCard('ShunShouQianYang', 'Spades', r, 'Stratagem'));
+  ['3','4'].forEach(r => addCard('ShunShouQianYang', 'Diamonds', r, 'Stratagem'));
+  // JueDou (3)
+  addCard('JueDou', 'Spades', 'A', 'Stratagem');
+  addCard('JueDou', 'Clubs', 'A', 'Stratagem');
+  addCard('JueDou', 'Diamonds', 'A', 'Stratagem');
+  // JieDaoShaRen (2)
+  ['Q','K'].forEach(r => addCard('JieDaoShaRen', 'Clubs', r, 'Stratagem'));
+  // NanManRuQin (3)
+  ['7','J'].forEach(r => addCard('NanManRuQin', 'Spades', r, 'Stratagem'));
+  addCard('NanManRuQin', 'Clubs', '7', 'Stratagem');
+  // WanJianQiFa (1)
+  addCard('WanJianQiFa', 'Hearts', 'A', 'Stratagem');
+  // WuGuFengDeng (2)
+  ['3','4'].forEach(r => addCard('WuGuFengDeng', 'Hearts', r, 'Stratagem'));
+  // TaoYuanJieYi (1)
+  addCard('TaoYuanJieYi', 'Hearts', 'A', 'Stratagem');
+  // WuXieKeJi (4)
+  addCard('WuXieKeJi', 'Diamonds', 'Q', 'Stratagem');
+  ['Q','K'].forEach(r => addCard('WuXieKeJi', 'Clubs', r, 'Stratagem'));
+  addCard('WuXieKeJi', 'Spades', 'J', 'Stratagem');
+
+  // 3. Delayed Stratagems
+  // LeBuSiShu (3)
+  addCard('LeBuSiShu', 'Hearts', '6', 'DelayedStratagem');
+  addCard('LeBuSiShu', 'Spades', '6', 'DelayedStratagem');
+  addCard('LeBuSiShu', 'Clubs', '6', 'DelayedStratagem');
+  // ShanDian (2)
+  addCard('ShanDian', 'Spades', 'A', 'DelayedStratagem');
+  addCard('ShanDian', 'Hearts', 'Q', 'DelayedStratagem');
+
+  // 4. Equipment Cards
+  // Weapons
+  addCard('ZhuGeLianNu', 'Clubs', 'A', 'Equipment', 'Weapon', 1);
+  addCard('ZhuGeLianNu', 'Diamonds', 'A', 'Equipment', 'Weapon', 1);
+  addCard('CiXiongShuangGuJian', 'Spades', '2', 'Equipment', 'Weapon', 2);
+  addCard('QingGangJian', 'Spades', '6', 'Equipment', 'Weapon', 2);
+  addCard('QingLongYanYueDao', 'Spades', '5', 'Equipment', 'Weapon', 3);
+  addCard('ZhangBaSheMao', 'Spades', 'Q', 'Equipment', 'Weapon', 3);
+  addCard('GuanShiFu', 'Diamonds', '5', 'Equipment', 'Weapon', 3);
+  addCard('FangTianHuaJi', 'Diamonds', 'Q', 'Equipment', 'Weapon', 4);
+  addCard('QiLinGong', 'Hearts', '5', 'Equipment', 'Weapon', 5);
+
+  // Armors
+  addCard('BaGuaZhen', 'Spades', '2', 'Equipment', 'Armor');
+  addCard('BaGuaZhen', 'Clubs', '2', 'Equipment', 'Armor');
+
+  // Defensive Horses (+1)
+  addCard('JueYing', 'Spades', '5', 'Equipment', 'DefensiveHorse');
+  addCard('DiLu', 'Clubs', '5', 'Equipment', 'DefensiveHorse');
+  addCard('ZhuaHuangFeiDian', 'Hearts', 'K', 'Equipment', 'DefensiveHorse');
+
+  // Offensive Horses (-1)
+  addCard('ChiTu', 'Hearts', '5', 'Equipment', 'OffensiveHorse');
+  addCard('DaYuan', 'Spades', 'K', 'Equipment', 'OffensiveHorse');
+  addCard('ZiXing', 'Diamonds', 'K', 'Equipment', 'OffensiveHorse');
+
   return deck;
 }
 
-function shuffle(array: any[]) {
+function shuffle(array: any[], random?: any) {
   for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = random ? (random.Die(i + 1) - 1) : Math.floor(Math.random() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
@@ -114,11 +207,11 @@ function getRoles(numPlayers: number): Role[] {
   return ['Lord', 'Loyalist', 'Loyalist', 'Rebel', 'Rebel', 'Rebel', 'Rebel', 'Renegade'];
 }
 
-function drawCards(G: SanGuoShaState, playerId: string, count: number) {
+function drawCards(G: SanGuoShaState, random: any, playerId: string, count: number) {
   for (let i = 0; i < count; i++) {
     if (G.deck.length === 0) {
       if (G.discardPile.length === 0) break;
-      G.deck = shuffle([...G.discardPile]);
+      G.deck = shuffle([...G.discardPile], random);
       G.discardPile = [];
     }
     if (G.deck.length > 0) {
@@ -127,33 +220,47 @@ function drawCards(G: SanGuoShaState, playerId: string, count: number) {
   }
 }
 
-function processDeath(G: SanGuoShaState, playerId: string, events: any) {
+function processDeath(G: SanGuoShaState, playerId: string, events: any, random: any) {
   G.playerStates[playerId].dead = true;
   G.discardPile.push(...G.hands[playerId]);
   G.hands[playerId] = [];
 
-  // Remove equipment and delayed tricks (when implemented)
+  // Remove equipment
+  const equip = G.playerStates[playerId].equipment;
+  if (equip.weapon) G.discardPile.push(equip.weapon);
+  if (equip.armor) G.discardPile.push(equip.armor);
+  if (equip.defensiveHorse) G.discardPile.push(equip.defensiveHorse);
+  if (equip.offensiveHorse) G.discardPile.push(equip.offensiveHorse);
+  G.playerStates[playerId].equipment = { weapon: null, armor: null, defensiveHorse: null, offensiveHorse: null };
 
   // Standard Rules: Reward and Punishment
-  if (G.attackOrigin) {
+  if (G.attackOrigin && G.players.includes(G.attackOrigin)) {
     const deadRole = G.playerStates[playerId].role;
-    const killerRole = G.playerStates[G.attackOrigin].role;
+    const killerRole = G.playerStates[G.attackOrigin]?.role;
 
     if (deadRole === 'Rebel') {
       // Reward: Anyone killing a Rebel draws 3 cards
-      drawCards(G, G.attackOrigin, 3);
+      if (random) {
+        drawCards(G, random, G.attackOrigin, 3);
+      }
     } else if (deadRole === 'Loyalist' && killerRole === 'Lord') {
       // Punishment: Lord killing a Loyalist discards all hand cards and equipment
       G.discardPile.push(...G.hands[G.attackOrigin]);
       G.hands[G.attackOrigin] = [];
-      // (Equipment discard will go here when implemented)
+
+      const lordEquip = G.playerStates[G.attackOrigin].equipment;
+      if (lordEquip.weapon) G.discardPile.push(lordEquip.weapon);
+      if (lordEquip.armor) G.discardPile.push(lordEquip.armor);
+      if (lordEquip.defensiveHorse) G.discardPile.push(lordEquip.defensiveHorse);
+      if (lordEquip.offensiveHorse) G.discardPile.push(lordEquip.offensiveHorse);
+      G.playerStates[G.attackOrigin].equipment = { weapon: null, armor: null, defensiveHorse: null, offensiveHorse: null };
     }
   }
 
   checkGameOver(G, events);
 }
 
-function checkDeath(G: SanGuoShaState, playerId: string, events: any) {
+function checkDeath(G: SanGuoShaState, playerId: string, events: any, random: any) {
   if (G.playerStates[playerId].hp <= 0) {
     // Initiate Dying State
     G.dyingPlayer = playerId;
@@ -184,15 +291,23 @@ function checkDeath(G: SanGuoShaState, playerId: string, events: any) {
        });
     } else {
        // Edge case: no one alive to ask?
-       processDeath(G, playerId, events);
+      processDeath(G, playerId, events, random);
        G.dyingPlayer = null;
        events.endStage();
     }
   } else {
-    // Not dying, just end response stage
-    G.activeTarget = null;
-    G.attackOrigin = null;
-    events.endStage();
+    // Not dying, just end response stage or move to next AoE target
+    if (G.currentAoeName) {
+      continueAoeOrEndStage(G, events);
+    } else {
+      G.activeTarget = null;
+      G.attackOrigin = null;
+      if (G.pendingCard) {
+        G.discardPile.push(G.pendingCard);
+        G.pendingCard = null;
+      }
+      events.endStage();
+    }
   }
 }
 
@@ -221,6 +336,38 @@ function checkGameOver(G: SanGuoShaState, events: any) {
     }
 }
 
+export function continueAoeOrEndStage(G: SanGuoShaState, events: any) {
+  // Find next alive target
+  while (G.targetsQueue.length > 0) {
+    const nextTarget = G.targetsQueue.shift()!;
+    if (!G.playerStates[nextTarget].dead) {
+      G.activeTarget = nextTarget;
+      let stageName = 'respond';
+      if (G.currentAoeName === 'NanManRuQin') stageName = 'respondToNanMan';
+      if (G.currentAoeName === 'WanJianQiFa') stageName = 'respondToWanJian';
+      if (G.currentAoeName === 'JueDou') stageName = 'respondToJueDou';
+
+      events.setActivePlayers({
+        value: {
+          [G.players.indexOf(nextTarget).toString()]: stageName,
+        }
+      });
+      return; // Stop and wait for this player
+    }
+  }
+
+  // Queue empty or everyone dead
+  if (G.pendingCard) {
+    G.discardPile.push(G.pendingCard);
+    G.pendingCard = null;
+  }
+  G.activeTarget = null;
+  G.attackOrigin = null;
+  G.currentAoeName = null;
+  G.duelTarget = null;
+  events.endStage(); // End stage for the active player, returning to main turn
+}
+
 export function getDistance(G: SanGuoShaState, fromId: string, toId: string): number {
   if (fromId === toId) return 0;
 
@@ -235,21 +382,31 @@ export function getDistance(G: SanGuoShaState, fromId: string, toId: string): nu
   const n = alivePlayers.length;
   // Circular distance
   const diff = Math.abs(fromIdx - toIdx);
-  const dist = Math.min(diff, n - diff);
+  let dist = Math.min(diff, n - diff);
 
-  // Future: apply mounts (-1 / +1 horses)
-  // Let dist = dist + target_+1_horse - self_-1_horse
-  return dist;
+  // Apply mounts (-1 / +1 horses)
+  const fromState = G.playerStates[fromId];
+  const toState = G.playerStates[toId];
+
+  if (toState.equipment.defensiveHorse) {
+    dist += 1;
+  }
+  if (fromState.equipment.offensiveHorse) {
+    dist -= 1;
+  }
+
+  // Distance cannot be less than 1
+  return Math.max(1, dist);
 }
 
 export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
   name: 'SanGuoSha',
 
-  setup: (ctx) => {
-    let deck = createSanGuoShaDeck();
-    deck = shuffle(deck);
+  setup: ({ ctx, random }) => {
+    let deck = createSanGuoShaDeck(random);
+    deck = shuffle(deck, random);
 
-    const roles = shuffle(getRoles(playerIds.length));
+    const roles = shuffle(getRoles(playerIds.length), random);
     const playerStates: Record<string, PlayerState> = {};
     const hands: Record<string, SanGuoShaCard[]> = {};
     const heroChoices: Record<string, string[]> = {};
@@ -269,7 +426,7 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
     ];
 
     // Deal heroes
-    let availableHeroes = shuffle([...STANDARD_HEROES]);
+    let availableHeroes = shuffle([...STANDARD_HEROES], random);
 
     for (let i = 0; i < orderedPlayerIds.length; i++) {
       const id = orderedPlayerIds[i];
@@ -319,7 +476,10 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
       cardsPlayedThisTurn: 0,
       attackOrigin: null,
       dyingPlayer: null,
-      peachResponders: []
+      peachResponders: [],
+      targetsQueue: [],
+      currentAoeName: null,
+      duelTarget: null
     };
   },
 
@@ -368,7 +528,7 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
           },
           next: ({ ctx }) => (parseInt(ctx.currentPlayer) + 1) % ctx.numPlayers,
         },
-        onBegin: ({ G, ctx, events }) => {
+        onBegin: ({ G, ctx, events, random }) => {
           const currentPlayerId = G.players[parseInt(ctx.currentPlayer)];
           if (G.playerStates[currentPlayerId].dead) {
             events.endTurn();
@@ -379,8 +539,58 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
           G.pendingCard = null;
           G.attackOrigin = null;
 
+          // Judgment Phase (MVP)
+          const judgments = [...G.playerStates[currentPlayerId].judgments];
+          let skipPlayPhase = false;
+
+          while (judgments.length > 0) {
+            const jCard = judgments.pop()!; // Resolve last added first
+            // Draw a judgment card
+            let judgmentCard: SanGuoShaCard | undefined;
+            if (G.deck.length > 0) {
+              judgmentCard = G.deck.pop();
+            } else if (G.discardPile.length > 0) {
+              G.deck = shuffle([...G.discardPile], random);
+              G.discardPile = [];
+              judgmentCard = G.deck.pop();
+            }
+
+            if (judgmentCard) {
+              G.discardPile.push(judgmentCard);
+              G.discardPile.push(jCard); // discard the delayed stratagem itself
+              G.playerStates[currentPlayerId].judgments = G.playerStates[currentPlayerId].judgments.filter(c => c.id !== jCard.id);
+
+              if (jCard.name === 'LeBuSiShu') {
+                if (judgmentCard.suit !== 'Hearts') {
+                  skipPlayPhase = true;
+                }
+              } else if (jCard.name === 'ShanDian') {
+                if (judgmentCard.suit === 'Spades' && parseInt(judgmentCard.rank) >= 2 && parseInt(judgmentCard.rank) <= 9) {
+                  // Take 3 damage
+                  G.playerStates[currentPlayerId].hp -= 3;
+                  checkDeath(G, currentPlayerId, events, random);
+                  // If dead, drawing cards etc will just skip or end turn
+                } else {
+                  // Pass to next alive player
+                  const alivePlayers = G.players.filter(p => !G.playerStates[p].dead);
+                  const myIdx = alivePlayers.indexOf(currentPlayerId);
+                  if (myIdx !== -1 && alivePlayers.length > 1) {
+                    const nextId = alivePlayers[(myIdx + 1) % alivePlayers.length];
+                    G.playerStates[nextId].judgments.push(jCard);
+                    G.discardPile.pop(); // Take it back out of discard pile
+                  }
+                }
+              }
+            }
+          }
+
           // Draw Phase
-          drawCards(G, currentPlayerId, 2);
+          if (!G.playerStates[currentPlayerId].dead) {
+             drawCards(G, random, currentPlayerId, 2);
+             if (skipPlayPhase) {
+               events.setActivePlayers({ currentPlayer: 'discard' });
+             }
+          }
         },
         stages: {
           dying: {
@@ -410,13 +620,21 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
                   G.peachResponders = [];
                   G.activeTarget = null;
                   G.attackOrigin = null;
-                  events.endStage(); // End dying stage, back to main turn
+                  if (G.currentAoeName) {
+                    continueAoeOrEndStage(G, events);
+                  } else {
+                    if (G.pendingCard) {
+                      G.discardPile.push(G.pendingCard);
+                      G.pendingCard = null;
+                    }
+                    events.endStage(); // End dying stage, back to main turn
+                  }
                 } else {
                   // Still dying (e.g. was at -1 HP, played one peach, now at 0, need more peaches)
                   // Keep asking the SAME person if they have more peaches, or they can pass
                 }
               },
-              passPeach: ({ G, ctx, events, playerID }) => {
+              passPeach: ({ G, ctx, events, playerID, random }) => {
                 const dyingId = G.dyingPlayer;
                 if (!dyingId) return INVALID_MOVE;
 
@@ -436,11 +654,19 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
                   });
                 } else {
                   // Nobody saved them
-                  processDeath(G, dyingId, events);
+                  processDeath(G, dyingId, events, random);
                   G.dyingPlayer = null;
                   G.activeTarget = null;
                   G.attackOrigin = null;
-                  events.endStage();
+                  if (G.currentAoeName) {
+                    continueAoeOrEndStage(G, events);
+                  } else {
+                    if (G.pendingCard) {
+                      G.discardPile.push(G.pendingCard);
+                      G.pendingCard = null;
+                    }
+                    events.endStage();
+                  }
                 }
               }
             }
@@ -467,19 +693,102 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
                 G.attackOrigin = null;
                 events.endStage(); // Return to attacker's play phase
               },
-              takeDamage: ({ G, ctx, events, playerID }) => {
+              takeDamage: ({ G, ctx, events, playerID, random }) => {
                 const playerId = G.activeTarget!;
                 const moverUuid = G.players[parseInt(playerID)];
                 if (moverUuid !== playerId) return INVALID_MOVE;
 
                 G.playerStates[playerId].hp -= 1;
-                if (G.pendingCard) {
-                  G.discardPile.push(G.pendingCard);
-                  G.pendingCard = null;
-                }
 
-                checkDeath(G, playerId, events);
-                // Note: checkDeath will call events.endStage() if not dying, or set new active players if dying.
+                // Do not discard pending card here yet if it's an AoE
+                checkDeath(G, playerId, events, random);
+                // Note: checkDeath will call events.endStage() or continueAoeOrEndStage() if not dying
+              }
+            }
+          },
+          respondToNanMan: {
+            moves: {
+              playKillForNanMan: ({ G, ctx, events, playerID }, cardIndex: number) => {
+                const playerId = G.activeTarget!;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== playerId) return INVALID_MOVE;
+
+                const card = G.hands[playerId][cardIndex];
+                if (!card || card.name !== 'Kill') return INVALID_MOVE;
+
+                G.hands[playerId].splice(cardIndex, 1);
+                G.discardPile.push(card);
+
+                continueAoeOrEndStage(G, events);
+              },
+              takeDamageForNanMan: ({ G, ctx, events, playerID, random }) => {
+                const playerId = G.activeTarget!;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== playerId) return INVALID_MOVE;
+
+                G.playerStates[playerId].hp -= 1;
+                checkDeath(G, playerId, events, random);
+              }
+            }
+          },
+          respondToWanJian: {
+            moves: {
+              playDodgeForWanJian: ({ G, ctx, events, playerID }, cardIndex: number) => {
+                const playerId = G.activeTarget!;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== playerId) return INVALID_MOVE;
+
+                const card = G.hands[playerId][cardIndex];
+                if (!card || card.name !== 'Dodge') return INVALID_MOVE;
+
+                G.hands[playerId].splice(cardIndex, 1);
+                G.discardPile.push(card);
+
+                continueAoeOrEndStage(G, events);
+              },
+              takeDamageForWanJian: ({ G, ctx, events, playerID, random }) => {
+                const playerId = G.activeTarget!;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== playerId) return INVALID_MOVE;
+
+                G.playerStates[playerId].hp -= 1;
+                checkDeath(G, playerId, events, random);
+              }
+            }
+          },
+          respondToJueDou: {
+            moves: {
+              playKillForJueDou: ({ G, ctx, events, playerID }, cardIndex: number) => {
+                const playerId = G.activeTarget!;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== playerId) return INVALID_MOVE;
+
+                const card = G.hands[playerId][cardIndex];
+                if (!card || card.name !== 'Kill') return INVALID_MOVE;
+
+                G.hands[playerId].splice(cardIndex, 1);
+                G.discardPile.push(card);
+
+                // In JueDou, if they play a Kill, the other person now has to respond
+                const nextTarget = playerId === G.attackOrigin ? G.duelTarget : G.attackOrigin;
+
+                if (!nextTarget) return INVALID_MOVE;
+
+                // We clear the queue and push the new target so continueAoeOrEndStage handles it
+                G.targetsQueue = [nextTarget];
+
+                continueAoeOrEndStage(G, events);
+              },
+              takeDamageForJueDou: ({ G, ctx, events, playerID, random }) => {
+                const playerId = G.activeTarget!;
+                const moverUuid = G.players[parseInt(playerID)];
+                if (moverUuid !== playerId) return INVALID_MOVE;
+
+                G.playerStates[playerId].hp -= 1;
+
+                // JueDou is over when someone takes damage
+                G.targetsQueue = [];
+                checkDeath(G, playerId, events, random);
               }
             }
           },
@@ -516,16 +825,54 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
   },
 
   moves: {
+    equipCard: ({ G, ctx }, cardIndex: number) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.cardType !== 'Equipment') return INVALID_MOVE;
+
+      const playerState = G.playerStates[playerId];
+
+      let oldEquip: SanGuoShaCard | null = null;
+      if (card.subType === 'Weapon') {
+        oldEquip = playerState.equipment.weapon;
+        playerState.equipment.weapon = card;
+      } else if (card.subType === 'Armor') {
+        oldEquip = playerState.equipment.armor;
+        playerState.equipment.armor = card;
+      } else if (card.subType === 'DefensiveHorse') {
+        oldEquip = playerState.equipment.defensiveHorse;
+        playerState.equipment.defensiveHorse = card;
+      } else if (card.subType === 'OffensiveHorse') {
+        oldEquip = playerState.equipment.offensiveHorse;
+        playerState.equipment.offensiveHorse = card;
+      } else {
+        return INVALID_MOVE;
+      }
+
+      G.hands[playerId].splice(cardIndex, 1);
+      if (oldEquip) {
+        G.discardPile.push(oldEquip);
+      }
+    },
     playKill: ({ G, ctx, events }, { cardIndex, targetId }: { cardIndex: number, targetId: string }) => {
       const playerId = G.players[parseInt(ctx.currentPlayer)];
       if (G.activeTarget !== null) return INVALID_MOVE; // Phase lock
-      if (G.cardsPlayedThisTurn >= 1) return INVALID_MOVE;
+      const playerState = G.playerStates[playerId];
+
+      const hasZhuGeLianNu = playerState.equipment.weapon?.name === 'ZhuGeLianNu';
+      if (!hasZhuGeLianNu && G.cardsPlayedThisTurn >= 1) return INVALID_MOVE;
+
       if (G.playerStates[targetId].dead) return INVALID_MOVE;
       if (playerId === targetId) return INVALID_MOVE;
 
       // Check distance for Kill
       const distance = getDistance(G, playerId, targetId);
-      if (distance > 1) return INVALID_MOVE;
+      let attackRange = 1;
+      if (playerState.equipment.weapon && playerState.equipment.weapon.distance) {
+        attackRange = playerState.equipment.weapon.distance;
+      }
+
+      if (distance > attackRange) return INVALID_MOVE;
 
       const card = G.hands[playerId][cardIndex];
       if (!card || card.name !== 'Kill') return INVALID_MOVE;
@@ -557,6 +904,185 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
 
       playerState.hp += 1;
     },
+    playWuZhongShengYou: ({ G, ctx, random }, cardIndex: number) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'WuZhongShengYou') return INVALID_MOVE;
+
+      G.hands[playerId].splice(cardIndex, 1);
+      G.discardPile.push(card);
+
+      drawCards(G, random, playerId, 2);
+    },
+    playTaoYuanJieYi: ({ G, ctx }, cardIndex: number) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'TaoYuanJieYi') return INVALID_MOVE;
+
+      G.hands[playerId].splice(cardIndex, 1);
+      G.discardPile.push(card);
+
+      G.players.forEach(pId => {
+        const state = G.playerStates[pId];
+        if (!state.dead && state.hp < state.maxHp) {
+          state.hp += 1;
+        }
+      });
+    },
+    playDelayStratagem: ({ G, ctx }, { cardIndex, targetId }: { cardIndex: number, targetId: string }) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      if (G.playerStates[targetId].dead) return INVALID_MOVE;
+
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.cardType !== 'DelayedStratagem') return INVALID_MOVE;
+
+      // Cannot place duplicate delayed stratagems of the same name
+      if (G.playerStates[targetId].judgments.some(j => j.name === card.name)) return INVALID_MOVE;
+
+      G.hands[playerId].splice(cardIndex, 1);
+      G.playerStates[targetId].judgments.push(card);
+    },
+    // Implementations for MVP stratagems
+    playWuGuFengDeng: ({ G, ctx, random }, cardIndex: number) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'WuGuFengDeng') return INVALID_MOVE;
+
+      G.hands[playerId].splice(cardIndex, 1);
+      G.discardPile.push(card);
+
+      // MVP implementation: simply draw 1 card for every alive player in order
+      const currentPlayerIdx = G.players.indexOf(playerId);
+      const alivePlayers = G.players.filter(p => !G.playerStates[p].dead);
+      const myAliveIdx = alivePlayers.indexOf(playerId);
+
+      for (let i = 0; i < alivePlayers.length; i++) {
+        const targetId = alivePlayers[(myAliveIdx + i) % alivePlayers.length];
+        drawCards(G, random, targetId, 1);
+      }
+    },
+    playWuXieKeJi: ({ G, ctx }, cardIndex: number) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'WuXieKeJi') return INVALID_MOVE;
+      // MVP Stub
+      G.hands[playerId].splice(cardIndex, 1);
+      G.discardPile.push(card);
+    },
+    playJieDaoShaRen: ({ G, ctx }, { cardIndex, targetId }: { cardIndex: number, targetId: string }) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'JieDaoShaRen') return INVALID_MOVE;
+      // MVP Stub
+      G.hands[playerId].splice(cardIndex, 1);
+      G.discardPile.push(card);
+    },
+    playGuoHeChaiQiao: ({ G, ctx, random }, { cardIndex, targetId }: { cardIndex: number, targetId: string }) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      if (G.playerStates[targetId].dead || playerId === targetId) return INVALID_MOVE;
+
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'GuoHeChaiQiao') return INVALID_MOVE;
+
+      // Ensure target has cards
+      const targetHand = G.hands[targetId];
+      if (targetHand.length === 0) return INVALID_MOVE; // Simplified MVP: only targets hand
+
+      // Discard our card
+      G.hands[playerId].splice(cardIndex, 1);
+      G.discardPile.push(card);
+
+      // Randomly discard from target using deterministic random
+      const randomIndex = (random!.Die(targetHand.length) - 1);
+      const discardedCard = targetHand.splice(randomIndex, 1)[0];
+      G.discardPile.push(discardedCard);
+    },
+    playShunShouQianYang: ({ G, ctx, random }, { cardIndex, targetId }: { cardIndex: number, targetId: string }) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      if (G.playerStates[targetId].dead || playerId === targetId) return INVALID_MOVE;
+      if (getDistance(G, playerId, targetId) > 1) return INVALID_MOVE;
+
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'ShunShouQianYang') return INVALID_MOVE;
+
+      // Ensure target has cards
+      const targetHand = G.hands[targetId];
+      if (targetHand.length === 0) return INVALID_MOVE; // Simplified MVP: only targets hand
+
+      // Discard our card
+      G.hands[playerId].splice(cardIndex, 1);
+      G.discardPile.push(card);
+
+      // Randomly steal from target using deterministic random
+      const randomIndex = (random!.Die(targetHand.length) - 1);
+      const stolenCard = targetHand.splice(randomIndex, 1)[0];
+      G.hands[playerId].push(stolenCard);
+    },
+    playNanManRuQin: ({ G, ctx, events }, cardIndex: number) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'NanManRuQin') return INVALID_MOVE;
+
+      G.hands[playerId].splice(cardIndex, 1);
+      G.pendingCard = card;
+      G.attackOrigin = playerId;
+      G.currentAoeName = 'NanManRuQin';
+
+      // Start targeting from next player
+      const currentPlayerIdx = G.players.indexOf(playerId);
+      const alivePlayers = G.players.filter(p => !G.playerStates[p].dead);
+      const myAliveIdx = alivePlayers.indexOf(playerId);
+
+      const targets = [];
+      for (let i = 1; i < alivePlayers.length; i++) {
+        targets.push(alivePlayers[(myAliveIdx + i) % alivePlayers.length]);
+      }
+      G.targetsQueue = targets;
+
+      continueAoeOrEndStage(G, events);
+    },
+    playWanJianQiFa: ({ G, ctx, events }, cardIndex: number) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'WanJianQiFa') return INVALID_MOVE;
+
+      G.hands[playerId].splice(cardIndex, 1);
+      G.pendingCard = card;
+      G.attackOrigin = playerId;
+      G.currentAoeName = 'WanJianQiFa';
+
+      const alivePlayers = G.players.filter(p => !G.playerStates[p].dead);
+      const myAliveIdx = alivePlayers.indexOf(playerId);
+
+      const targets = [];
+      for (let i = 1; i < alivePlayers.length; i++) {
+        targets.push(alivePlayers[(myAliveIdx + i) % alivePlayers.length]);
+      }
+      G.targetsQueue = targets;
+
+      continueAoeOrEndStage(G, events);
+    },
+    playJueDou: ({ G, ctx, events }, { cardIndex, targetId }: { cardIndex: number, targetId: string }) => {
+      const playerId = G.players[parseInt(ctx.currentPlayer)];
+      if (G.playerStates[targetId].dead || playerId === targetId) return INVALID_MOVE;
+
+      const card = G.hands[playerId][cardIndex];
+      if (!card || card.name !== 'JueDou') return INVALID_MOVE;
+
+      G.hands[playerId].splice(cardIndex, 1);
+      G.pendingCard = card;
+      G.attackOrigin = playerId;
+      G.currentAoeName = 'JueDou';
+
+      // Store who the duel is directed towards right now
+      G.duelTarget = targetId;
+
+      // Queue is just the target initially. They need to respond.
+      // If they play Kill, they will push the attacker to the queue.
+      G.targetsQueue = [targetId];
+
+      continueAoeOrEndStage(G, events);
+    },
     endPlayPhase: ({ G, ctx, events }) => {
       if (G.activeTarget !== null) return INVALID_MOVE; // Phase lock
       const playerId = G.players[parseInt(ctx.currentPlayer)];
@@ -569,15 +1095,12 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
         events.endTurn();
       }
     },
-    leaveGame: ({ G, ctx, events }, playerId: string) => {
+    leaveGame: ({ G, ctx, events, random }, playerId: string) => {
       if (!G.exitedPlayers.includes(playerId)) {
         G.exitedPlayers.push(playerId);
         if (!G.playerStates[playerId].dead) {
-          G.playerStates[playerId].dead = true;
           G.playerStates[playerId].hp = 0;
-          G.discardPile.push(...G.hands[playerId]);
-          G.hands[playerId] = [];
-          checkGameOver(G, events);
+          processDeath(G, playerId, events, random); // Need random here too if they die and give rewards
         }
       }
     }
@@ -621,8 +1144,11 @@ export const SanGuoShaGame = (playerIds: string[]): Game<SanGuoShaState> => ({
             isActiveStage = true;
           }
 
+          const playerState = G.playerStates[pId];
+          const hasZhuGeLianNu = playerState?.equipment?.weapon?.name === 'ZhuGeLianNu';
+
           safeG.hands[pId] = handArray.map(c => {
-            if (!isActiveStage && c.name === 'Kill' && G.cardsPlayedThisTurn >= 1) {
+            if (!isActiveStage && c.name === 'Kill' && G.cardsPlayedThisTurn >= 1 && !hasZhuGeLianNu) {
               return { ...c, locked: true };
             }
             return c;
