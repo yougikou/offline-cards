@@ -25,9 +25,6 @@ export const SanGuoShaCardContent: React.FC<SanGuoShaCardProps> = ({ card }) => 
          <Text style={{ color: sgTextColor, fontSize: 20, fontWeight: 'bold', userSelect: 'none' as any }}>
            {t('game.sgs_card_' + card.name, { defaultValue: card.name })}
          </Text>
-         <Text style={{ color: '#757575', fontSize: 10, userSelect: 'none' as any, marginTop: 4 }}>
-           {t('game.sgs_card_' + card.name, { defaultValue: card.name })}
-         </Text>
       </View>
     </View>
   );
