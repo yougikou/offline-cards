@@ -179,9 +179,9 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
 
 const styles = StyleSheet.create({
   fab: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 25,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
   fabText: {
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
     userSelect: 'none' as any,
   },

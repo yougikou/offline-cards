@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
   tableArea: {
     position: 'absolute',
     top: 0,
-    bottom: 220,
+    bottom: 240,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -877,7 +877,7 @@ const styles = StyleSheet.create({
   },
   controlsArea: {
     position: 'absolute',
-    bottom: 200,
+    bottom: 180,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -943,10 +943,10 @@ const styles = StyleSheet.create({
     userSelect: 'none' as any,
   },
   turnBadge: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginBottom: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginBottom: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   turnBadgeText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     userSelect: 'none' as any,
   },
