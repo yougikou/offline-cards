@@ -1,0 +1,16 @@
+1. Modify `src/components/GameBoard.tsx`:
+   - Identify when the user is in "targeting mode" (a card that requires a target is selected, like Kill). We can probably hoist or expose the `isTargetingMode`, `selectedTargetId`, `setSelectedTargetId` logic that is currently isolated inside `SanGuoShaControls.tsx`. Wait, actually, we need a way to communicate the target selection between the opponent badges on the `GameBoard` and the `SanGuoShaControls`.
+   - Add `onPress` to the `opponentCard` `Animated.View` (make it a `TouchableOpacity` or wrap it).
+   - If in `isTargetingMode`, clicking an opponent should set `selectedTargetId`.
+   - Add visual feedback to the opponent badge when it is a valid target vs invalid target (e.g., out of range), and when it is currently selected.
+
+2. Modify `src/components/sanguosha/SanGuoShaControls.tsx`:
+   - Remove the separate floating `targetSelectionContainer` UI overlay completely.
+   - Accept `selectedTargetId` and `setSelectedTargetId` as props from the parent `GameBoard` so that `GameBoard` can control targeting by tapping opponent badges.
+   - We might need to handle self-targeting for `ShanDian`. Or we can just render the self badge in `GameBoard`? Oh, `GameBoard` only renders `opponents`. For `ShanDian` (Lightning), it targets self? Wait, the rule says "Usually cannot target self for most cards, except ShanDian... wait, LeBuSiShu cannot target self."
+   Let's check the code:
+   `if (pId === myPlayerId && myHand[selectedCards[0]]?.name !== 'ShanDian') return null;`
+   Ah, `ShanDian` targets self, but `SanGuoShaControls` showed self in the target list only for `ShanDian`. If we move targeting to the board, how to target self? We can make the `turnBadge` or `SanGuoShaTable` tappable, but `ShanDian` usually is played on oneself automatically, or target selection for `ShanDian` could be simplified to just automatically target self without selection. Let's check `playDelayStratagem`. It requires `targetId`. If `ShanDian` targets self, we should just let the user tap their own avatar, or auto-fill. Actually, `ShanDian` is placed in one's own judgment area.
+   But let's stick to making the `GameBoard` opponent cards selectable for the majority of targetings (`Kill`, `GuoHeChaiQiao`, `ShunShouQianYang`, `JueDou`, `JieDaoShaRen`, `LeBuSiShu`). None of these target self. `ShanDian` targets self, but wait, if it targets self, there's no opponent to click. We'll need to handle self targeting.
+
+Let's refactor the target selection state to `GameBoard.tsx` and pass it down.

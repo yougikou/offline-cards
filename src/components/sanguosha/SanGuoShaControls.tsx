@@ -14,6 +14,9 @@ interface SanGuoShaControlsProps {
   opponents: string[];
   onAction: (action: string, args?: any) => void;
   setSelectedCards: (cards: number[]) => void;
+  isTargetingMode: boolean;
+  selectedTargetId: string | null;
+  setSelectedTargetId: (id: string | null) => void;
 }
 
 export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
@@ -26,97 +29,21 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
   myHand,
   opponents,
   onAction,
-  setSelectedCards
+  setSelectedCards,
+  isTargetingMode,
+  selectedTargetId,
+  setSelectedTargetId
 }) => {
   const { t } = useTranslation();
-  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
-
-  // Clear target when selection changes or turn ends
-  useEffect(() => {
-    setSelectedTargetId(null);
-  }, [selectedCards, isMyTurn]);
 
   const myPlayerIndex = (G.players || []).indexOf(myPlayerId).toString();
   const myActiveStage = ctx.activePlayers ? ctx.activePlayers[myPlayerIndex] : undefined;
-
-  // Determine if we are in targeting mode
-  const needsTarget = (cardName: string) => {
-    return ['Kill', 'GuoHeChaiQiao', 'ShunShouQianYang', 'JueDou', 'JieDaoShaRen', 'LeBuSiShu', 'ShanDian'].includes(cardName);
-  };
-
-  let isTargetingMode = false;
-  if (selectedCards.length > 0) {
-    const cardIndex = selectedCards[0];
-    const card = myHand[cardIndex];
-    if (card && needsTarget(card.name) && !myActiveStage) {
-      isTargetingMode = true;
-    }
-  }
 
   // If waiting for response
   const isWaitingForResponse = G.activeTarget !== null;
 
   return (
     <>
-      {isTargetingMode && (
-        <View style={styles.targetSelectionContainer}>
-          <Text style={styles.targetSelectionTitle}>{t('game.sgs_selectTarget')}</Text>
-          <View style={styles.targetList}>
-            {G.players.map((pId: string) => {
-              if (pId === myPlayerId && myHand[selectedCards[0]]?.name !== 'ShanDian') {
-                // Usually cannot target self for most cards, except ShanDian
-                // LeBuSiShu cannot target self
-                return null;
-              }
-              const oppState = G.playerStates?.[pId];
-              if (!oppState || oppState.dead) return null;
-              const pIndex = (G.players || []).indexOf(pId) + 1;
-              const isSelected = selectedTargetId === pId;
-              const distance = getDistance(G, myPlayerId, pId);
-              const card = myHand[selectedCards[0]];
-
-              let outOfRange = false;
-              if (card) {
-                // Kill distance limitation
-                if (card.name === 'Kill' && distance > 1) {
-                   // Check weapon distance
-                   let attackRange = 1;
-                   const weapon = G.playerStates[myPlayerId]?.equipment?.weapon;
-                   if (weapon && weapon.distance) {
-                     attackRange = weapon.distance;
-                   }
-                   if (distance > attackRange) {
-                      outOfRange = true;
-                   }
-                }
-                // ShunShouQianYang distance limitation
-                if (card.name === 'ShunShouQianYang' && distance > 1) {
-                  outOfRange = true;
-                }
-              }
-
-              return (
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  key={pId}
-                  style={[styles.targetButton, isSelected && styles.targetButtonSelected, outOfRange && { opacity: 0.4, backgroundColor: 'gray' }]}
-                  onPress={() => {
-                    if (!outOfRange) {
-                      setSelectedTargetId(pId);
-                    }
-                  }}
-                  disabled={outOfRange}
-                >
-                  {outOfRange && <Text style={{position: 'absolute', top: -5, right: -5, fontSize: 10, backgroundColor: 'red', color: 'white', padding: 2, borderRadius: 5, zIndex: 10, overflow: 'hidden'}}>Dist &gt; 1</Text>}
-                  <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>P{pIndex}</Text>
-                  <Text style={{ color: '#FFEB3B', fontWeight: 'bold', fontSize: 12, marginTop: 4 }}>HP: {oppState.hp}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
       {isWaitingForResponse && !myActiveStage && (
         <View style={styles.waitingContainer}>
            <Text style={styles.waitingText}>{t('game.waitingForOpponent')}</Text>
