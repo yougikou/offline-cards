@@ -40,11 +40,15 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
   const myActiveStage = ctx.activePlayers ? ctx.activePlayers[myPlayerIndex] : undefined;
 
   // Determine if we are in targeting mode
+  const needsTarget = (cardName: string) => {
+    return ['Kill', 'GuoHeChaiQiao', 'ShunShouQianYang', 'JueDou', 'JieDaoShaRen', 'LeBuSiShu', 'ShanDian'].includes(cardName);
+  };
+
   let isTargetingMode = false;
   if (selectedCards.length > 0) {
     const cardIndex = selectedCards[0];
     const card = myHand[cardIndex];
-    if (card && card.name === 'Kill' && !myActiveStage) {
+    if (card && needsTarget(card.name) && !myActiveStage) {
       isTargetingMode = true;
     }
   }
@@ -58,18 +62,35 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
         <View style={styles.targetSelectionContainer}>
           <Text style={styles.targetSelectionTitle}>{t('game.sgs_selectTarget')}</Text>
           <View style={styles.targetList}>
-            {opponents.map((oppId: string) => {
-              const oppState = G.playerStates?.[oppId];
+            {G.players.map((pId: string) => {
+              if (pId === myPlayerId && myHand[selectedCards[0]]?.name !== 'ShanDian') {
+                // Usually cannot target self for most cards, except ShanDian
+                // LeBuSiShu cannot target self
+                return null;
+              }
+              const oppState = G.playerStates?.[pId];
               if (!oppState || oppState.dead) return null;
-              const pIndex = (G.players || []).indexOf(oppId) + 1;
-              const isSelected = selectedTargetId === oppId;
-              const distance = getDistance(G, myPlayerId, oppId);
+              const pIndex = (G.players || []).indexOf(pId) + 1;
+              const isSelected = selectedTargetId === pId;
+              const distance = getDistance(G, myPlayerId, pId);
               const card = myHand[selectedCards[0]];
 
-              // Only limit distance for Kill
               let outOfRange = false;
-              if (card && card.name === 'Kill') {
-                if (distance > 1) {
+              if (card) {
+                // Kill distance limitation
+                if (card.name === 'Kill' && distance > 1) {
+                   // Check weapon distance
+                   let attackRange = 1;
+                   const weapon = G.playerStates[myPlayerId]?.equipment?.weapon;
+                   if (weapon && weapon.distance) {
+                     attackRange = weapon.distance;
+                   }
+                   if (distance > attackRange) {
+                      outOfRange = true;
+                   }
+                }
+                // ShunShouQianYang distance limitation
+                if (card.name === 'ShunShouQianYang' && distance > 1) {
                   outOfRange = true;
                 }
               }
@@ -77,11 +98,11 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
               return (
                 <TouchableOpacity
                   accessibilityRole="button"
-                  key={oppId}
+                  key={pId}
                   style={[styles.targetButton, isSelected && styles.targetButtonSelected, outOfRange && { opacity: 0.4, backgroundColor: 'gray' }]}
                   onPress={() => {
                     if (!outOfRange) {
-                      setSelectedTargetId(oppId);
+                      setSelectedTargetId(pId);
                     }
                   }}
                   disabled={outOfRange}
@@ -127,6 +148,30 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
             <Text style={styles.fabText}>{t('game.sgs_action_endPlayPhase')}</Text>
           </TouchableOpacity>
         )}
+        {myActiveStage === 'respondToNanMan' && (
+          <TouchableOpacity accessibilityRole="button"
+            style={[styles.fab, { backgroundColor: '#F44336', marginRight: 10 }]}
+            onPress={() => onAction('takeDamageForNanMan')}
+          >
+            <Text style={styles.fabText}>{t('game.sgs_action_takeDamage', 'Take Damage')}</Text>
+          </TouchableOpacity>
+        )}
+        {myActiveStage === 'respondToWanJian' && (
+          <TouchableOpacity accessibilityRole="button"
+            style={[styles.fab, { backgroundColor: '#F44336', marginRight: 10 }]}
+            onPress={() => onAction('takeDamageForWanJian')}
+          >
+            <Text style={styles.fabText}>{t('game.sgs_action_takeDamage', 'Take Damage')}</Text>
+          </TouchableOpacity>
+        )}
+        {myActiveStage === 'respondToJueDou' && (
+          <TouchableOpacity accessibilityRole="button"
+            style={[styles.fab, { backgroundColor: '#F44336', marginRight: 10 }]}
+            onPress={() => onAction('takeDamageForJueDou')}
+          >
+            <Text style={styles.fabText}>{t('game.sgs_action_takeDamage', 'Take Damage')}</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity accessibilityRole="button"
           style={[
             styles.fab,
@@ -142,11 +187,41 @@ export const SanGuoShaControls: React.FC<SanGuoShaControlsProps> = ({
                    if (card.name === 'Dodge') onAction('playDodge', cardIndex);
                 } else if (myActiveStage === 'dying') {
                    if (card.name === 'Peach') onAction('playPeachOnDying', cardIndex);
+                } else if (myActiveStage === 'respondToNanMan') {
+                   if (card.name === 'Kill') onAction('playKillForNanMan', cardIndex);
+                } else if (myActiveStage === 'respondToWanJian') {
+                   if (card.name === 'Dodge') onAction('playDodgeForWanJian', cardIndex);
+                } else if (myActiveStage === 'respondToJueDou') {
+                   if (card.name === 'Kill') onAction('playKillForJueDou', cardIndex);
                 } else {
-                   if (card.name === 'Kill' && selectedTargetId) {
+                   if (card.cardType === 'Equipment') {
+                      onAction('equipCard', cardIndex);
+                   } else if (card.name === 'Kill' && selectedTargetId) {
                       onAction('playKill', { cardIndex, targetId: selectedTargetId });
                    } else if (card.name === 'Peach') {
                       onAction('playPeach', cardIndex);
+                   } else if (card.name === 'WuZhongShengYou') {
+                      onAction('playWuZhongShengYou', cardIndex);
+                   } else if (card.name === 'GuoHeChaiQiao' && selectedTargetId) {
+                      onAction('playGuoHeChaiQiao', { cardIndex, targetId: selectedTargetId, targetZone: 'hand', targetCardIndex: 0 }); // MVP random discard
+                   } else if (card.name === 'ShunShouQianYang' && selectedTargetId) {
+                      onAction('playShunShouQianYang', { cardIndex, targetId: selectedTargetId });
+                   } else if (card.name === 'TaoYuanJieYi') {
+                      onAction('playTaoYuanJieYi', cardIndex);
+                   } else if (card.name === 'NanManRuQin') {
+                      onAction('playNanManRuQin', cardIndex);
+                   } else if (card.name === 'WanJianQiFa') {
+                      onAction('playWanJianQiFa', cardIndex);
+                   } else if (card.name === 'JueDou' && selectedTargetId) {
+                      onAction('playJueDou', { cardIndex, targetId: selectedTargetId });
+                   } else if (card.name === 'WuGuFengDeng') {
+                      onAction('playWuGuFengDeng', cardIndex);
+                   } else if (card.name === 'WuXieKeJi') {
+                      onAction('playWuXieKeJi', cardIndex);
+                   } else if (card.name === 'JieDaoShaRen' && selectedTargetId) {
+                      onAction('playJieDaoShaRen', { cardIndex, targetId: selectedTargetId });
+                   } else if (card.cardType === 'DelayedStratagem' && selectedTargetId) {
+                      onAction('playDelayStratagem', { cardIndex, targetId: selectedTargetId });
                    } else if (myActiveStage === 'discard') {
                       onAction('discardCards', [cardIndex]);
                    }
