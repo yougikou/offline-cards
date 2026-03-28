@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { GameMode } from '../../../App';
 
@@ -13,6 +13,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
   setSelectedGameMode,
 }) => {
   const { t } = useTranslation();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const games = useMemo(() => [
     {
@@ -36,11 +37,56 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
     { id: 'DouDiZhu', name: '斗地主 / Dou Di Zhu', tags: ['3P', 'Classic'], available: false, icon: '👨‍🌾' },
   ], [t]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') return;
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const availableGames = games.filter(g => g.available);
+        const currentIndex = availableGames.findIndex(g => g.id === selectedGameMode);
+        if (currentIndex === -1) return;
+
+        let newIndex = currentIndex;
+        if (e.key === 'ArrowLeft') {
+          newIndex = currentIndex > 0 ? currentIndex - 1 : availableGames.length - 1;
+        } else if (e.key === 'ArrowRight') {
+          newIndex = currentIndex < availableGames.length - 1 ? currentIndex + 1 : 0;
+        }
+
+        setSelectedGameMode(availableGames[newIndex].id as GameMode);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [games, selectedGameMode, setSelectedGameMode]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !scrollViewRef.current) return;
+
+    const node = (scrollViewRef.current as any).getScrollableNode();
+    if (!node) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // If the scroll is mostly vertical, translate to horizontal
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        node.scrollLeft += e.deltaY;
+      }
+    };
+
+    node.addEventListener('wheel', handleWheel, { passive: false });
+    return () => node.removeEventListener('wheel', handleWheel);
+  }, []);
+
   return (
     <View style={styles.librarySection}>
       <Text style={styles.sectionTitle}>{t('lobby.selectGame', 'Game Library')}</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={styles.gameCarousel}>
+      <ScrollView ref={scrollViewRef} horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={styles.gameCarousel}>
         {games.map(game => (
           <TouchableOpacity
             key={game.id}
