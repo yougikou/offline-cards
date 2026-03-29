@@ -150,6 +150,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   const myHand = G.hands && G.hands[myPlayerId] ? G.hands[myPlayerId] : [];
 
+  const handLayout = gameName === 'SanGuoSha' ? 'flat' : 'overlap';
+
   // UnoLite props
   const discardPile = G.discardPile || [];
   const deckCount = G.deckCount ?? (G.deck ? G.deck.length : 0);
@@ -886,7 +888,12 @@ const GameBoard: React.FC<GameBoardProps> = ({
         )}
         {(() => {
           const paddingHorizontal = 20;
-          const estimatedContentWidth = myHand.length > 0 ? 70 + (myHand.length - 1) * 35 + 40 + paddingHorizontal * 2 : 0;
+          const cardWidth = 70; // approx width used for estimation
+          const overlapMargin = -35;
+          const flatMargin = 5;
+          const actualMargin = handLayout === 'flat' ? flatMargin : overlapMargin;
+
+          const estimatedContentWidth = myHand.length > 0 ? cardWidth + (myHand.length - 1) * (cardWidth + actualMargin) + 40 + paddingHorizontal * 2 : 0;
           const isCentered = estimatedContentWidth < layoutWidth;
 
           return (
@@ -915,7 +922,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   }}
                   onLayout={(e) => { contentWidthRef.current = e.nativeEvent.layout.width; }}
                 >
-                  {myHand.map((card: any, index: number) => renderCard(card, myPlayerId, index, false, index > 0 ? -35 : 0))}
+                  {myHand.map((card: any, index: number) => renderCard(card, myPlayerId, index, false, index > 0 ? actualMargin : 0))}
                   <View style={{ width: 40 }} />
                 </Animated.View>
               </View>
