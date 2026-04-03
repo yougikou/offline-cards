@@ -31,7 +31,7 @@ const HomeActions: React.FC<HomeActionsProps> = ({
       <View style={styles.sectionDivider} />
 
       {/* Primary Action: Host Room */}
-      <TouchableOpacity accessibilityRole="button" style={styles.joinGlobalButton} onPress={() => handleHost(false)}>
+      <TouchableOpacity accessibilityRole="button" style={[styles.joinGlobalButton, { outlineStyle: 'none' } as any]} onPress={() => handleHost(false)}>
         <View style={styles.joinGlobalIconContainer}>
           <Text style={styles.joinGlobalIcon}>🌐</Text>
         </View>
@@ -46,7 +46,7 @@ const HomeActions: React.FC<HomeActionsProps> = ({
       {/* Secondary Action Modes (Join / Sandbox) */}
       <View style={{ marginTop: 15, gap: 10 }}>
         {/* Secondary Action: Join Room */}
-        <TouchableOpacity accessibilityRole="button" style={styles.joinSecondaryButton} onPress={() => handleGuest(false)}>
+        <TouchableOpacity accessibilityRole="button" style={[styles.joinSecondaryButton, { outlineStyle: 'none' } as any]} onPress={() => handleGuest(false)}>
           <View style={styles.joinSecondaryIconContainer}>
             <Text style={styles.joinSecondaryIcon}>📡</Text>
           </View>
@@ -58,7 +58,7 @@ const HomeActions: React.FC<HomeActionsProps> = ({
 
         {/* Tertiary Action: Sandbox */}
         <View style={styles.sandboxUtilityRow}>
-          <TouchableOpacity accessibilityRole="button" style={styles.sandboxUtilityButton} onPress={() => {
+          <TouchableOpacity accessibilityRole="button" style={[styles.sandboxUtilityButton, { outlineStyle: 'none' } as any]} onPress={() => {
             setAppState('SANDBOX');
             setPlayerId('player_1');
             const players = Array.from({ length: sandboxPlayerCount }, (_, i) => `player_${i + 1}`);
@@ -68,9 +68,9 @@ const HomeActions: React.FC<HomeActionsProps> = ({
             <Text style={styles.sandboxUtilityText}>{t('lobby.sandboxTesting', 'Practice Locally')}</Text>
           </TouchableOpacity>
           <View style={styles.compactPlayerCount}>
-            <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} style={styles.compactCountBtn}><Text style={styles.compactCountBtnText}>-</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.max(1, sandboxPlayerCount - 1))} style={[styles.compactCountBtn, { outlineStyle: 'none' } as any]}><Text style={styles.compactCountBtnText}>-</Text></TouchableOpacity>
             <Text style={styles.compactCountText}>{sandboxPlayerCount}P</Text>
-            <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} style={styles.compactCountBtn}><Text style={styles.compactCountBtnText}>+</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => setSandboxPlayerCount(Math.min(8, sandboxPlayerCount + 1))} style={[styles.compactCountBtn, { outlineStyle: 'none' } as any]}><Text style={styles.compactCountBtnText}>+</Text></TouchableOpacity>
           </View>
         </View>
       </View>
@@ -82,13 +82,13 @@ const styles = StyleSheet.create({
   sectionDivider: {
     height: 1,
     backgroundColor: '#E0E0E0',
-    marginVertical: 15,
+    marginVertical: 10,
   },
   joinGlobalButton: {
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 15,
+    padding: 12,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

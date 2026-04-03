@@ -86,7 +86,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
     <View style={styles.librarySection}>
       <Text style={styles.sectionTitle}>{t('lobby.selectGame', 'Game Library')}</Text>
 
-      <ScrollView ref={scrollViewRef} horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={styles.gameCarousel}>
+      <View style={styles.gameCarousel}>
         {games.map(game => (
           <TouchableOpacity
             key={game.id}
@@ -94,7 +94,8 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
             style={[
               styles.gameCard,
               selectedGameMode === game.id && styles.gameCardSelected,
-              !game.available && styles.gameCardDisabled
+              !game.available && styles.gameCardDisabled,
+              { outlineStyle: 'none' } as any
             ]}
             onPress={() => game.available && setSelectedGameMode(game.id as any)}
             disabled={!game.available}
@@ -119,7 +120,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
             )}
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -136,21 +137,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   gameCarousel: {
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    gap: 15,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    paddingBottom: 5,
   },
   gameCard: {
-    width: 120,
-    height: 140,
+    width: 100,
+    height: 110,
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 10,
+    padding: 5,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#eee',
-    marginRight: 15,
   },
   gameCardSelected: {
     borderColor: '#333',
@@ -166,15 +168,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
   gameCardIcon: {
-    fontSize: 30,
-    marginBottom: 10,
+    fontSize: 24,
+    marginBottom: 5,
   },
   gameCardTitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 5,
   },
   gameCardTitleSelected: {
     color: '#333',

@@ -275,7 +275,7 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
         }
       ]}
     >
-      <TouchableOpacity activeOpacity={0.8} accessibilityRole="button" onPress={() => onPress(index)} disabled={isLocked}>
+      <TouchableOpacity activeOpacity={0.8} accessibilityRole="button" onPress={() => onPress(index)} disabled={isLocked} style={{ outlineStyle: 'none' } as any}>
         <Animated.View style={{
           transform: [
             { translateY: selectAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -8] }) }

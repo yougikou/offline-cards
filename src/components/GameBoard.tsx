@@ -392,7 +392,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         <SanGuoShaHeroSelection G={G} ctx={ctx} myPlayerId={myPlayerId} onAction={onAction} />
       )}
 
-      <TouchableOpacity accessibilityRole="button" style={{ position: 'absolute', top: 20, right: 20, zIndex: 100 }} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity accessibilityRole="button" style={[{ position: 'absolute', top: 20, right: 20, zIndex: 100 }, { outlineStyle: 'none' } as any]} onPress={() => setModalVisible(true)}>
         <Text style={{ fontSize: 24, color: 'white' }}>⚙️</Text>
       </TouchableOpacity>
 
@@ -415,7 +415,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
               return (
                 <TouchableOpacity accessibilityRole="button"
                   key={color}
-                  style={[styles.colorPickerButton, { backgroundColor: bg }]}
+                  style={[styles.colorPickerButton, { backgroundColor: bg }, { outlineStyle: 'none' } as any]}
                   onPress={() => handleColorSelection(color as any)}
                 />
               );
@@ -444,7 +444,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <TouchableOpacity
                   accessibilityRole="button"
-                  style={[styles.gameOverModeButton, selectedGameMode === 'UnoLite' && styles.gameOverModeButtonSelected]}
+                  style={[styles.gameOverModeButton, selectedGameMode === 'UnoLite' && styles.gameOverModeButtonSelected, { outlineStyle: 'none' } as any]}
                   onPress={() => onGameModeChange?.('UnoLite')}
                 >
                   <Text style={[styles.gameOverModeButtonText, selectedGameMode === 'UnoLite' && styles.gameOverModeButtonTextSelected]}>
@@ -453,7 +453,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityRole="button"
-                  style={[styles.gameOverModeButton, selectedGameMode === 'ZhengShangYou' && styles.gameOverModeButtonSelected]}
+                  style={[styles.gameOverModeButton, selectedGameMode === 'ZhengShangYou' && styles.gameOverModeButtonSelected, { outlineStyle: 'none' } as any]}
                   onPress={() => onGameModeChange?.('ZhengShangYou')}
                 >
                   <Text style={[styles.gameOverModeButtonText, selectedGameMode === 'ZhengShangYou' && styles.gameOverModeButtonTextSelected]}>
@@ -462,7 +462,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityRole="button"
-                  style={[styles.gameOverModeButton, selectedGameMode === 'SanGuoSha' && styles.gameOverModeButtonSelected]}
+                  style={[styles.gameOverModeButton, selectedGameMode === 'SanGuoSha' && styles.gameOverModeButtonSelected, { outlineStyle: 'none' } as any]}
                   onPress={() => onGameModeChange?.('SanGuoSha')}
                 >
                   <Text style={[styles.gameOverModeButtonText, selectedGameMode === 'SanGuoSha' && styles.gameOverModeButtonTextSelected]}>
@@ -471,7 +471,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityRole="button"
-                  style={[styles.gameOverModeButton, selectedGameMode === 'JiangsuTaopai' && styles.gameOverModeButtonSelected]}
+                  style={[styles.gameOverModeButton, selectedGameMode === 'JiangsuTaopai' && styles.gameOverModeButtonSelected, { outlineStyle: 'none' } as any]}
                   onPress={() => onGameModeChange?.('JiangsuTaopai')}
                 >
                   <Text style={[styles.gameOverModeButtonText, selectedGameMode === 'JiangsuTaopai' && styles.gameOverModeButtonTextSelected]}>
@@ -588,7 +588,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           ]}>
             {isTargetingMode && (
               <TouchableOpacity
-                style={StyleSheet.absoluteFill}
+                style={[StyleSheet.absoluteFill, { outlineStyle: 'none' } as any]}
                 disabled={isOutOfRange || (sgsState && sgsState.dead)}
                 onPress={() => {
                   setSelectedTargetId(opponentId);
@@ -726,40 +726,17 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {showTutorial && isMyTurn && !gameOver && (
           <View style={styles.tutorialBanner}>
             <Text style={styles.tutorialText}>{t('game.tutorialHint')}</Text>
-            <TouchableOpacity accessibilityRole="button" style={styles.tutorialDismissBtn} onPress={dismissTutorial}>
+            <TouchableOpacity accessibilityRole="button" style={[styles.tutorialDismissBtn, { outlineStyle: 'none' } as any]} onPress={dismissTutorial}>
               <Text style={styles.tutorialDismissText}>{t('game.dismiss')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {selectedCards.length > 0 && (
+        {selectedCards.length > 0 && gameName === 'SanGuoSha' && selectedCards.length === 1 && myHand[selectedCards[0]] && (
           <View style={styles.selectedSummaryContainer}>
-            {gameName === 'SanGuoSha' && selectedCards.length === 1 && myHand[selectedCards[0]] && (
-              <Text style={{ color: '#E0E0E0', fontSize: 12, marginBottom: 5, textAlign: 'center' }}>
-                {t('game.sgs_desc_' + myHand[selectedCards[0]].name, { defaultValue: '' })}
-              </Text>
-            )}
-            {[...selectedCards].sort((a, b) => a - b).map(idx => {
-              const c = myHand[idx];
-              if (!c) return null;
-              if (gameName === 'UnoLite') {
-                 const cardColor = c.color ? c.color.toLowerCase() : 'gray';
-                 return (
-                   <View key={`sel-${idx}`} style={[styles.miniCard, { backgroundColor: cardColor }]}>
-                     <Text style={[styles.miniCardText, { color: 'white' }]}>{c.value}</Text>
-                   </View>
-                 );
-              } else {
-                 const textColor = c.suit === 'Hearts' || c.suit === 'Diamonds' || c.rank === 'Red Joker' ? 'red' : 'black';
-                 const suitIcon = c.suit === 'Hearts' ? '♥' : c.suit === 'Diamonds' ? '♦' : c.suit === 'Clubs' ? '♣' : c.suit === 'Spades' ? '♠' : '';
-                 return (
-                   <View key={`sel-${idx}`} style={[styles.miniCard, { backgroundColor: 'white' }]}>
-                     <Text style={[styles.miniCardText, { color: textColor }]}>{c.rank}</Text>
-                     {suitIcon ? <Text style={[styles.miniCardSuit, { color: textColor }]}>{suitIcon}</Text> : null}
-                   </View>
-                 );
-              }
-            })}
+            <Text style={{ color: '#E0E0E0', fontSize: 12, textAlign: 'center' }}>
+              {t('game.sgs_desc_' + myHand[selectedCards[0]].name, { defaultValue: '' })}
+            </Text>
           </View>
         )}
 
@@ -795,7 +772,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           ) : gameName === 'UnoLite' ? (
             <>
               <TouchableOpacity accessibilityRole="button"
-                style={[styles.fab, (!isMyTurn || gameOver) ? styles.fabDisabled : { backgroundColor: '#2196F3' }]}
+                style={[styles.fab, (!isMyTurn || gameOver) ? styles.fabDisabled : { backgroundColor: '#2196F3' }, { outlineStyle: 'none' } as any]}
                 onPress={() => onAction('drawAndPass')}
                 disabled={!isMyTurn || gameOver}
               >
@@ -805,7 +782,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 style={[
                   styles.fab,
                   (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 },
-                  (isMyTurn && !gameOver && selectedCards.length > 0) ? styles.fabActiveGlow : null
+                  (isMyTurn && !gameOver && selectedCards.length > 0) ? styles.fabActiveGlow : null,
+                  { outlineStyle: 'none' } as any
                 ]}
                 onPress={() => {
                   if (selectedCards.length > 0) {
@@ -828,7 +806,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           ) : (
             <>
               <TouchableOpacity accessibilityRole="button"
-                style={[styles.fab, (!isMyTurn || gameOver || currentTrick.length === 0) ? styles.fabDisabled : { backgroundColor: '#9E9E9E' }]}
+                style={[styles.fab, (!isMyTurn || gameOver || currentTrick.length === 0) ? styles.fabDisabled : { backgroundColor: '#9E9E9E' }, { outlineStyle: 'none' } as any]}
                 onPress={() => {
                   onAction('pass');
                   setSelectedCards([]);
@@ -842,7 +820,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 style={[
                   styles.fab,
                   (!isMyTurn || gameOver || selectedCards.length === 0) ? styles.fabDisabled : { backgroundColor: '#4CAF50', marginLeft: 10 },
-                  (isMyTurn && !gameOver && selectedCards.length > 0) ? styles.fabActiveGlow : null
+                  (isMyTurn && !gameOver && selectedCards.length > 0) ? styles.fabActiveGlow : null,
+                  { outlineStyle: 'none' } as any
                 ]}
                 onPress={() => {
                   if (selectedCards.length > 0) {
@@ -866,7 +845,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
           <TouchableOpacity
             disabled={!isTargetingMode || (gameName === 'SanGuoSha' && selectedCards.length > 0 && myHand[selectedCards[0]]?.name !== 'ShanDian')}
             onPress={() => setSelectedTargetId(myPlayerId)}
-            style={{ padding: 4 }}
+            style={[{ padding: 4 }, { outlineStyle: 'none' } as any]}
           >
             <Text style={[
               styles.turnBadgeText,
