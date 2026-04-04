@@ -1,0 +1,44 @@
+npm warn exec The following package was not found and will be installed: serve@14.2.6
+ INFO  Accepting connections at http://localhost:3000
+ HTTP  4/4/2026 5:42:41 PM ::1 GET /
+ HTTP  4/4/2026 5:42:41 PM ::1 Returned 200 in 55 ms
+ HTTP  4/4/2026 5:42:41 PM ::1 GET /offline-cards/_expo/static/js/web/index-592ae60dd2a494a98bdea45fb3893c4b.js
+ HTTP  4/4/2026 5:42:41 PM ::1 Returned 200 in 4 ms
+ HTTP  4/4/2026 5:42:41 PM ::1 GET /offline-cards/sw.js
+ HTTP  4/4/2026 5:42:41 PM ::1 Returned 200 in 2 ms
+ HTTP  4/4/2026 5:43:40 PM ::1 GET /
+ HTTP  4/4/2026 5:43:40 PM ::1 Returned 200 in 2 ms
+ HTTP  4/4/2026 5:43:40 PM ::1 GET /offline-cards/_expo/static/js/web/index-592ae60dd2a494a98bdea45fb3893c4b.js
+ HTTP  4/4/2026 5:43:40 PM ::1 Returned 200 in 3 ms
+ HTTP  4/4/2026 5:43:40 PM ::1 GET /offline-cards/sw.js
+ HTTP  4/4/2026 5:43:40 PM ::1 Returned 200 in 3 ms
+ HTTP  4/4/2026 5:45:47 PM ::1 GET /
+ HTTP  4/4/2026 5:45:47 PM ::1 Returned 200 in 1 ms
+ HTTP  4/4/2026 5:45:47 PM ::1 GET /offline-cards/_expo/static/js/web/index-592ae60dd2a494a98bdea45fb3893c4b.js
+ HTTP  4/4/2026 5:45:47 PM ::1 Returned 200 in 2 ms
+ HTTP  4/4/2026 5:45:47 PM ::1 GET /offline-cards/sw.js
+ HTTP  4/4/2026 5:45:47 PM ::1 Returned 200 in 3 ms
+ HTTP  4/4/2026 5:46:50 PM ::1 GET /
+ HTTP  4/4/2026 5:46:50 PM ::1 Returned 200 in 2 ms
+ HTTP  4/4/2026 5:46:50 PM ::1 GET /offline-cards/_expo/static/js/web/index-592ae60dd2a494a98bdea45fb3893c4b.js
+ HTTP  4/4/2026 5:46:50 PM ::1 Returned 200 in 3 ms
+ HTTP  4/4/2026 5:46:50 PM ::1 GET /offline-cards/sw.js
+ HTTP  4/4/2026 5:46:50 PM ::1 Returned 200 in 1 ms
+ HTTP  4/4/2026 5:48:13 PM ::1 GET /
+ HTTP  4/4/2026 5:48:13 PM ::1 Returned 200 in 1 ms
+ HTTP  4/4/2026 5:48:13 PM ::1 GET /offline-cards/_expo/static/js/web/index-592ae60dd2a494a98bdea45fb3893c4b.js
+ HTTP  4/4/2026 5:48:13 PM ::1 Returned 200 in 1 ms
+ HTTP  4/4/2026 5:48:13 PM ::1 GET /offline-cards/sw.js
+ HTTP  4/4/2026 5:48:13 PM ::1 Returned 200 in 1 ms
+ HTTP  4/4/2026 5:49:16 PM ::1 GET /
+ HTTP  4/4/2026 5:49:16 PM ::1 Returned 200 in 2 ms
+ HTTP  4/4/2026 5:49:16 PM ::1 GET /offline-cards/_expo/static/js/web/index-592ae60dd2a494a98bdea45fb3893c4b.js
+ HTTP  4/4/2026 5:49:16 PM ::1 Returned 200 in 3 ms
+ HTTP  4/4/2026 5:49:16 PM ::1 GET /offline-cards/sw.js
+ HTTP  4/4/2026 5:49:16 PM ::1 Returned 200 in 1 ms
+ HTTP  4/4/2026 5:50:11 PM ::1 GET /
+ HTTP  4/4/2026 5:50:11 PM ::1 Returned 200 in 1 ms
+ HTTP  4/4/2026 5:50:11 PM ::1 GET /offline-cards/_expo/static/js/web/index-592ae60dd2a494a98bdea45fb3893c4b.js
+ HTTP  4/4/2026 5:50:11 PM ::1 Returned 200 in 1 ms
+ HTTP  4/4/2026 5:50:11 PM ::1 GET /offline-cards/sw.js
+ HTTP  4/4/2026 5:50:11 PM ::1 Returned 200 in 1 ms

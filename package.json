@@ -1,6 +1,6 @@
 {
   "name": "offline-cards",
-  "version": "1.0.001",
+  "version": "1.0.002",
   "main": "index.js",
   "scripts": {
     "start": "expo start",

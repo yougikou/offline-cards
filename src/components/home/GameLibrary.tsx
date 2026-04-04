@@ -13,7 +13,6 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
   setSelectedGameMode,
 }) => {
   const { t } = useTranslation();
-  const scrollViewRef = useRef<ScrollView>(null);
 
   const games = useMemo(() => [
     {
@@ -64,29 +63,11 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [games, selectedGameMode, setSelectedGameMode]);
 
-  useEffect(() => {
-    if (Platform.OS !== 'web' || !scrollViewRef.current) return;
-
-    const node = (scrollViewRef.current as any).getScrollableNode();
-    if (!node) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      // If the scroll is mostly vertical, translate to horizontal
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        e.preventDefault();
-        node.scrollLeft += e.deltaY;
-      }
-    };
-
-    node.addEventListener('wheel', handleWheel, { passive: false });
-    return () => node.removeEventListener('wheel', handleWheel);
-  }, []);
-
   return (
     <View style={styles.librarySection}>
       <Text style={styles.sectionTitle}>{t('lobby.selectGame', 'Game Library')}</Text>
 
-      <ScrollView ref={scrollViewRef} horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={styles.gameCarousel}>
+      <View style={styles.gameCarousel}>
         {games.map(game => (
           <TouchableOpacity
             key={game.id}
@@ -119,7 +100,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
             )}
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -137,12 +118,15 @@ const styles = StyleSheet.create({
   },
   gameCarousel: {
     paddingBottom: 10,
-    paddingHorizontal: 20,
-    gap: 15,
+    paddingHorizontal: 10,
+    gap: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   gameCard: {
-    width: 120,
-    height: 140,
+    width: 100,
+    height: 120,
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 10,
@@ -150,7 +134,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#eee',
-    marginRight: 15,
+    marginBottom: 10,
+    marginRight: 10,
   },
   gameCardSelected: {
     borderColor: '#333',
