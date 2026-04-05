@@ -86,7 +86,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
     <View style={styles.librarySection}>
       <Text style={styles.sectionTitle}>{t('lobby.selectGame', 'Game Library')}</Text>
 
-      <ScrollView ref={scrollViewRef} horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={styles.gameCarousel}>
+      <View style={styles.gameGrid}>
         {games.map(game => (
           <TouchableOpacity
             key={game.id}
@@ -119,38 +119,39 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
             )}
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   librarySection: {
-    marginBottom: 20,
+    marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 15,
+    marginBottom: 10,
     paddingHorizontal: 5,
   },
-  gameCarousel: {
-    paddingBottom: 10,
-    paddingHorizontal: 20,
-    gap: 15,
+  gameGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
   },
   gameCard: {
-    width: 120,
-    height: 140,
+    width: '30%',
+    minWidth: 100,
+    height: 110,
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 10,
+    padding: 8,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#eee',
-    marginRight: 15,
   },
   gameCardSelected: {
     borderColor: '#333',
@@ -166,15 +167,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
   gameCardIcon: {
-    fontSize: 30,
-    marginBottom: 10,
+    fontSize: 24,
+    marginBottom: 6,
   },
   gameCardTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   gameCardTitleSelected: {
     color: '#333',

@@ -82,13 +82,13 @@ const styles = StyleSheet.create({
   sectionDivider: {
     height: 1,
     backgroundColor: '#E0E0E0',
-    marginVertical: 15,
+    marginVertical: 10,
   },
   joinGlobalButton: {
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 15,
+    padding: 12,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -112,13 +112,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   joinGlobalButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#2E7D32',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   joinGlobalSubText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#666',
   },
   joinSecondaryButton: {
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 12,
-    padding: 12,
+    padding: 10,
     alignItems: 'center',
   },
   joinSecondaryIconContainer: {

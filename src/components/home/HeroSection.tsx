@@ -18,26 +18,26 @@ const HeroSection: React.FC = () => {
 const styles = StyleSheet.create({
   heroSection: {
     alignItems: 'center',
-    marginBottom: 15,
-    marginTop: 10,
+    marginBottom: 10,
+    marginTop: 5,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 5,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
     marginBottom: 5,
     textAlign: 'center',
   },
   versionText: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#aaa',
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: 5,
   },
 });
 
