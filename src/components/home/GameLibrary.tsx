@@ -86,7 +86,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
     <View style={styles.librarySection}>
       <Text style={styles.sectionTitle}>{t('lobby.selectGame', 'Game Library')}</Text>
 
-      <ScrollView ref={scrollViewRef} horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -20 }} contentContainerStyle={styles.gameCarousel}>
+      <View style={styles.gameCarousel}>
         {games.map(game => (
           <TouchableOpacity
             key={game.id}
@@ -119,7 +119,7 @@ const GameLibrary: React.FC<GameLibraryProps> = ({
             )}
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -136,9 +136,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   gameCarousel: {
-    paddingBottom: 10,
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 15,
+    paddingBottom: 10,
+    paddingHorizontal: 5,
   },
   gameCard: {
     width: 120,
@@ -150,7 +153,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#eee',
-    marginRight: 15,
+
   },
   gameCardSelected: {
     borderColor: '#333',
